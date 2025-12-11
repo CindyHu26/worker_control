@@ -30,7 +30,7 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
         }
     };
 
-    const currentDeployment = worker.deployments[0]; // Assuming sorted by desc
+    const currentDeployment = worker.deployments?.[0]; // Assuming sorted by desc
     const currentTimeline = currentDeployment?.timelines;
 
     return (

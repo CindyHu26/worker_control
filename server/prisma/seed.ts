@@ -1,4 +1,6 @@
+```javascript
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -6,11 +8,13 @@ async function main() {
     // 1. Seed Admin User
     const adminEmail = 'admin@example.com';
     const adminUsername = 'admin';
-    const defaultPasswordHash = 'change_me'; // In production, hash this properly (e.g., bcrypt)
+    const defaultPasswordHash = await bcrypt.hash('change_me', 10);
 
     const admin = await prisma.internalUser.upsert({
         where: { username: adminUsername },
-        update: {},
+        update: {
+            passwordHash: defaultPasswordHash // Update it if exists too, to fix legacy plain text
+        },
         create: {
             username: adminUsername,
             email: adminEmail,

@@ -38,7 +38,10 @@ router.get('/stats', async (req, res) => {
 router.get('/alerts', async (req, res) => {
     try {
         const today = new Date();
-        const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+        today.setHours(0, 0, 0, 0); // Start of today
+
+        const thirtyDaysFromNow = new Date(today);
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30); // Exactly 30 days later
 
         // Fetch timelines where any key date is soon
         // This is a bit complex in Prisma to do "OR" across multiple fields with relations efficiently
@@ -92,13 +95,20 @@ router.get('/alerts', async (req, res) => {
             // Find the specific one triggering the alert (first one found)
             const urgentOne = dueDates.find(d => d.date && d.date <= thirtyDaysFromNow && d.date >= today); // Re-check strictly
 
+            // Calculate days remaining consistently
+            let daysRemaining = 0;
+            if (urgentOne?.date) {
+                const diffTime = new Date(urgentOne.date).getTime() - today.getTime();
+                daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+
             return {
                 id: t.id,
                 workerName: t.deployment.worker.chineseName || t.deployment.worker.englishName,
                 companyName: t.deployment.employer.companyName,
                 alertType: urgentOne?.type || 'Generic Deadline',
                 dueDate: urgentOne?.date,
-                daysRemaining: urgentOne?.date ? Math.ceil((urgentOne.date.getTime() - today.getTime()) / (1000 * 3600 * 24)) : 0
+                daysRemaining: daysRemaining
             };
         }).filter(a => a.dueDate); // double check
 

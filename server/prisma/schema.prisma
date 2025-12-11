@@ -54,9 +54,9 @@ enum PermitType {
 
 enum HealthCheckType {
   entry
-  _6mo  @map("6mo")
-  _18mo @map("18mo")
-  _30mo @map("30mo")
+  mo6  @map("6mo")
+  mo18 @map("18mo")
+  mo30 @map("30mo")
   supplementary
   @@map("health_check_type")
 }
