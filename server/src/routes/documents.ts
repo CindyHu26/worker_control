@@ -5,8 +5,50 @@ import path from 'path';
 import fs from 'fs';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
+import multer from 'multer';
 
 const router = Router();
+
+// Configure Multer for Template Uploads
+const templatesDir = path.join(__dirname, '../../templates');
+if (!fs.existsSync(templatesDir)) {
+    fs.mkdirSync(templatesDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        // Organize by category if provided
+        const category = req.body.category || 'general';
+        const categoryDir = path.join(templatesDir, category);
+        if (!fs.existsSync(categoryDir)) {
+            fs.mkdirSync(categoryDir, { recursive: true });
+        }
+        cb(null, categoryDir);
+    },
+    filename: (req, file, cb) => {
+        // Generate unique filename: timestamp_originalname
+        const uniqueSuffix = Date.now() + '_' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        const basename = path.basename(file.originalname, ext);
+        cb(null, `${basename}_${uniqueSuffix}${ext}`);
+    }
+});
+
+const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        // Only accept .docx files
+        if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            file.originalname.endsWith('.docx')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .docx files are allowed'));
+        }
+    },
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    }
+});
 
 // GET /api/documents/templates
 // List active templates
@@ -37,6 +79,57 @@ router.get('/templates', async (req, res) => {
     }
 });
 
+// POST /api/documents/templates
+// Upload a new template
+router.post('/templates', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const { name, category, description } = req.body;
+
+        if (!name || !category) {
+            // Clean up uploaded file if validation fails
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ error: 'Missing required fields: name, category' });
+        }
+
+        // Store relative path from templates directory
+        const relativePath = path.relative(templatesDir, req.file.path).replace(/\\/g, '/');
+        const filePath = `/templates/${relativePath}`;
+
+        // Create database record
+        const template = await prisma.documentTemplate.create({
+            data: {
+                name,
+                category,
+                description: description || null,
+                filePath,
+                isActive: true
+            }
+        });
+
+        res.status(201).json({
+            message: 'Template uploaded successfully',
+            template: {
+                id: template.id,
+                name: template.name,
+                category: template.category,
+                description: template.description
+            }
+        });
+
+    } catch (error) {
+        console.error('Template Upload Error:', error);
+        // Clean up file if database operation fails
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ error: 'Failed to upload template' });
+    }
+});
+
 // POST /api/documents/generate
 // Generate documents for a worker
 router.post('/generate', async (req, res) => {
@@ -58,12 +151,8 @@ router.post('/generate', async (req, res) => {
                     take: 1,
                     include: { employer: true }
                 },
-                // Dormitory
-                dormitory: {
-                    include: {
-                        rooms: true // To find specific bed? Or just dorm level info
-                    }
-                },
+                // Dormitory (basic info, detailed info comes from bed relation)
+                dormitory: true,
                 bed: {
                     include: {
                         room: {

@@ -698,7 +698,7 @@ model DormBed {
   status  String @default("vacant") // Enum: vacant, occupied, maintenance
 
   room   DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  worker Worker? // One-to-One relation defined in Worker
+  worker Worker?  // One-to-One: defined in Worker side as relation
 
   @@map("dorm_beds")
 }
