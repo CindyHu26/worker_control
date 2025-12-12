@@ -18,7 +18,6 @@ router.get('/:id', async (req, res) => {
                 },
                 _count: {
                     select: {
-                        workers: true,
                         deployments: true
                     }
                 }

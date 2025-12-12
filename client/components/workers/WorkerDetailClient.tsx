@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { User, Briefcase, Calendar, FileText, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import AttachmentManager from '../common/AttachmentManager';
 
 export default function WorkerDetailClient({ worker }: { worker: any }) {
     const [activeTab, setActiveTab] = useState(() => {
@@ -242,7 +243,9 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                     </div>
                 )}
 
-                {/* Simplified for demo: other tabs would go here */}
+                {activeTab === 'documents' && (
+                    <AttachmentManager refId={worker.id} refTable="workers" />
+                )}
             </div>
 
             {/* Arrange Entry Modal */}
