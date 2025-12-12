@@ -108,6 +108,57 @@ router.post('/:id/transfer', async (req, res) => {
         console.error('Transfer Error:', error);
         res.status(500).json({ error: 'Failed to process transfer' });
     }
-});
+    // POST /api/workers/:id/arrange-entry
+    router.post('/:id/arrange-entry', async (req, res) => {
+        const { id } = req.params;
+        const { flightNumber, flightArrivalDate, pickupPerson } = req.body;
 
-export default router;
+        if (!flightArrivalDate) {
+            return res.status(400).json({ error: 'Flight arrival date is required' });
+        }
+
+        try {
+            const result = await prisma.$transaction(async (tx) => {
+                // 1. Update Worker Info (Pickup Person)
+                await tx.worker.update({
+                    where: { id },
+                    data: {
+                        flightArrivalInfo: pickupPerson,
+                        // Clear old departure info if new entry? Maybe not needed yet.
+                    }
+                });
+
+                // 2. Update Active/Pending Deployment (Flight Info triggers Timelines)
+                // We find the latest one
+                const currentDeployment = await tx.deployment.findFirst({
+                    where: {
+                        workerId: id,
+                        status: { in: ['active', 'pending'] }
+                    },
+                    orderBy: { startDate: 'desc' }
+                });
+
+                if (!currentDeployment) {
+                    throw new Error('No active or pending deployment found to arrange entry for.');
+                }
+
+                const updatedDeployment = await tx.deployment.update({
+                    where: { id: currentDeployment.id },
+                    data: {
+                        flightNumber,
+                        flightArrivalDate: new Date(flightArrivalDate),
+                        entryDate: new Date(flightArrivalDate), // Assume Entry = Arrival for simplicity unless specified
+                    }
+                });
+
+                return updatedDeployment;
+            });
+
+            res.json(result);
+        } catch (error: any) {
+            console.error('Arrange Entry Error:', error);
+            res.status(500).json({ error: error.message || 'Failed to arrange entry' });
+        }
+    });
+
+    export default router;

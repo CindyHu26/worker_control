@@ -1,4 +1,4 @@
-import WorkerDetailClient from '../../components/workers/WorkerDetailClient';
+import WorkerDetailClient from '@/components/workers/WorkerDetailClient';
 
 async function getWorker(id: string) {
     const res = await fetch(`http://localhost:3001/api/workers/${id}`, { cache: 'no-store' });
