@@ -16,6 +16,46 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
         return 'basic';
     });
 
+    // Generate Doc Modal
+    const [showGenDocModal, setShowGenDocModal] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleGenerateDoc = async (templateType: string) => {
+        setIsGenerating(true);
+        try {
+            // Using port 3001 as server is running there
+            const res = await fetch('http://localhost:3001/api/documents/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    templateType,
+                    resourceId: worker.id
+                })
+            });
+
+            if (res.ok) {
+                // Blob handling
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Transfer_Application_${worker.englishName.replace(/\s+/g, '_')}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setShowGenDocModal(false);
+            } else {
+                const err = await res.json();
+                alert('Generation Failed: ' + (err.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error(error);
+            alert('System Error');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     // Transfer Modal
     const [showTransferModal, setShowTransferModal] = useState(false);
     const [newEmployerId, setNewEmployerId] = useState('');
@@ -40,13 +80,6 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
 
             if (res.ok) {
                 alert('安排成功！系統已更新時程。');
-                // Switch to timeline and reload (simulated by just setting tab for now, reload typically resets state)
-                // In a real app we might refetch data. For now, window.reload is simple and effectively resets everything including fetching fresh data.
-                // To preserve "after reload" tab, we might need query params or local storage, 
-                // but let's just reload and user can click timeline, OR we can try to be smart.
-                // Simple: Reload, user will see updated data.
-
-                // Hack: Save tab preference before reload?
                 localStorage.setItem('activeWorkerTab', 'timeline');
                 window.location.reload();
             } else {
@@ -57,16 +90,6 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
             alert('系統錯誤');
         }
     };
-
-    // Restore tab if exists (optional bonus)
-    if (typeof window !== 'undefined') {
-        const savedTab = localStorage.getItem('activeWorkerTab');
-        if (savedTab) {
-            // This is a bit risky in render loop, better in useEffect but for simplicity of this edit block:
-            // Let's rely on basic useState init which we can't easily change here without re-writing whole component start.
-            // We'll skip the localStorage auto-restore logic here to avoid hydration errors.
-        }
-    }
 
     const handleTransfer = async () => {
         if (!newEmployerId || !transferDate) return alert('請填寫完整資訊');
@@ -244,7 +267,28 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                 )}
 
                 {activeTab === 'documents' && (
-                    <AttachmentManager refId={worker.id} refTable="workers" />
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded border">
+                            <div>
+                                <h4 className="font-semibold text-gray-700">自動文件生成</h4>
+                                <p className="text-xs text-gray-500">使用目前資料產生標準表格 (DOCX/PDF)</p>
+                            </div>
+                            <button
+                                onClick={() => setShowGenDocModal(true)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm flex items-center gap-2 transition"
+                            >
+                                <FileText size={16} />
+                                產生文件
+                            </button>
+                        </div>
+                        <AttachmentManager refId={worker.id} refTable="workers" />
+                    </div>
+                )}
+
+                {activeTab === 'incidents' && (
+                    <div className="text-center py-10 text-gray-500">
+                        事件紀錄模組
+                    </div>
                 )}
             </div>
 
@@ -353,6 +397,42 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                     </div>
                 )
             }
+
+            {/* Generate Doc Modal */}
+            {showGenDocModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-[400px]">
+                        <h2 className="text-xl font-bold mb-4">產生文件 (Generate Document)</h2>
+                        <div className="space-y-4">
+                            <button
+                                onClick={() => handleGenerateDoc('transfer_application')}
+                                disabled={isGenerating}
+                                className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition group"
+                            >
+                                <div className="text-left">
+                                    <div className="font-bold text-slate-800 group-hover:text-blue-700">轉換雇主申請書</div>
+                                    <div className="text-xs text-slate-500">Transfer Application</div>
+                                </div>
+                                <FileText className="text-slate-300 group-hover:text-blue-500" />
+                            </button>
+                            <button
+                                disabled
+                                className="w-full text-center p-3 text-sm text-slate-400 border border-dashed rounded bg-slate-50 cursor-not-allowed"
+                            >
+                                更多範本開發中...
+                            </button>
+                        </div>
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={() => setShowGenDocModal(false)}
+                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                            >
+                                關閉
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

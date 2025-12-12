@@ -17,6 +17,7 @@ import {
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
+    const [hoveredItem, setHoveredItem] = useState<{ label: string; top: number } | null>(null);
     const pathname = usePathname();
 
     const navItems = [
@@ -27,85 +28,139 @@ export default function Sidebar() {
         { href: '/recruitment', label: '招募進度', subLabel: '(Recruitment)', icon: FileText },
     ];
 
+    const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>, label: string) => {
+        if (!collapsed) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        // Since Sidebar is fixed/sticky or full height, we can use rect.top. 
+        // We generally expect the Sidebar to be top-aligned.
+        // To be safe relative to the sidebar container, we might need a ref, 
+        // but using rect.top is often "good enough" for fixed sidebars.
+        // However, if the sidebar scrolls, rect.top changes correctly.
+        setHoveredItem({ label, top: rect.top });
+    };
+
     return (
         <aside
             className={`
-                bg-slate-900 text-white flex flex-col transition-all duration-300 relative
-                ${collapsed ? 'w-20' : 'w-64'}
+                bg-slate-900 text-white flex flex-col transition-all duration-300 relative z-20
+                ${collapsed ? 'w-20' : 'w-[280px]'} 
+                shadow-2xl border-r border-slate-800
             `}
         >
             {/* Toggle Button */}
             <button
-                onClick={() => setCollapsed(!collapsed)}
-                className="absolute -right-3 top-8 bg-blue-600 rounded-full p-1 text-white shadow-lg hover:bg-blue-700 z-10"
+                onClick={() => {
+                    setCollapsed(!collapsed);
+                    setHoveredItem(null);
+                }}
+                className="absolute -right-3 top-9 bg-blue-600 rounded-full p-1.5 text-white shadow-xl hover:bg-blue-500 transition-transform active:scale-95 z-50 border-2 border-slate-900"
             >
-                {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
 
             {/* Header */}
-            <div className={`p-6 border-b border-slate-800 flex items-center ${collapsed ? 'justify-center' : ''}`}>
-                {collapsed ? (
-                    <span className="font-bold text-xl tracking-wider">T</span>
-                ) : (
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-wider">TMS 系统</h1>
-                        <p className="text-xs text-slate-400 mt-1">移工生命週期管理</p>
+            <div className={`
+                h-20 flex items-center border-b border-slate-800/50 
+                ${collapsed ? 'justify-center' : 'px-6'}
+            `}>
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                        <span className="font-bold text-lg text-white">T</span>
                     </div>
-                )}
+                    {!collapsed && (
+                        <div className="whitespace-nowrap transition-opacity duration-300">
+                            <h1 className="text-xl font-bold tracking-tight text-white">TMS 系统</h1>
+                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Migrant Worker System</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden">
+            <nav className="flex-1 p-3 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
+                            onMouseEnter={(e) => handleMouseEnter(e, item.label)}
+                            onMouseLeave={() => setHoveredItem(null)}
                             className={`
-                                flex items-center gap-3 px-3 py-3 rounded-lg transition-colors group
-                                ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-300'}
+                                flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group relative
+                                ${isActive
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                }
                                 ${collapsed ? 'justify-center' : ''}
                             `}
-                            title={collapsed ? item.label : ''}
                         >
-                            <item.icon size={20} className="flex-shrink-0" />
+                            <item.icon size={22} className={`flex-shrink-0 transition-colors ${isActive ? 'text-white' : 'group-hover:text-white'}`} />
+
                             {!collapsed && (
-                                <div className="whitespace-nowrap overflow-hidden">
-                                    <span className="block">{item.label}</span>
-                                    <span className="text-xs opacity-70">{item.subLabel}</span>
+                                <div className="whitespace-nowrap overflow-hidden flex-1">
+                                    <span className="block text-sm font-medium">{item.label}</span>
+                                    <span className="text-[10px] opacity-60 font-light block -mt-0.5">{item.subLabel}</span>
                                 </div>
+                            )}
+
+                            {/* Active Indicator Strip (when expanded) */}
+                            {isActive && !collapsed && (
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/20 rounded-l-full" />
                             )}
                         </Link>
                     );
                 })}
 
-                {/* Divider for Settings */}
-                <div className="pt-4 mt-4 border-t border-slate-800">
-                    <Link
-                        href="/settings"
-                        className={`
-                            flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 text-slate-300 transition-colors
-                            ${pathname === '/settings' ? 'bg-blue-600 text-white' : ''}
-                            ${collapsed ? 'justify-center' : ''}
-                        `}
-                        title={collapsed ? '系統設定' : ''}
-                    >
-                        <Settings size={20} className="flex-shrink-0" />
-                        {!collapsed && (
-                            <div className="whitespace-nowrap">
-                                <span className="block">系統設定</span>
-                                <span className="text-xs opacity-70">(Settings)</span>
-                            </div>
-                        )}
-                    </Link>
-                </div>
+                {/* Divider */}
+                <div className="my-4 border-t border-slate-800/50 mx-2" />
+
+                <Link
+                    href="/settings"
+                    onMouseEnter={(e) => handleMouseEnter(e, '系統設定')}
+                    onMouseLeave={() => setHoveredItem(null)}
+                    className={`
+                        flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group
+                        ${pathname === '/settings' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
+                        ${collapsed ? 'justify-center' : ''}
+                    `}
+                >
+                    <Settings size={22} className="flex-shrink-0" />
+                    {!collapsed && (
+                        <div className="whitespace-nowrap overflow-hidden">
+                            <span className="block text-sm font-medium">系統設定</span>
+                            <span className="text-[10px] opacity-60 font-light block -mt-0.5">(Settings)</span>
+                        </div>
+                    )}
+                </Link>
             </nav>
 
-            {/* Footer */}
-            <div className="p-4 bg-slate-950 text-xs text-center text-slate-500 overflow-hidden whitespace-nowrap">
-                {collapsed ? 'v1.0' : 'v1.0.0'}
+            {/* User Profile / Footer */}
+            <div className="p-4 border-t border-slate-800/50 bg-slate-950/30">
+                <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center ring-2 ring-slate-800">
+                        <span className="text-xs font-bold text-slate-300">AD</span>
+                    </div>
+                    {!collapsed && (
+                        <div className="overflow-hidden">
+                            <p className="text-sm font-medium text-white truncate">Admin User</p>
+                            <p className="text-xs text-slate-500 truncate">admin@tms.com</p>
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {/* Custom Tooltip Portal (Rendered outside nav logic via absolute on aside) */}
+            {collapsed && hoveredItem && (
+                <div
+                    className="fixed z-50 left-20 ml-4 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-md shadow-xl border border-slate-700 animate-in fade-in slide-in-from-left-2 duration-200 pointer-events-none"
+                    style={{ top: hoveredItem.top + 8 }} // Align roughly with center of item
+                >
+                    {hoveredItem.label}
+                    {/* Arrow */}
+                    <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-slate-800 border-l border-b border-slate-700 rotate-45" />
+                </div>
+            )}
         </aside>
     );
 }

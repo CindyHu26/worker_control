@@ -4,6 +4,56 @@ import prisma from '../prisma';
 
 const router = Router();
 
+// GET /api/employers
+router.get('/', async (req, res) => {
+    try {
+        const { q, page = '1', limit = '10' } = req.query;
+
+        const pageNum = parseInt(page as string);
+        const limitNum = parseInt(limit as string);
+        const skip = (pageNum - 1) * limitNum;
+
+        const whereClause: any = {};
+
+        if (q) {
+            const keyword = q as string;
+            whereClause.OR = [
+                { companyName: { contains: keyword } },
+                { taxId: { contains: keyword } },
+                { responsiblePerson: { contains: keyword } }
+            ];
+        }
+
+        const [total, employers] = await Promise.all([
+            prisma.employer.count({ where: whereClause }),
+            prisma.employer.findMany({
+                where: whereClause,
+                include: {
+                    _count: {
+                        select: { deployments: { where: { status: 'active' } } }
+                    }
+                },
+                skip,
+                take: limitNum,
+                orderBy: { createdAt: 'desc' }
+            })
+        ]);
+
+        res.json({
+            data: employers,
+            meta: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        });
+    } catch (error) {
+        console.error('Search Employers Error:', error);
+        res.status(500).json({ error: 'Failed to search employers' });
+    }
+});
+
 // Get Employer Details
 router.get('/:id', async (req, res) => {
     try {

@@ -4,6 +4,110 @@ import prisma from '../prisma';
 
 const router = Router();
 
+// GET /api/workers
+router.get('/', async (req, res) => {
+    try {
+        const {
+            q,
+            status,
+            nationality,
+            page = '1',
+            limit = '10'
+        } = req.query;
+
+        const pageNum = parseInt(page as string);
+        const limitNum = parseInt(limit as string);
+        const skip = (pageNum - 1) * limitNum;
+
+        // Build Where Clause
+        const whereClause: any = {};
+        const andConditions = [];
+
+        // 1. Keyword Search (Name, Passport, ARC)
+        if (q) {
+            const keyword = q as string;
+            andConditions.push({
+                OR: [
+                    { englishName: { contains: keyword } }, // SQLite is case-insensitive by default for ASCII, but usually depends on collation
+                    { chineseName: { contains: keyword } },
+                    {
+                        passports: {
+                            some: { passportNumber: { contains: keyword } }
+                        }
+                    },
+                    {
+                        arcs: {
+                            some: { arcNumber: { contains: keyword } }
+                        }
+                    }
+                ]
+            });
+        }
+
+        // 2. Exact Filters
+        if (nationality) {
+            andConditions.push({ nationality });
+        }
+
+        // Status Logic: Check if they have an active deployment
+        if (status) {
+            if (status === 'active') {
+                andConditions.push({
+                    deployments: {
+                        some: { status: 'active' }
+                    }
+                });
+            } else if (status === 'inactive') {
+                andConditions.push({
+                    deployments: {
+                        none: { status: 'active' }
+                    }
+                });
+            }
+        }
+
+        if (andConditions.length > 0) {
+            whereClause.AND = andConditions;
+        }
+
+        // Execute Query with Pagination
+        const [total, workers] = await Promise.all([
+            prisma.worker.count({ where: whereClause }),
+            prisma.worker.findMany({
+                where: whereClause,
+                include: {
+                    deployments: {
+                        where: { status: 'active' },
+                        take: 1,
+                        include: { employer: { select: { companyName: true } } }
+                    },
+                    passports: {
+                        where: { isCurrent: true },
+                        take: 1
+                    }
+                },
+                skip,
+                take: limitNum,
+                orderBy: { createdAt: 'desc' }
+            })
+        ]);
+
+        res.json({
+            data: workers,
+            meta: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        });
+
+    } catch (error) {
+        console.error('Search Workers Error:', error);
+        res.status(500).json({ error: 'Failed to search workers' });
+    }
+});
+
 // GET /api/workers/:id
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
