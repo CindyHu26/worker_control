@@ -144,12 +144,18 @@ router.post('/generate', async (req, res) => {
         const worker = await prisma.worker.findUnique({
             where: { id: workerId },
             include: {
-                // Deployment & Employer
+                // Foreign Agency
+                foreignAgency: true,
+                // Deployment & Employer (with Agency Check)
                 deployments: {
                     where: { status: { in: ['active', 'pending'] } },
                     orderBy: { startDate: 'desc' },
                     take: 1,
-                    include: { employer: true }
+                    include: {
+                        employer: {
+                            include: { agency: true }
+                        }
+                    }
                 },
                 // Dormitory (basic info, detailed info comes from bed relation)
                 dormitory: true,
@@ -170,8 +176,19 @@ router.post('/generate', async (req, res) => {
             return res.status(404).json({ error: 'Worker not found' });
         }
 
+        // Fetch Default Agency Company (fallback)
+        const defaultAgency = await prisma.agencyCompany.findFirst({
+            where: { isDefault: true }
+        });
+
         const deployment = worker.deployments[0];
         const employer = deployment?.employer;
+
+        // Determine Agency Company: Employer's specific agency -> Default Agency -> Empty object
+        const agencyCompany = employer?.agency || defaultAgency || {} as any;
+
+        const foreignAgency = worker.foreignAgency || {} as any;
+
         const passport = worker.passports[0];
         const arc = worker.arcs[0];
 
@@ -189,6 +206,21 @@ router.post('/generate', async (req, res) => {
             worker_dob: worker.dob ? new Date(worker.dob).toLocaleDateString() : '',
             worker_mobile: worker.mobilePhone || '',
             worker_address_foreign: worker.foreignAddress || '',
+
+            // Foreign Agency
+            foreign_agency_name: foreignAgency.name || '',
+            foreign_agency_code: foreignAgency.code || '',
+            foreign_agency_country: foreignAgency.country || '',
+
+            // Agency Company (Internal)
+            agency_name: agencyCompany.name || '',
+            agency_license_no: agencyCompany.licenseNo || '',
+            agency_tax_id: agencyCompany.taxId || '',
+            agency_address: agencyCompany.address || '',
+            agency_phone: agencyCompany.phone || '',
+            agency_fax: agencyCompany.fax || '',
+            agency_email: agencyCompany.email || '',
+            agency_responsible_person: agencyCompany.responsiblePerson || '',
 
             // ID Documents
             passport_no: passport?.passportNumber || '',

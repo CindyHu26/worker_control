@@ -88,6 +88,9 @@ model Employer {
   serviceAssignments ServiceAssignment[]
   jobOrders          JobOrder[]
 
+  agencyCompanyId String? @map("agency_company_id")
+  agency          AgencyCompany? @relation(fields: [agencyCompanyId], references: [id])
+
   @@map("employers")
 }
 
@@ -141,6 +144,9 @@ model Worker {
 
   dormitoryBedId String?  @unique @map("dormitory_bed_id")
   bed            DormBed? @relation(fields: [dormitoryBedId], references: [id])
+
+  foreignAgencyId String? @map("foreign_agency_id")
+  foreignAgency   ForeignAgency? @relation(fields: [foreignAgencyId], references: [id])
 
   createdBy     String?       @map("created_by")
   updatedBy     String?       @map("updated_by")
@@ -639,6 +645,8 @@ model MonthlyServiceFee {
   amountYear1 Decimal @default(1800) @map("amount_year_1")
   amountYear2 Decimal @default(1700) @map("amount_year_2")
   amountYear3 Decimal @default(1500) @map("amount_year_3")
+  
+  accommodationFee Decimal @default(0) @map("accommodation_fee")
 
   lastBilledDate DateTime? @map("last_billed_date")
 
@@ -735,3 +743,48 @@ model MeterReading {
 
   @@map("meter_readings")
 }
+
+// =========================================
+// Agency Entities
+// =========================================
+
+model AgencyCompany {
+  id                String   @id @default(uuid())
+  name              String
+  licenseNo         String   @map("license_no")
+  taxId             String   @map("tax_id")
+  responsiblePerson String   @map("responsible_person")
+  address           String?
+  phone             String?
+  fax               String?
+  email             String?
+  isDefault         Boolean  @default(false) @map("is_default")
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  employers         Employer[]
+
+  @@map("agency_companies")
+}
+
+model ForeignAgency {
+  id            String   @id @default(uuid())
+  name          String
+  chineseName   String?  @map("chinese_name")
+  country       String   // Enum: VN, ID, PH, TH
+  code          String?
+  contactPerson String?  @map("contact_person")
+  email         String?
+  phone         String?
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  workers       Worker[]
+
+  @@map("foreign_agencies")
+}
+

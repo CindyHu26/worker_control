@@ -15,6 +15,8 @@ import accountingRoutes from './accounting';
 import jobsRoutes from './jobs';
 import healthRoutes from './health';
 import dormitoryRoutes from './dormitories';
+import settingsRoutes from './settings';
+import batchRoutes from './batch';
 
 const router = Router();
 
@@ -32,6 +34,8 @@ router.use('/accounting', accountingRoutes);
 router.use('/jobs', jobsRoutes);
 router.use('/health-checks', healthRoutes);
 router.use('/dormitories', dormitoryRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/batch', batchRoutes);
 
 router.get('/', (req, res) => {
     res.json({ message: "TMS API v1" });
