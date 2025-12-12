@@ -137,7 +137,11 @@ model Worker {
   flightDeparture           String?  @map("flight_departure")
   
   dormitoryId               String?  @map("dormitory_id")
+
   dormitory                 Dormitory? @relation(fields: [dormitoryId], references: [id])
+  
+  dormitoryBedId            String?  @unique @map("dormitory_bed_id")
+  bed                       DormBed? @relation(fields: [dormitoryBedId], references: [id])
 
 
   createdBy                 String?  @map("created_by")
@@ -632,15 +636,84 @@ model Dormitory {
   id                    String   @id @default(uuid())
   name                  String
   address               String?
-  capacity              Int      @default(0)
-  currentOccupancy      Int      @default(0) @map("current_occupancy")
-  landlord              String?
+  landlordName          String?  @map("landlord_name")
+  landlordPhone         String?  @map("landlord_phone")
   safetyInspectionDate  DateTime? @map("safety_inspection_date")
-  
-  workers               Worker[]
+  accommodationType     String?  @map("accommodation_type")
+
+  rooms                 DormRoom[]
+  workers               Worker[]  // Keep existing direct relation for backward compatibility or direct assignment without bed
 
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("dormitories")
 }
+
+model DormRoom {
+  id           String   @id @default(uuid())
+  dormitoryId  String   @map("dormitory_id")
+  roomNumber   String   @map("room_number")
+  capacity     Int      @default(0)
+  gender       String   @default("mixed")
+  floor        Int?
+
+  dormitory    Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
+  beds         DormBed[]
+  meters       DormMeter[]
+  currentHeadCount Int      @default(0) @map("current_head_count")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("dorm_rooms")
+}
+
+model DormBed {
+  id           String   @id @default(uuid())
+  roomId       String   @map("room_id")
+  bedCode      String   @map("bed_code")
+  status       String   @default("vacant") // vacant, occupied, maintenance
+
+  room         DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  worker       Worker?
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("dorm_beds")
+}
+
+model DormMeter {
+  id           String   @id @default(uuid())
+  roomId       String   @map("room_id")
+  meterName    String   @map("meter_name")
+  meterType    String   @map("meter_type") // electricity, water, gas
+  ratePerUnit  Decimal  @default(0) @map("rate_per_unit")
+
+  room         DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  readings     MeterReading[]
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("dorm_meters")
+}
+
+model MeterReading {
+  id           String   @id @default(uuid())
+  meterId      String   @map("meter_id")
+  readingDate  DateTime @map("reading_date")
+  readingValue Decimal  @map("reading_value")
+  usage        Decimal  
+  cost         Decimal
+  isBilled     Boolean  @default(false) @map("is_billed")
+
+  meter        DormMeter @relation(fields: [meterId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("meter_readings")
+}
+

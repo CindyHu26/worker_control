@@ -47,49 +47,35 @@ router.post('/generate-monthly-fees', async (req, res) => {
                 else if (diffMonths <= 24) baseAmount = Number(fees.amountYear2);
                 else baseAmount = Number(fees.amountYear3);
 
-                // Pro-rata Calculation
+                // Pro-rata Calculation Logic
                 const billingMonthStart = new Date(year, month - 1, 1);
                 const billingMonthEnd = new Date(year, month, 0);
+                const daysInMonth = billingMonthEnd.getDate();
 
-                // Determine effective start/end within this month
-                // Effective Start: Later of (BillingStart, ServiceStart)
-                const effectiveStart = serviceStartDate > billingMonthStart ? serviceStartDate : billingMonthStart;
+                const serviceEndDate = d.endDate ? new Date(d.endDate) : null;
 
-                // Effective End: Earlier of (BillingEnd, ServiceEnd)
-                // Note: d.endDate might be null (active indefinitely)
-                let effectiveEnd = billingMonthEnd;
-                if (d.endDate) {
-                    const svcEndDate = new Date(d.endDate);
-                    if (svcEndDate < billingMonthEnd) {
-                        effectiveEnd = svcEndDate;
-                    }
+                // Check overlap - if not active in this month at all
+                if (serviceStartDate > billingMonthEnd) continue;
+                if (serviceEndDate && serviceEndDate < billingMonthStart) continue;
+
+                const isStartInMonth = serviceStartDate.getFullYear() === year && (serviceStartDate.getMonth() + 1) === month;
+                const isEndInMonth = serviceEndDate && serviceEndDate.getFullYear() === year && (serviceEndDate.getMonth() + 1) === month;
+
+                let activeDays = 30; // Default standard denominator for full month
+
+                if (isStartInMonth && isEndInMonth) {
+                    activeDays = (serviceEndDate!.getDate() - serviceStartDate.getDate()) + 1;
+                } else if (isStartInMonth) {
+                    activeDays = (daysInMonth - serviceStartDate.getDate()) + 1;
+                } else if (isEndInMonth) {
+                    activeDays = serviceEndDate!.getDate();
                 }
 
-                if (effectiveStart > effectiveEnd) continue; // Not active in this month
+                let billAmount = Math.round(baseAmount * (activeDays / 30));
+                let description = `${year}年${month}月 服務費 (第${diffMonths}個月) [$${baseAmount}]`;
 
-                // Days Calculation (+1 inclusive)
-                const oneDay = 24 * 60 * 60 * 1000;
-                const activeDays = Math.round(Math.abs((effectiveEnd.getTime() - effectiveStart.getTime()) / oneDay)) + 1;
-
-                // Standard agency practice: monthly fee calc often based on 30 days
-                // If activeDays >= 30, full amount. 
-                // If partial, (base * days / 30).
-
-                let billAmount = baseAmount;
-                let description = `${year}年${month}月 服務費 (第${diffMonths}個月)`;
-
-                // Only apply pro-rata if < 30 days active in the month
-                // OR if it's the very first month or very last month? 
-                // The logic "activeDays < 30" covers both start/end partials and short months (Feb).
-                // However, usually full month is full pay even if Feb (28 days).
-                // Strict rule: If "Full Month Covered" (Service covers whole billing month), Pay Full.
-                // If "Partial Cover" (Start mid-month or End mid-month), Pay Pro-rata.
-
-                const isFullMonthCovered = serviceStartDate <= billingMonthStart && (!d.endDate || new Date(d.endDate) >= billingMonthEnd);
-
-                if (!isFullMonthCovered && activeDays < 30) {
-                    billAmount = Math.round((baseAmount * activeDays) / 30);
-                    description += ` (Pro-rata: ${activeDays}/30 days)`;
+                if (activeDays !== 30) {
+                    description += ` (Pro-rata: ${activeDays} / 30 active days)`;
                 }
 
                 // Check Existence
