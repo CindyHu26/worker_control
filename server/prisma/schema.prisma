@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,166 +22,165 @@ model InternalUser {
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  createdEmployers          Employer[]          @relation("EmployerCreatedBy")
-  updatedEmployers          Employer[]          @relation("EmployerUpdatedBy")
-  createdWorkers            Worker[]            @relation("WorkerCreatedBy")
-  updatedWorkers            Worker[]            @relation("WorkerUpdatedBy")
-  createdJobOrders          JobOrder[]          @relation("JobOrderCreatedBy")
-  updatedJobOrders          JobOrder[]          @relation("JobOrderUpdatedBy")
-  
-  assignedServices          ServiceAssignment[] @relation("ServiceAssignedUser")
-  
-  comments                  SystemComment[]     @relation("CommentAuthor")
-  mentionsReceived          CommentMention[]    @relation("MentionedUser")
+  createdEmployers Employer[] @relation("EmployerCreatedBy")
+  updatedEmployers Employer[] @relation("EmployerUpdatedBy")
+  createdWorkers   Worker[]   @relation("WorkerCreatedBy")
+  updatedWorkers   Worker[]   @relation("WorkerUpdatedBy")
+  createdJobOrders JobOrder[] @relation("JobOrderCreatedBy")
+  updatedJobOrders JobOrder[] @relation("JobOrderUpdatedBy")
+
+  assignedServices ServiceAssignment[] @relation("ServiceAssignedUser")
+
+  comments         SystemComment[]  @relation("CommentAuthor")
+  mentionsReceived CommentMention[] @relation("MentionedUser")
 
   @@map("internal_users")
 }
 
 model Employer {
-  id                        String   @id @default(uuid())
-  taxId                     String   @unique @map("tax_id")
-  companyName               String   @map("company_name")
-  type                      String   @default("corporate") // Enum: corporate, individual
-  withholdingTaxId          String?  @map("withholding_tax_id")
-  invoiceAddress            String?  @map("invoice_address")
-  
-  responsiblePerson         String?  @map("responsible_person")
-  responsiblePersonDob      DateTime? @map("responsible_person_dob")
-  responsiblePersonIdNo     String?  @map("responsible_person_id_no")
-  responsiblePersonFather   String?  @map("responsible_person_father_name")
-  responsiblePersonMother   String?  @map("responsible_person_mother_name")
-  responsiblePersonSpouse   String?  @map("responsible_person_spouse")
-  idIssueDate               DateTime? @map("id_issue_date")
-  idIssuePlace              String?  @map("id_issue_place")
-  militaryStatus            String?  @map("military_status")
+  id               String  @id @default(uuid())
+  taxId            String  @unique @map("tax_id")
+  companyName      String  @map("company_name")
+  type             String  @default("corporate") // Enum: corporate, individual
+  withholdingTaxId String? @map("withholding_tax_id")
+  invoiceAddress   String? @map("invoice_address")
 
-  address                   String?  
-  phoneNumber               String?  @map("phone_number")
-  
-  factoryRegistrationNo     String?  @map("factory_registration_no")
-  factoryRegistrationId     String?  @map("factory_registration_id")
-  industryType              String?  @map("industry_type")
-  laborInsuranceNo          String?  @map("labor_insurance_no")
-  laborInsuranceId          String?  @map("labor_insurance_id")
-  healthInsuranceUnitNo     String?  @map("health_insurance_unit_no")
-  healthInsuranceId         String?  @map("health_insurance_id")
-  email                     String?  
-  faxNumber                 String?  @map("fax_number")
-  billAddress               String?  @map("bill_address")
-  industryCode              String?  @map("industry_code")
-  responsiblePersonAddress  String?  @map("responsible_person_address")
+  responsiblePerson       String?   @map("responsible_person")
+  responsiblePersonDob    DateTime? @map("responsible_person_dob")
+  responsiblePersonIdNo   String?   @map("responsible_person_id_no")
+  responsiblePersonFather String?   @map("responsible_person_father_name")
+  responsiblePersonMother String?   @map("responsible_person_mother_name")
+  responsiblePersonSpouse String?   @map("responsible_person_spouse")
+  idIssueDate             DateTime? @map("id_issue_date")
+  idIssuePlace            String?   @map("id_issue_place")
+  militaryStatus          String?   @map("military_status")
 
-  createdBy                 String?  @map("created_by")
-  updatedBy                 String?  @map("updated_by")
-  createdByUser             InternalUser? @relation("EmployerCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser             InternalUser? @relation("EmployerUpdatedBy", fields: [updatedBy], references: [id])
-  
-  createdAt                 DateTime @default(now()) @map("created_at")
-  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at")
+  address     String?
+  phoneNumber String? @map("phone_number")
+
+  factoryRegistrationNo    String? @map("factory_registration_no")
+  factoryRegistrationId    String? @map("factory_registration_id")
+  industryType             String? @map("industry_type")
+  laborInsuranceNo         String? @map("labor_insurance_no")
+  laborInsuranceId         String? @map("labor_insurance_id")
+  healthInsuranceUnitNo    String? @map("health_insurance_unit_no")
+  healthInsuranceId        String? @map("health_insurance_id")
+  email                    String?
+  faxNumber                String? @map("fax_number")
+  billAddress              String? @map("bill_address")
+  industryCode             String? @map("industry_code")
+  responsiblePersonAddress String? @map("responsible_person_address")
+
+  createdBy     String?       @map("created_by")
+  updatedBy     String?       @map("updated_by")
+  createdByUser InternalUser? @relation("EmployerCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser InternalUser? @relation("EmployerUpdatedBy", fields: [updatedBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  recruitmentLetters        EmployerRecruitmentLetter[]
-  deployments               Deployment[]
-  permitDocuments           PermitDocument[]
-  bills                     Bill[]
-  incidents                 Incident[]
-  serviceAssignments        ServiceAssignment[]
-  jobOrders                 JobOrder[]
+  recruitmentLetters EmployerRecruitmentLetter[]
+  deployments        Deployment[]
+  permitDocuments    PermitDocument[]
+  bills              Bill[]
+  incidents          Incident[]
+  serviceAssignments ServiceAssignment[]
+  jobOrders          JobOrder[]
 
   @@map("employers")
 }
 
 model Worker {
-  id                        String   @id @default(uuid())
-  englishName               String   @map("english_name")
-  chineseName               String?  @map("chinese_name")
-  dob                       DateTime 
-  nationality               String   // Enum as string
-  category                  String   @default("general") // Enum as string
-  gender                    String?  // Enum as string
-  
-  oldPassportNumber         String?  @map("old_passport_number")
-  homeCountryId             String?  @map("home_country_id")
-  taxId                     String?  @map("tax_id")
-  bloodType                 String?  @map("blood_type")
-  religion                  String?  @map("religion")
-  isTaxResident             Boolean  @default(false) @map("is_tax_resident")
+  id          String   @id @default(uuid())
+  englishName String   @map("english_name")
+  chineseName String?  @map("chinese_name")
+  dob         DateTime
+  nationality String // Enum as string
+  category    String   @default("general") // Enum as string
+  gender      String? // Enum as string
 
-  mobilePhone               String?  @map("mobile_phone")
-  foreignAddress            String?  @map("foreign_address")
-  maritalStatus             String?  @map("marital_status")
-  marriageDate              DateTime? @map("marriage_date")
-  divorceDate               DateTime? @map("divorce_date")
-  height                    Decimal? 
-  weight                    Decimal? 
-  birthPlace                String?  @map("birth_place")
-  educationLevel            String?  @map("education_level")
-  spouseName                String?  @map("spouse_name")
-  
-  overseasContactPhone      String?  @map("overseas_contact_phone")
-  overseasFamilyContact     String?  @map("overseas_family_contact")
-  
-  lineId                    String?  @map("line_id")
-  emergencyContactPhone     String?  @map("emergency_contact_phone")
+  oldPassportNumber String? @map("old_passport_number")
+  homeCountryId     String? @map("home_country_id")
+  taxId             String? @map("tax_id")
+  bloodType         String? @map("blood_type")
+  religion          String? @map("religion")
+  isTaxResident     Boolean @default(false) @map("is_tax_resident")
 
-  bankAccountNo             String?  @map("bank_account_no")
-  bankCode                  String?  @map("bank_code")
-  bankBranchName            String?  @map("bank_branch_name")
-  bankAccountHolder         String?  @map("bank_account_holder")
-  loanBank                  String?  @map("loan_bank")
-  loanAmount                Decimal? @map("loan_amount")
+  mobilePhone    String?   @map("mobile_phone")
+  foreignAddress String?   @map("foreign_address")
+  maritalStatus  String?   @map("marital_status")
+  marriageDate   DateTime? @map("marriage_date")
+  divorceDate    DateTime? @map("divorce_date")
+  height         Decimal?
+  weight         Decimal?
+  birthPlace     String?   @map("birth_place")
+  educationLevel String?   @map("education_level")
+  spouseName     String?   @map("spouse_name")
 
-  flightArrivalInfo         String?  @map("flight_arrival_info")
-  oneStopServiceSerial      String?  @map("one_stop_service_serial")
-  flightDeparture           String?  @map("flight_departure")
-  
-  dormitoryId               String?  @map("dormitory_id")
+  overseasContactPhone  String? @map("overseas_contact_phone")
+  overseasFamilyContact String? @map("overseas_family_contact")
 
-  dormitory                 Dormitory? @relation(fields: [dormitoryId], references: [id])
-  
-  dormitoryBedId            String?  @unique @map("dormitory_bed_id")
-  bed                       DormBed? @relation(fields: [dormitoryBedId], references: [id])
+  lineId                String? @map("line_id")
+  emergencyContactPhone String? @map("emergency_contact_phone")
 
+  bankAccountNo     String?  @map("bank_account_no")
+  bankCode          String?  @map("bank_code")
+  bankBranchName    String?  @map("bank_branch_name")
+  bankAccountHolder String?  @map("bank_account_holder")
+  loanBank          String?  @map("loan_bank")
+  loanAmount        Decimal? @map("loan_amount")
 
-  createdBy                 String?  @map("created_by")
-  updatedBy                 String?  @map("updated_by")
-  createdByUser             InternalUser? @relation("WorkerCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser             InternalUser? @relation("WorkerUpdatedBy", fields: [updatedBy], references: [id])
-  
-  createdAt                 DateTime @default(now()) @map("created_at")
-  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at")
+  flightArrivalInfo    String? @map("flight_arrival_info")
+  oneStopServiceSerial String? @map("one_stop_service_serial")
+  flightDeparture      String? @map("flight_departure")
+
+  dormitoryId String? @map("dormitory_id")
+
+  dormitory Dormitory? @relation(fields: [dormitoryId], references: [id])
+
+  dormitoryBedId String?  @unique @map("dormitory_bed_id")
+  bed            DormBed? @relation(fields: [dormitoryBedId], references: [id])
+
+  createdBy     String?       @map("created_by")
+  updatedBy     String?       @map("updated_by")
+  createdByUser InternalUser? @relation("WorkerCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser InternalUser? @relation("WorkerUpdatedBy", fields: [updatedBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  passports                 WorkerPassport[]
-  arcs                      WorkerArc[]
-  deployments               Deployment[]
-  healthChecks              HealthCheck[]
-  incidents                 Incident[]
-  serviceAssignments        ServiceAssignment[]
-  insurances                WorkerInsurance[]
-  addressHistory            WorkerAddressHistory[]
-  interviewCandidates       InterviewCandidate[]
-  bills                     Bill[]
+  passports           WorkerPassport[]
+  arcs                WorkerArc[]
+  deployments         Deployment[]
+  healthChecks        HealthCheck[]
+  incidents           Incident[]
+  serviceAssignments  ServiceAssignment[]
+  insurances          WorkerInsurance[]
+  addressHistory      WorkerAddressHistory[]
+  interviewCandidates InterviewCandidate[]
+  bills               Bill[]
 
   @@map("workers")
 }
 
 model EmployerRecruitmentLetter {
-  id             String   @id @default(uuid())
-  employerId     String   @map("employer_id")
-  letterNumber   String   @unique @map("letter_number")
-  issueDate      DateTime @map("issue_date")
-  expiryDate     DateTime @map("expiry_date")
-  approvedQuota  Int      @default(0) @map("approved_quota")
-  usedQuota      Int      @default(0) @map("used_quota")
+  id            String   @id @default(uuid())
+  employerId    String   @map("employer_id")
+  letterNumber  String   @unique @map("letter_number")
+  issueDate     DateTime @map("issue_date")
+  expiryDate    DateTime @map("expiry_date")
+  approvedQuota Int      @default(0) @map("approved_quota")
+  usedQuota     Int      @default(0) @map("used_quota")
 
-  employer       Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
-  
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
   // Relations
-  deployments    Deployment[]
+  deployments Deployment[]
 
   @@map("employer_recruitment_letters")
 }
@@ -196,87 +194,92 @@ model WorkerPassport {
   issuePlace     String?  @map("issue_place")
   isCurrent      Boolean  @default(false) @map("is_current")
 
-  worker         Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("worker_passports")
 }
 
 model WorkerArc {
-  id             String   @id @default(uuid())
-  workerId       String   @map("worker_id")
-  arcNumber      String   @map("arc_number")
-  issueDate      DateTime @map("issue_date")
-  expiryDate     DateTime @map("expiry_date")
-  isCurrent      Boolean  @default(false) @map("is_current")
+  id         String   @id @default(uuid())
+  workerId   String   @map("worker_id")
+  arcNumber  String   @map("arc_number")
+  issueDate  DateTime @map("issue_date")
+  expiryDate DateTime @map("expiry_date")
+  isCurrent  Boolean  @default(false) @map("is_current")
 
-  worker         Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("worker_arcs")
 }
 
 model Deployment {
-  id                  String   @id @default(uuid())
-  workerId            String   @map("worker_id")
-  employerId          String   @map("employer_id")
-  recruitmentLetterId String?  @map("recruitment_letter_id")
+  id                  String  @id @default(uuid())
+  workerId            String  @map("worker_id")
+  employerId          String  @map("employer_id")
+  recruitmentLetterId String? @map("recruitment_letter_id")
 
-  startDate           DateTime @map("start_date")
-  endDate             DateTime? @map("end_date")
-  status              String   @default("active") // Enum as string
-  serviceStatus       String   @default("active_service") @map("service_status") // Enum as string
-  sourceType          String   @default("direct_hiring") @map("source_type") // Enum as string
+  startDate     DateTime  @map("start_date")
+  endDate       DateTime? @map("end_date")
+  status        String    @default("active") // Enum as string
+  serviceStatus String    @default("active_service") @map("service_status") // Enum as string
+  sourceType    String    @default("direct_hiring") @map("source_type") // Enum as string
 
-  jobDescription      String?  @map("job_description")
-  entryDate           DateTime? @map("entry_date")
-  entryReportSerial   String?  @map("entry_report_serial")
-  entryReportDocNo    String?  @map("entry_report_doc_no")
-  flightNumber        String?  @map("flight_number")
-  flightArrivalDate   DateTime? @map("flight_arrival_date") 
-  visaLetterNo        String?  @map("visa_letter_no") 
-  jobType             String?  @map("job_type") 
-  shift               String?  @map("shift") 
-  basicSalary         Decimal? @map("basic_salary")
-  laborInsuranceAmt   Decimal? @map("labor_insurance_amt")
-  healthInsuranceAmt  Decimal? @map("health_insurance_amt")
+  jobDescription     String?   @map("job_description")
+  entryDate          DateTime? @map("entry_date")
+  entryReportSerial  String?   @map("entry_report_serial")
+  entryReportDocNo   String?   @map("entry_report_doc_no")
+  flightNumber       String?   @map("flight_number")
+  flightArrivalDate  DateTime? @map("flight_arrival_date")
+  visaLetterNo       String?   @map("visa_letter_no")
+  jobType            String?   @map("job_type")
+  shift              String?   @map("shift")
+  basicSalary        Decimal?  @map("basic_salary")
+  laborInsuranceAmt  Decimal?  @map("labor_insurance_amt")
+  healthInsuranceAmt Decimal?  @map("health_insurance_amt")
 
-  terminationReason   String?  @map("termination_reason")
+  terminationReason String? @map("termination_reason")
 
-  terminationNotes    String?  @map("termination_notes")
-  
-  runawayReportDate       DateTime? @map("runaway_report_date")
-  runawayReportDocNo      String?   @map("runaway_report_doc_no")
-  terminationPermitDate   DateTime? @map("termination_permit_date")
-  terminationPermitNo     String?   @map("termination_permit_no")
-  transferPermitDate      DateTime? @map("transfer_permit_date")
-  transferPermitNo        String?   @map("transfer_permit_no")
-  
+  terminationNotes String? @map("termination_notes")
+
+  runawayReportDate     DateTime? @map("runaway_report_date")
+  runawayReportDocNo    String?   @map("runaway_report_doc_no")
+  terminationPermitDate DateTime? @map("termination_permit_date")
+  terminationPermitNo   String?   @map("termination_permit_no")
+  transferPermitDate    DateTime? @map("transfer_permit_date")
+
+  transferPermitNo String? @map("transfer_permit_no")
+
+  runawayReportNo   String? @map("runaway_report_no")
+  entryReportNo     String? @map("entry_report_no")
+  laborContractType String? @map("labor_contract_type")
+
   // Permit/Visa Details
-  visaLetterDate      DateTime? @map("visa_letter_date")
-  entryReportDate     DateTime? @map("entry_report_date")
-  fingerprintDate     DateTime? @map("fingerprint_date")
-  replacementLetterNumber String? @map("replacement_letter_number")
+  visaLetterDate          DateTime? @map("visa_letter_date")
+  entryReportDate         DateTime? @map("entry_report_date")
+  fingerprintDate         DateTime? @map("fingerprint_date")
+  replacementLetterNumber String?   @map("replacement_letter_number")
   replacementLetterDate   DateTime? @map("replacement_letter_date")
 
-  worker              Worker   @relation(fields: [workerId], references: [id])
-  employer            Employer @relation(fields: [employerId], references: [id])
-  recruitmentLetter   EmployerRecruitmentLetter? @relation(fields: [recruitmentLetterId], references: [id])
+  worker            Worker                     @relation(fields: [workerId], references: [id])
+  employer          Employer                   @relation(fields: [employerId], references: [id])
+  recruitmentLetter EmployerRecruitmentLetter? @relation(fields: [recruitmentLetterId], references: [id])
 
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  timelines           WorkerTimeline?
-  healthChecks        HealthCheck[]
-  permitDetails       WorkerPermitDetail[]
-  insurances          WorkerInsurance[]
-  bills               Bill[]
-  monthlyFee          MonthlyServiceFee?
+  timelines     WorkerTimeline?
+  healthChecks  HealthCheck[]
+  permitDetails WorkerPermitDetail[]
+  insurances    WorkerInsurance[]
+  bills         Bill[]
+  monthlyFee    MonthlyServiceFee?
 
   @@map("deployments")
 }
@@ -288,10 +291,10 @@ model PermitDocument {
   issueDate        DateTime @map("issue_date")
   issuingAuthority String?  @map("issuing_authority")
 
-  employer         Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
 
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
   workerPermitDetails WorkerPermitDetail[]
@@ -307,65 +310,65 @@ model WorkerPermitDetail {
   startDate        DateTime @map("start_date")
   endDate          DateTime @map("end_date")
 
-  permitDocument   PermitDocument @relation(fields: [permitDocumentId], references: [id], onDelete: Cascade)
-  deployment       Deployment     @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  permitDocument PermitDocument @relation(fields: [permitDocumentId], references: [id], onDelete: Cascade)
+  deployment     Deployment     @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("worker_permit_details")
 }
 
 model WorkerTimeline {
-  id                    String   @id @default(uuid())
-  deploymentId          String   @unique @map("deployment_id")
-  
+  id           String @id @default(uuid())
+  deploymentId String @unique @map("deployment_id")
+
   entryMedCheckDeadline DateTime? @map("entry_med_check_deadline")
   empPermitDeadline     DateTime? @map("emp_permit_deadline")
   arcDeadline           DateTime? @map("arc_deadline")
 
-  medCheck6moDeadline   DateTime? @map("med_check_6mo_deadline")
-  medCheck18moDeadline  DateTime? @map("med_check_18mo_deadline")
-  medCheck30moDeadline  DateTime? @map("med_check_30mo_deadline")
-  
+  medCheck6moDeadline  DateTime? @map("med_check_6mo_deadline")
+  medCheck18moDeadline DateTime? @map("med_check_18mo_deadline")
+  medCheck30moDeadline DateTime? @map("med_check_30mo_deadline")
+
   residencePermitExpiry DateTime? @map("residence_permit_expiry")
   passportExpiry        DateTime? @map("passport_expiry")
-  
-  renewalWindowStart    DateTime? @map("renewal_window_start")
-  renewalWindowEnd      DateTime? @map("renewal_window_end")
 
-  deployment            Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  renewalWindowStart DateTime? @map("renewal_window_start")
+  renewalWindowEnd   DateTime? @map("renewal_window_end")
 
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at")
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("worker_timelines")
 }
 
 model HealthCheck {
-  id           String   @id @default(uuid())
-  workerId     String   @map("worker_id")
-  deploymentId String   @map("deployment_id")
-  checkType    String   @map("check_type") // Enum
-  checkDate    DateTime @map("check_date")
-  hospitalName String?  @map("hospital_name")
-  result       String   @default("pending") // Enum
-  reportDate   DateTime? @map("report_date")
-  approvalDate DateTime? @map("approval_date")
-  approvalDocNo String?  @map("approval_doc_no")
-  
-  isRecheckRequired Boolean @default(false) @map("is_recheck_required")
+  id            String    @id @default(uuid())
+  workerId      String    @map("worker_id")
+  deploymentId  String    @map("deployment_id")
+  checkType     String    @map("check_type") // Enum
+  checkDate     DateTime  @map("check_date")
+  hospitalName  String?   @map("hospital_name")
+  result        String    @default("pending") // Enum
+  reportDate    DateTime? @map("report_date")
+  approvalDate  DateTime? @map("approval_date")
+  approvalDocNo String?   @map("approval_doc_no")
+
+  isRecheckRequired Boolean   @default(false) @map("is_recheck_required")
   recheckDate       DateTime? @map("recheck_date")
   recheckResult     String?   @map("recheck_result")
   treatmentHospital String?   @map("treatment_hospital")
 
-  failReason   String?  @map("fail_reason")
+  failReason String? @map("fail_reason")
 
-  worker       Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  worker     Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("health_checks")
 }
@@ -374,185 +377,185 @@ model Incident {
   id            String   @id @default(uuid())
   workerId      String?  @map("worker_id")
   employerId    String?  @map("employer_id")
-  description   String   
+  description   String
   severityLevel String   @map("severity_level") // Enum
   status        String   @default("open") // Enum
   incidentDate  DateTime @default(now()) @map("incident_date")
-  
+
   isAutoGenerated Boolean @default(false) @map("is_auto_generated")
-  sourceRefId   String?  @map("source_ref_id")
+  sourceRefId     String? @map("source_ref_id")
 
-  worker        Worker?   @relation(fields: [workerId], references: [id])
-  employer      Employer? @relation(fields: [employerId], references: [id])
+  worker   Worker?   @relation(fields: [workerId], references: [id])
+  employer Employer? @relation(fields: [employerId], references: [id])
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("incidents")
 }
 
 model ServiceAssignment {
-  id             String   @id @default(uuid())
-  employerId     String?  @map("employer_id")
-  workerId       String?  @map("worker_id")
-  internalUserId String   @map("internal_user_id")
-  role           String   // Enum
-  startDate      DateTime @default(now()) @map("start_date")
+  id             String    @id @default(uuid())
+  employerId     String?   @map("employer_id")
+  workerId       String?   @map("worker_id")
+  internalUserId String    @map("internal_user_id")
+  role           String // Enum
+  startDate      DateTime  @default(now()) @map("start_date")
   endDate        DateTime? @map("end_date")
-  notes          String?  
+  notes          String?
 
-  employer       Employer? @relation(fields: [employerId], references: [id], onDelete: Cascade)
-  worker         Worker?   @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  internalUser   InternalUser @relation("ServiceAssignedUser", fields: [internalUserId], references: [id])
+  employer     Employer?    @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  worker       Worker?      @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  internalUser InternalUser @relation("ServiceAssignedUser", fields: [internalUserId], references: [id])
 
-  createdAt      DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("service_assignments")
 }
 
 model WorkerInsurance {
-  id             String   @id @default(uuid())
-  workerId       String   @map("worker_id")
-  deploymentId   String?  @map("deployment_id")
-  type           String   // Enum
-  providerName   String?  @map("provider_name")
-  policyNumber   String?  @map("policy_number")
-  insuredAmount  Decimal? @map("insured_amount")
-  startDate      DateTime @map("start_date")
-  endDate        DateTime? @map("end_date")
-  
+  id            String    @id @default(uuid())
+  workerId      String    @map("worker_id")
+  deploymentId  String?   @map("deployment_id")
+  type          String // Enum
+  providerName  String?   @map("provider_name")
+  policyNumber  String?   @map("policy_number")
+  insuredAmount Decimal?  @map("insured_amount")
+  startDate     DateTime  @map("start_date")
+  endDate       DateTime? @map("end_date")
+
   applyDate             DateTime? @map("apply_date")
   effectiveDate         DateTime? @map("effective_date")
   withdrawApplyDate     DateTime? @map("withdraw_apply_date")
   withdrawEffectiveDate DateTime? @map("withdraw_effective_date")
 
-  worker         Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  deployment     Deployment? @relation(fields: [deploymentId], references: [id])
+  worker     Worker      @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  deployment Deployment? @relation(fields: [deploymentId], references: [id])
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("worker_insurances")
 }
 
 model WorkerAddressHistory {
-  id             String   @id @default(uuid())
-  workerId       String   @map("worker_id")
-  addressType    String   @map("address_type") // Enum
-  addressDetail  String   @map("address_detail") 
-  startDate      DateTime @map("start_date")
-  endDate        DateTime? @map("end_date")
+  id            String    @id @default(uuid())
+  workerId      String    @map("worker_id")
+  addressType   String    @map("address_type") // Enum
+  addressDetail String    @map("address_detail")
+  startDate     DateTime  @map("start_date")
+  endDate       DateTime? @map("end_date")
 
-  worker         Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("worker_address_history")
 }
 
 model JobOrder {
-  id                  String   @id @default(uuid())
-  employerId          String   @map("employer_id")
-  orderDate           DateTime @default(now()) @map("order_date")
-  requiredWorkers     Int      @map("required_workers")
-  expectedArrivalDate DateTime? @map("expected_arrival_date")
+  id                       String    @id @default(uuid())
+  employerId               String    @map("employer_id")
+  orderDate                DateTime  @default(now()) @map("order_date")
+  requiredWorkers          Int       @map("required_workers")
+  expectedArrivalDate      DateTime? @map("expected_arrival_date")
   localRecruitmentDeadline DateTime? @map("local_recruitment_deadline")
-  status              String   @default("open") // Enum
+  status                   String    @default("open") // Enum
 
-  employer            Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
 
-  createdBy           String?  @map("created_by")
-  updatedBy           String?  @map("updated_by")
-  createdByUser       InternalUser? @relation("JobOrderCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser       InternalUser? @relation("JobOrderUpdatedBy", fields: [updatedBy], references: [id])
-  
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+  createdBy     String?       @map("created_by")
+  updatedBy     String?       @map("updated_by")
+  createdByUser InternalUser? @relation("JobOrderCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser InternalUser? @relation("JobOrderUpdatedBy", fields: [updatedBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  interviews          Interview[]
+  interviews Interview[]
 
   @@map("job_orders")
 }
 
 model Interview {
-  id             String   @id @default(uuid())
-  jobOrderId     String   @map("job_order_id")
-  interviewDate  DateTime @map("interview_date")
-  location       String?  
-  interviewer    String?  
+  id            String   @id @default(uuid())
+  jobOrderId    String   @map("job_order_id")
+  interviewDate DateTime @map("interview_date")
+  location      String?
+  interviewer   String?
 
-  jobOrder       JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  candidates     InterviewCandidate[]
+  candidates InterviewCandidate[]
 
   @@map("interviews")
 }
 
 model InterviewCandidate {
-  id           String   @id @default(uuid())
-  interviewId  String   @map("interview_id")
-  workerId     String   @map("worker_id")
-  result       String   @default("pending") // Enum
-  remarks      String?  
+  id          String  @id @default(uuid())
+  interviewId String  @map("interview_id")
+  workerId    String  @map("worker_id")
+  result      String  @default("pending") // Enum
+  remarks     String?
 
-  interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  worker       Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  worker    Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@unique([interviewId, workerId])
   @@map("interview_candidates")
 }
 
 model SystemComment {
-  id              String   @id @default(uuid())
-  recordId        String   @map("record_id")
-  recordTableName String   @map("record_table_name")
-  content         String   
-  
-  createdBy       String   @map("created_by")
-  author          InternalUser @relation("CommentAuthor", fields: [createdBy], references: [id])
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+  id              String @id @default(uuid())
+  recordId        String @map("record_id")
+  recordTableName String @map("record_table_name")
+  content         String
 
-  mentions        CommentMention[]
+  createdBy String       @map("created_by")
+  author    InternalUser @relation("CommentAuthor", fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  mentions CommentMention[]
 
   @@index([recordTableName, recordId])
   @@map("system_comments")
 }
 
 model CommentMention {
-  id              String   @id @default(uuid())
-  commentId       String   @map("comment_id")
-  mentionedUserId String   @map("mentioned_user_id")
-  isRead          Boolean  @default(false) @map("is_read")
+  id              String  @id @default(uuid())
+  commentId       String  @map("comment_id")
+  mentionedUserId String  @map("mentioned_user_id")
+  isRead          Boolean @default(false) @map("is_read")
 
-  comment         SystemComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user            InternalUser  @relation("MentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+  comment SystemComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    InternalUser  @relation("MentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@unique([commentId, mentionedUserId])
   @@map("comment_mentions")
 }
 
 model Attachment {
-  id        String   @id @default(uuid())
-  refId     String   @map("ref_id")
-  refTable  String   @map("ref_table")
+  id       String @id @default(uuid())
+  refId    String @map("ref_id")
+  refTable String @map("ref_table")
 
-  filePath  String   @map("file_path")
-  fileName  String   @map("file_name")
-  fileType  String?  @map("file_type")
-  
-  uploaderId String? @map("uploader_id")
+  filePath String  @map("file_path")
+  fileName String  @map("file_name")
+  fileType String? @map("file_type")
+
+  uploaderId String?  @map("uploader_id")
   uploadedAt DateTime @default(now()) @map("uploaded_at")
 
   @@index([refTable, refId])
@@ -560,142 +563,158 @@ model Attachment {
 }
 
 model FeeItem {
-  id            String   @id @default(uuid())
+  id            String  @id @default(uuid())
   name          String
-  defaultAmount Decimal  @map("default_amount")
-  category      String   // Enum: service_fee, placement_fee, official_fee, other
-  
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-  
+  defaultAmount Decimal @map("default_amount")
+  category      String // Enum: service_fee, placement_fee, official_fee, other
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
   @@map("fee_items")
 }
 
 model Bill {
-  id            String   @id @default(uuid())
-  billNo        String   @unique @map("bill_no")
-  payerType     String   @map("payer_type") // Enum: worker, employer
-  
-  workerId      String?  @map("worker_id")
-  employerId    String?  @map("employer_id")
-  deploymentId  String?  @map("deployment_id")
-  
-  billingDate   DateTime @map("billing_date")
-  dueDate       DateTime @map("due_date")
-  totalAmount   Decimal  @map("total_amount")
-  
-  year          Int      @default(0) @map("year")
-  month         Int      @default(0) @map("month")
+  id        String @id @default(uuid())
+  billNo    String @unique @map("bill_no")
+  payerType String @map("payer_type") // Enum: worker, employer
+
+  workerId     String? @map("worker_id")
+  employerId   String? @map("employer_id")
+  deploymentId String? @map("deployment_id")
+
+  billingDate DateTime @map("billing_date")
+  dueDate     DateTime @map("due_date")
+  totalAmount Decimal  @map("total_amount")
+
+  year               Int      @default(0) @map("year")
+  month              Int      @default(0) @map("month")
   billingPeriodStart DateTime @default(now()) @map("billing_period_start")
   billingPeriodEnd   DateTime @default(now()) @map("billing_period_end")
 
-  status        String   @default("draft") // Enum: draft, issued, paid, overdue, cancelled
-  invoiceNumber String?  @map("invoice_number")
-  
-  // Relations
-  worker        Worker?     @relation(fields: [workerId], references: [id])
-  employer      Employer?   @relation(fields: [employerId], references: [id])
-  deployment    Deployment? @relation(fields: [deploymentId], references: [id])
-  items         BillItem[]
+  status        String  @default("draft") // Enum: draft, issued, paid, overdue, cancelled
+  invoiceNumber String? @map("invoice_number")
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  // Relations
+  worker     Worker?     @relation(fields: [workerId], references: [id])
+  employer   Employer?   @relation(fields: [employerId], references: [id])
+  deployment Deployment? @relation(fields: [deploymentId], references: [id])
+  items      BillItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("bills")
 }
 
+model DocumentTemplate {
+  id          String  @id @default(uuid())
+  name        String
+  category    String // Enum: entry, medical, transfer, termination
+  filePath    String  @map("file_path")
+  description String?
+  isActive    Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("document_templates")
+}
+
 model BillItem {
-  id            String   @id @default(uuid())
-  billId        String   @map("bill_id")
-  description   String
-  amount        Decimal
-  feeCategory   String   @map("fee_category") // Enum
-  
-  bill          Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
-  
+  id          String  @id @default(uuid())
+  billId      String  @map("bill_id")
+  description String
+  amount      Decimal
+  feeCategory String  @map("fee_category") // Enum
+
+  bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
   @@map("bill_items")
 }
 
 model MonthlyServiceFee {
-  id            String   @id @default(uuid())
-  deploymentId  String   @unique @map("deployment_id")
-  
-  amountYear1   Decimal  @default(1800) @map("amount_year_1")
-  amountYear2   Decimal  @default(1700) @map("amount_year_2")
-  amountYear3   Decimal  @default(1500) @map("amount_year_3")
-  
+  id           String @id @default(uuid())
+  deploymentId String @unique @map("deployment_id")
+
+  amountYear1 Decimal @default(1800) @map("amount_year_1")
+  amountYear2 Decimal @default(1700) @map("amount_year_2")
+  amountYear3 Decimal @default(1500) @map("amount_year_3")
+
   lastBilledDate DateTime? @map("last_billed_date")
 
-  deployment    Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-  
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
   @@map("monthly_service_fees")
 }
 
+// =========================================
+// 宿舍管理模組 (Dormitory Management)
+// =========================================
+
 model Dormitory {
-  id                    String   @id @default(uuid())
-  name                  String
-  address               String?
-  landlordName          String?  @map("landlord_name")
-  landlordPhone         String?  @map("landlord_phone")
-  safetyInspectionDate  DateTime? @map("safety_inspection_date")
-  accommodationType     String?  @map("accommodation_type")
+  id                   String    @id @default(uuid())
+  name                 String
+  address              String
+  capacity             Int       @default(0)
+  landlordName         String?   @map("landlord_name")
+  landlordPhone        String?   @map("landlord_phone")
+  accommodationType    String?   @map("accommodation_type") // e.g. Factory Dorm, Rental
+  safetyInspectionDate DateTime? @map("safety_inspection_date")
 
-  rooms                 DormRoom[]
-  workers               Worker[]  // Keep existing direct relation for backward compatibility or direct assignment without bed
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at")
+  // Relations
+  rooms   DormRoom[]
+  workers Worker[]
 
   @@map("dormitories")
 }
 
 model DormRoom {
-  id           String   @id @default(uuid())
-  dormitoryId  String   @map("dormitory_id")
-  roomNumber   String   @map("room_number")
-  capacity     Int      @default(0)
-  gender       String   @default("mixed")
-  floor        Int?
+  id               String  @id @default(uuid())
+  dormitoryId      String  @map("dormitory_id")
+  roomNumber       String  @map("room_number") // e.g. "201", "A-1"
+  capacity         Int     @default(0)
+  currentHeadCount Int     @default(0) @map("current_head_count")
+  gender           String? // Enum: male, female, mixed
+  floor            Int?
 
-  dormitory    Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
-  beds         DormBed[]
-  meters       DormMeter[]
-  currentHeadCount Int      @default(0) @map("current_head_count")
+  dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
 
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  // Relations
+  beds   DormBed[]
+  meters DormMeter[]
 
   @@map("dorm_rooms")
 }
 
 model DormBed {
-  id           String   @id @default(uuid())
-  roomId       String   @map("room_id")
-  bedCode      String   @map("bed_code")
-  status       String   @default("vacant") // vacant, occupied, maintenance
+  id      String @id @default(uuid())
+  roomId  String @map("room_id")
+  bedCode String @map("bed_code") // e.g. "1", "A", "Upper-L"
+  status  String @default("vacant") // Enum: vacant, occupied, maintenance
 
-  room         DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  worker       Worker?
-
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  room   DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  worker Worker? // One-to-One relation defined in Worker
 
   @@map("dorm_beds")
 }
 
+// 水電錶與抄表
 model DormMeter {
-  id           String   @id @default(uuid())
-  roomId       String   @map("room_id")
-  meterName    String   @map("meter_name")
-  meterType    String   @map("meter_type") // electricity, water, gas
-  ratePerUnit  Decimal  @default(0) @map("rate_per_unit")
+  id          String  @id @default(uuid())
+  roomId      String  @map("room_id")
+  meterName   String  @map("meter_name") // e.g. "201冷氣", "3F總水錶"
+  meterType   String  @map("meter_type") // Enum: electricity, water, gas
+  ratePerUnit Decimal @default(5.0) @map("rate_per_unit")
 
-  room         DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  readings     MeterReading[]
+  room DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  // Relations
+  readings MeterReading[]
 
   @@map("dorm_meters")
 }
@@ -705,15 +724,14 @@ model MeterReading {
   meterId      String   @map("meter_id")
   readingDate  DateTime @map("reading_date")
   readingValue Decimal  @map("reading_value")
-  usage        Decimal  
-  cost         Decimal
+  usage        Decimal // usage = current - prev
+  cost         Decimal // cost = usage * rate
   isBilled     Boolean  @default(false) @map("is_billed")
 
-  meter        DormMeter @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  meter DormMeter @relation(fields: [meterId], references: [id], onDelete: Cascade)
 
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("meter_readings")
 }
-

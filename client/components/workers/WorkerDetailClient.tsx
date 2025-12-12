@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { User, Briefcase, Calendar, FileText, AlertTriangle, ArrowRightLeft, XCircle, Users, Edit, FileBadge, Save } from 'lucide-react';
+import { User, Briefcase, Calendar, FileText, AlertTriangle, ArrowRightLeft, XCircle, Users, Edit, FileBadge, CheckSquare, Download, Loader2 } from 'lucide-react';
 import AttachmentManager from '../common/AttachmentManager';
 import GovtTabContent from './GovtTabContent';
 
@@ -17,42 +17,78 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
         return 'basic';
     });
 
-    // Generate Doc Modal
-    const [showGenDocModal, setShowGenDocModal] = useState(false);
+    // Generate Doc Logic
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
+    const [docCategory, setDocCategory] = useState<string>('entry_packet'); // Default Tab
+    const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // Termination Modal
-    const [showTermModal, setShowTermModal] = useState(false);
-    const [termForm, setTermForm] = useState({
-        endDate: '',
-        reason: 'contract_terminated',
-        notes: ''
-    });
+    // Fetch templates when category changes or tab becomes 'documents'
+    useEffect(() => {
+        if (activeTab === 'documents') {
+            setIsTemplatesLoading(true);
+            fetch(`http://localhost:3001/api/documents/templates?category=${docCategory}`)
+                .then(res => res.json())
+                .then(data => {
+                    setTemplates(Array.isArray(data) ? data : []);
+                    setSelectedTemplates([]); // Reset selection on change
+                })
+                .catch(console.error)
+                .finally(() => setIsTemplatesLoading(false));
+        }
+    }, [activeTab, docCategory]);
 
-    const handleGenerateDoc = async (templateType: string) => {
+    const handleTemplateSelect = (id: string) => {
+        if (selectedTemplates.includes(id)) {
+            setSelectedTemplates(selectedTemplates.filter(tid => tid !== id));
+        } else {
+            setSelectedTemplates([...selectedTemplates, id]);
+        }
+    };
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedTemplates(templates.map(t => t.id));
+        } else {
+            setSelectedTemplates([]);
+        }
+    };
+
+    const handleDownload = async (idsToDownload: string[]) => {
+        if (idsToDownload.length === 0) return;
         setIsGenerating(true);
         try {
-            // Using port 3001 as server is running there
             const res = await fetch('http://localhost:3001/api/documents/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    templateType,
-                    resourceId: worker.id
+                    workerId: worker.id,
+                    templateIds: idsToDownload
                 })
             });
 
             if (res.ok) {
-                // Blob handling
                 const blob = await res.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Transfer_Application_${worker.englishName.replace(/\s+/g, '_')}.docx`;
+
+                // Name guess
+                let filename = 'Document.docx';
+                const disposition = res.headers.get('Content-Disposition');
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                    const matches = filenameRegex.exec(disposition);
+                    if (matches != null && matches[1]) {
+                        filename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
+                    }
+                }
+
+                a.download = filename;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
-                setShowGenDocModal(false);
             } else {
                 const err = await res.json();
                 alert('Generation Failed: ' + (err.error || 'Unknown error'));
@@ -64,6 +100,14 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
             setIsGenerating(false);
         }
     };
+
+    // Termination Modal
+    const [showTermModal, setShowTermModal] = useState(false);
+    const [termForm, setTermForm] = useState({
+        endDate: '',
+        reason: 'contract_terminated',
+        notes: ''
+    });
 
     // Transfer Modal
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -414,24 +458,109 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                     </div>
                 )}
 
+
                 {activeTab === 'documents' && (
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded border">
-                            <div>
-                                <h4 className="font-semibold text-gray-700">自動文件生成</h4>
-                                <p className="text-xs text-gray-500">使用目前資料產生標準表格 (DOCX/PDF)</p>
+                    <div className="flex gap-6">
+                        {/* Sidebar */}
+                        <div className="w-1/4 space-y-2">
+                            <h4 className="font-bold text-slate-700 mb-2">文件類別 (Category)</h4>
+                            {[
+                                { id: 'entry_packet', label: '新入境套組 (Entry)' },
+                                { id: 'handover_packet', label: '交工本 (Handover)' },
+                                { id: 'medical_check', label: '定期體檢 (Medical)' },
+                                { id: 'transfer_exit', label: '轉出/離境 (Transfer)' },
+                                { id: 'entry_report', label: '入國通報 (Report)' },
+                                { id: 'permit_app', label: '函文申請 (Permit)' }
+                            ].map(cat => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => setDocCategory(cat.id)}
+                                    className={`w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition ${docCategory === cat.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                                >
+                                    <span className="font-medium">{cat.label}</span>
+                                    {docCategory === cat.id && <CheckSquare size={16} />}
+                                </button>
+                            ))}
+
+                            <div className="pt-6">
+                                <h4 className="font-bold text-slate-700 mb-2">已上傳文件</h4>
+                                <AttachmentManager refId={worker.id} refTable="workers" />
                             </div>
-                            <button
-                                onClick={() => setShowGenDocModal(true)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm flex items-center gap-2 transition"
-                            >
-                                <FileText size={16} />
-                                產生文件
-                            </button>
                         </div>
-                        <AttachmentManager refId={worker.id} refTable="workers" />
+
+                        {/* Main Content */}
+                        <div className="w-3/4">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                    {docCategory === 'entry_packet' && '新入境套組 (Entry Packet)'}
+                                    {docCategory === 'entry_report' && '入國通報 (Entry Report)'}
+                                    {/* ... map others title based on state if needed ... */}
+                                    文件列表
+                                </h3>
+                                <button
+                                    disabled={selectedTemplates.length === 0 || isGenerating}
+                                    onClick={() => handleDownload(selectedTemplates)}
+                                    className={`px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow transition ${selectedTemplates.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                                >
+                                    {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
+                                    {selectedTemplates.length > 0 ? `下載選取 (${selectedTemplates.length})` : '批次下載'}
+                                </button>
+                            </div>
+
+                            <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+                                {isTemplatesLoading ? (
+                                    <div className="p-8 text-center text-slate-400">Loading templates...</div>
+                                ) : templates.length === 0 ? (
+                                    <div className="p-8 text-center text-slate-400">在此類別無可用範本 (No templates found)</div>
+                                ) : (
+                                    <table className="w-full">
+                                        <thead className="bg-slate-50 border-b">
+                                            <tr>
+                                                <th className="w-12 p-3 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        onChange={(e) => handleSelectAll(e.target.checked)}
+                                                        checked={templates.length > 0 && selectedTemplates.length === templates.length}
+                                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    />
+                                                </th>
+                                                <th className="text-left p-3 text-xs font-bold text-slate-500 uppercase tracking-wider">文件名稱</th>
+                                                <th className="text-left p-3 text-xs font-bold text-slate-500 uppercase tracking-wider">說明</th>
+                                                <th className="w-20 text-center p-3 text-xs font-bold text-slate-500 uppercase tracking-wider">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {templates.map(tmpl => (
+                                                <tr key={tmpl.id} className="hover:bg-slate-50 transition">
+                                                    <td className="p-3 text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            checked={selectedTemplates.includes(tmpl.id)}
+                                                            onChange={() => handleTemplateSelect(tmpl.id)}
+                                                        />
+                                                    </td>
+                                                    <td className="p-3 font-medium text-slate-700">{tmpl.name}</td>
+                                                    <td className="p-3 text-sm text-slate-500">{tmpl.description || '-'}</td>
+                                                    <td className="p-3 text-center">
+                                                        <button
+                                                            onClick={() => handleDownload([tmpl.id])}
+                                                            title="下載單一文件"
+                                                            className="text-slate-400 hover:text-blue-600 transition"
+                                                        >
+                                                            <Download size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
+
 
                 {activeTab === 'incidents' && (
                     <div className="text-center py-10 text-gray-500">
@@ -684,41 +813,7 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                 </div>
             )}
 
-            {/* Generate Doc Modal */}
-            {showGenDocModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-xl w-[400px]">
-                        <h2 className="text-xl font-bold mb-4">產生文件 (Generate Document)</h2>
-                        <div className="space-y-4">
-                            <button
-                                onClick={() => handleGenerateDoc('transfer_application')}
-                                disabled={isGenerating}
-                                className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition group"
-                            >
-                                <div className="text-left">
-                                    <div className="font-bold text-slate-800 group-hover:text-blue-700">轉換雇主申請書</div>
-                                    <div className="text-xs text-slate-500">Transfer Application</div>
-                                </div>
-                                <FileText className="text-slate-300 group-hover:text-blue-500" />
-                            </button>
-                            <button
-                                disabled
-                                className="w-full text-center p-3 text-sm text-slate-400 border border-dashed rounded bg-slate-50 cursor-not-allowed"
-                            >
-                                更多範本開發中...
-                            </button>
-                        </div>
-                        <div className="flex justify-end mt-6">
-                            <button
-                                onClick={() => setShowGenDocModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-                            >
-                                關閉
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
         </div >
     );
 }

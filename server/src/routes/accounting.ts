@@ -30,6 +30,8 @@ router.post('/generate-monthly-fees', async (req, res) => {
             for (const d of deployments) {
                 // Determine start date logic: Entry Date preferred, else Start Date
                 const serviceStartDate = d.entryDate ? new Date(d.entryDate) : new Date(d.startDate);
+                const serviceEndDate = d.endDate ? new Date(d.endDate) : null;
+
                 if (!serviceStartDate) continue;
 
                 const startYear = serviceStartDate.getFullYear();
@@ -49,33 +51,42 @@ router.post('/generate-monthly-fees', async (req, res) => {
 
                 // Pro-rata Calculation Logic
                 const billingMonthStart = new Date(year, month - 1, 1);
-                const billingMonthEnd = new Date(year, month, 0);
-                const daysInMonth = billingMonthEnd.getDate();
+                const billingMonthEnd = new Date(year, month, 0); // Last day of previous month? NO. 
+                // new Date(year, month, 0) gives the last day of the 'month' (1-indexed input in Date constructor is 0 for Jan? No.)
+                // Date(year, monthIndex, day)
+                // month input from user is 1-12.
+                // billingMonthStart: Date(year, month-1, 1). Correct.
+                // billingMonthEnd: new Date(year, month-1 + 1, 0) => new Date(year, month, 0). Correct.
 
-                const serviceEndDate = d.endDate ? new Date(d.endDate) : null;
+                // 1. Effective Start
+                let effectiveStart = serviceStartDate < billingMonthStart ? billingMonthStart : serviceStartDate;
 
-                // Check overlap - if not active in this month at all
-                if (serviceStartDate > billingMonthEnd) continue;
-                if (serviceEndDate && serviceEndDate < billingMonthStart) continue;
-
-                const isStartInMonth = serviceStartDate.getFullYear() === year && (serviceStartDate.getMonth() + 1) === month;
-                const isEndInMonth = serviceEndDate && serviceEndDate.getFullYear() === year && (serviceEndDate.getMonth() + 1) === month;
-
-                let activeDays = 30; // Default standard denominator for full month
-
-                if (isStartInMonth && isEndInMonth) {
-                    activeDays = (serviceEndDate!.getDate() - serviceStartDate.getDate()) + 1;
-                } else if (isStartInMonth) {
-                    activeDays = (daysInMonth - serviceStartDate.getDate()) + 1;
-                } else if (isEndInMonth) {
-                    activeDays = serviceEndDate!.getDate();
+                // 2. Effective End
+                // If serviceEndDate is null, it means indefinite -> use EOM
+                // If serviceEndDate is present, take min(serviceEndDate, EOM)
+                let effectiveEnd = billingMonthEnd;
+                if (serviceEndDate) {
+                    effectiveEnd = serviceEndDate < billingMonthEnd ? serviceEndDate : billingMonthEnd;
                 }
 
-                let billAmount = Math.round(baseAmount * (activeDays / 30));
-                let description = `${year}年${month}月 服務費 (第${diffMonths}個月) [$${baseAmount}]`;
+                // 3. Billable Days
+                // Calculate difference in milliseconds
+                const diffTime = effectiveEnd.getTime() - effectiveStart.getTime();
+                // Convert to days. +1 because inclusive (e.g. 1st to 1st is 1 day)
+                const billableDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-                if (activeDays !== 30) {
-                    description += ` (Pro-rata: ${activeDays} / 30 active days)`;
+                if (billableDays <= 0) continue;
+
+                // 4. Calculate Amount
+                // Rule: (MonthlyFee / 30) * billableDays. Round to integer.
+                const billAmount = Math.round((baseAmount / 30) * billableDays);
+
+                // 5. Description
+                let description = `${year}/${String(month).padStart(2, '0')} Service Fee (${billableDays} days)`;
+                if (billableDays < 30) {
+                    // Optional: Add note if not full month, though "X days" implies it.
+                    // User requested specific description format: "2024/05 Service Fee (15 days)"
+                    // My constructed string matches this format.
                 }
 
                 // Check Existence

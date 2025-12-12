@@ -31,7 +31,50 @@ async function main() {
 
     // Example: Default Nationality (If referenced dynamic) - currently Enum.
 
-    // 3. System Settings (Mocking one if we had a settings table)
+    // 3. Document Templates
+    console.log('Seeding document templates...');
+
+    const templates = [
+        // Category: entry_packet (新入境套組)
+        { name: '勞工保險加保申報表', category: 'entry_packet', filePath: '/templates/entry_packet/labor_insurance_add.docx' },
+        { name: '全民健康保險投保申報表', category: 'entry_packet', filePath: '/templates/entry_packet/health_insurance_add.docx' },
+        { name: '移工履歷表 (Bio Data)', category: 'entry_packet', filePath: '/templates/entry_packet/bio_data.docx' },
+        { name: '工資切結書 (Loan Agreement)', category: 'entry_packet', filePath: '/templates/entry_packet/salary_agreement.docx' },
+
+        // Category: entry_report (入國通報)
+        { name: '入國通報申報書', category: 'entry_report', filePath: '/templates/entry_report/entry_report_form.docx' },
+        { name: '外國人名冊', category: 'entry_report', filePath: '/templates/entry_report/worker_list.docx' },
+
+        // Category: permit_app (許可函申請)
+        { name: '聘僱許可申請書', category: 'permit_app', filePath: '/templates/permit_app/hiring_permit.docx' },
+        { name: '居留證申請書', category: 'permit_app', filePath: '/templates/permit_app/arc_application.docx' }
+    ];
+
+    for (const t of templates) {
+
+
+        const exists = await prisma.documentTemplate.findFirst({ where: { name: t.name, category: t.category } });
+        if (!exists) {
+            await prisma.documentTemplate.create({
+                data: {
+                    name: t.name,
+                    category: t.category,
+                    filePath: t.filePath,
+                    isActive: true
+                }
+            });
+            console.log(`Created template: ${t.name}`);
+        } else {
+            // Optional: Update path if needed
+            await prisma.documentTemplate.update({
+                where: { id: exists.id },
+                data: { filePath: t.filePath }
+            });
+            console.log(`Updated template: ${t.name}`);
+        }
+    }
+
+    // 4. System Settings
     console.log('System initialized.');
 }
 
