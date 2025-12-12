@@ -1,3 +1,4 @@
+
 import { Router } from 'express';
 import prisma from '../prisma';
 
@@ -71,9 +72,6 @@ router.post('/:id/transfer', async (req, res) => {
 
             // 2. Close it
             if (currentDeployment) {
-                // End date = Transfer Date - 1 day? Or same day transition?
-                // Usually end date is the last day of work. Start date is first day of new work.
-                // Let's assume Transfer Date is the START of the new job.
                 const newStart = new Date(transferDate);
                 const oldEnd = new Date(newStart);
                 oldEnd.setDate(oldEnd.getDate() - 1);
@@ -82,7 +80,7 @@ router.post('/:id/transfer', async (req, res) => {
                     where: { id: currentDeployment.id },
                     data: {
                         status: 'ended',
-                        serviceStatus: 'transferred_out', // Should update service status too
+                        serviceStatus: 'transferred_out',
                         endDate: oldEnd
                     }
                 });
@@ -108,57 +106,58 @@ router.post('/:id/transfer', async (req, res) => {
         console.error('Transfer Error:', error);
         res.status(500).json({ error: 'Failed to process transfer' });
     }
-    // POST /api/workers/:id/arrange-entry
-    router.post('/:id/arrange-entry', async (req, res) => {
-        const { id } = req.params;
-        const { flightNumber, flightArrivalDate, pickupPerson } = req.body;
+});
 
-        if (!flightArrivalDate) {
-            return res.status(400).json({ error: 'Flight arrival date is required' });
-        }
+// POST /api/workers/:id/arrange-entry
+router.post('/:id/arrange-entry', async (req, res) => {
+    const { id } = req.params;
+    const { flightNumber, flightArrivalDate, pickupPerson } = req.body;
 
-        try {
-            const result = await prisma.$transaction(async (tx) => {
-                // 1. Update Worker Info (Pickup Person)
-                await tx.worker.update({
-                    where: { id },
-                    data: {
-                        flightArrivalInfo: pickupPerson,
-                        // Clear old departure info if new entry? Maybe not needed yet.
-                    }
-                });
+    if (!flightArrivalDate) {
+        return res.status(400).json({ error: 'Flight arrival date is required' });
+    }
 
-                // 2. Update Active/Pending Deployment (Flight Info triggers Timelines)
-                // We find the latest one
-                const currentDeployment = await tx.deployment.findFirst({
-                    where: {
-                        workerId: id,
-                        status: { in: ['active', 'pending'] }
-                    },
-                    orderBy: { startDate: 'desc' }
-                });
-
-                if (!currentDeployment) {
-                    throw new Error('No active or pending deployment found to arrange entry for.');
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Update Worker Info (Pickup Person)
+            await tx.worker.update({
+                where: { id },
+                data: {
+                    flightArrivalInfo: pickupPerson,
                 }
-
-                const updatedDeployment = await tx.deployment.update({
-                    where: { id: currentDeployment.id },
-                    data: {
-                        flightNumber,
-                        flightArrivalDate: new Date(flightArrivalDate),
-                        entryDate: new Date(flightArrivalDate), // Assume Entry = Arrival for simplicity unless specified
-                    }
-                });
-
-                return updatedDeployment;
             });
 
-            res.json(result);
-        } catch (error: any) {
-            console.error('Arrange Entry Error:', error);
-            res.status(500).json({ error: error.message || 'Failed to arrange entry' });
-        }
-    });
+            // 2. Update Active/Pending Deployment (Flight Info triggers Timelines)
+            // We find the latest one
+            const currentDeployment = await tx.deployment.findFirst({
+                where: {
+                    workerId: id,
+                    status: { in: ['active', 'pending'] }
+                },
+                orderBy: { startDate: 'desc' }
+            });
 
-    export default router;
+            if (!currentDeployment) {
+                throw new Error('No active or pending deployment found to arrange entry for.');
+            }
+
+            const updatedDeployment = await tx.deployment.update({
+                where: { id: currentDeployment.id },
+                data: {
+                    flightNumber,
+                    flightArrivalDate: new Date(flightArrivalDate),
+                    entryDate: new Date(flightArrivalDate),
+                }
+            });
+
+            return updatedDeployment;
+        });
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Arrange Entry Error:', error);
+        res.status(500).json({ error: error.message || 'Failed to arrange entry' });
+    }
+});
+
+export default router;
