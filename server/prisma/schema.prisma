@@ -666,6 +666,7 @@ model Dormitory {
   name                 String
   address              String
   capacity             Int       @default(0)
+  currentOccupancy     Int       @default(0) @map("current_occupancy")
   landlordName         String?   @map("landlord_name")
   landlordPhone        String?   @map("landlord_phone")
   accommodationType    String?   @map("accommodation_type") // e.g. Factory Dorm, Rental

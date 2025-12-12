@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { authenticateToken } from '../middleware/auth';
 // Import specific route modules here
 import dashboardRoutes from './dashboard';
 import workerRoutes from './workers';
@@ -21,6 +22,14 @@ import batchRoutes from './batch';
 const router = Router();
 
 router.use('/auth', authRoutes);
+
+router.get('/', (req, res) => {
+    res.json({ message: "TMS API v1" });
+});
+
+// All routes after this middleware require authentication
+router.use(authenticateToken);
+
 router.use('/dashboard', dashboardRoutes);
 router.use('/workers', workerRoutes);
 router.use('/recruitment', recruitmentRoutes);
@@ -36,9 +45,5 @@ router.use('/health-checks', healthRoutes);
 router.use('/dormitories', dormitoryRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/batch', batchRoutes);
-
-router.get('/', (req, res) => {
-    res.json({ message: "TMS API v1" });
-});
 
 export default router;

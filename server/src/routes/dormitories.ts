@@ -9,33 +9,10 @@ const router = Router();
 router.get('/', async (req, res) => {
     try {
         const dorms = await prisma.dormitory.findMany({
-            include: {
-                rooms: {
-                    include: {
-                        beds: {
-                            where: { status: 'occupied' } // To count occupancy
-                        }
-                    }
-                }
-            },
             orderBy: { createdAt: 'desc' }
         });
 
-        // Compute stats
-        const result = dorms.map(d => {
-            const totalCapacity = d.rooms.reduce((acc, r) => acc + r.capacity, 0);
-            const occupied = d.rooms.reduce((acc, r) => acc + r.beds.length, 0); // beds filtered by occupied
-
-            // Remove full nested structure for list view, keep stats
-            const { rooms, ...rest } = d;
-            return {
-                ...rest,
-                totalCapacity,
-                currentOccupancy: occupied
-            };
-        });
-
-        res.json(result);
+        res.json(dorms);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to fetch dormitories' });
@@ -161,6 +138,27 @@ router.post('/beds/:bedId/assign', async (req, res) => {
                 where: { id: bedId },
                 data: { status: 'occupied' }
             });
+
+            // 4. Update Counters
+            // Increment Room Headcount
+            await tx.dormRoom.update({
+                where: { id: bed.roomId },
+                data: { currentHeadCount: { increment: 1 } }
+            });
+
+            // Increment Dormitory Occupancy
+            // need to find dormitoryId first if not available, but we can get it from the room update return if we wanted, or just separate query. 
+            // The room.dormitoryId is available if we fetched it, or just do a nested update? 
+            // Let's just fetch the room properly first or update via relation if possible. 
+            // Simplest is to just update using the roomId we have.
+            // Wait, we only have bed.roomId. 
+            const room = await tx.dormRoom.findUnique({ where: { id: bed.roomId } });
+            if (room) {
+                await tx.dormitory.update({
+                    where: { id: room.dormitoryId },
+                    data: { currentOccupancy: { increment: 1 } }
+                });
+            }
         });
 
         res.json({ success: true });
@@ -176,7 +174,7 @@ router.post('/beds/:bedId/unassign', async (req, res) => {
         const { bedId } = req.params;
 
         await prisma.$transaction(async (tx) => {
-            const bed = await tx.dormBed.findUnique({ where: { id: bedId }, include: { worker: true } });
+            const bed = await tx.dormBed.findUnique({ where: { id: bedId }, include: { worker: true, room: true } });
             if (!bed) throw new Error("Bed not found");
 
             if (bed.worker) {
@@ -189,6 +187,17 @@ router.post('/beds/:bedId/unassign', async (req, res) => {
             await tx.dormBed.update({
                 where: { id: bedId },
                 data: { status: 'vacant' }
+            });
+
+            // Update Counters
+            await tx.dormRoom.update({
+                where: { id: bed.roomId },
+                data: { currentHeadCount: { decrement: 1 } }
+            });
+
+            await tx.dormitory.update({
+                where: { id: bed.room.dormitoryId },
+                data: { currentOccupancy: { decrement: 1 } }
             });
         });
 
