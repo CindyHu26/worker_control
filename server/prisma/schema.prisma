@@ -135,6 +135,10 @@ model Worker {
   flightArrivalInfo         String?  @map("flight_arrival_info")
   oneStopServiceSerial      String?  @map("one_stop_service_serial")
   flightDeparture           String?  @map("flight_departure")
+  
+  dormitoryId               String?  @map("dormitory_id")
+  dormitory                 Dormitory? @relation(fields: [dormitoryId], references: [id])
+
 
   createdBy                 String?  @map("created_by")
   updatedBy                 String?  @map("updated_by")
@@ -232,6 +236,10 @@ model Deployment {
   visaLetterNo        String?  @map("visa_letter_no") 
   jobType             String?  @map("job_type") 
   shift               String?  @map("shift") 
+  basicSalary         Decimal? @map("basic_salary")
+  laborInsuranceAmt   Decimal? @map("labor_insurance_amt")
+  healthInsuranceAmt  Decimal? @map("health_insurance_amt")
+
   terminationReason   String?  @map("termination_reason")
   terminationNotes    String?  @map("termination_notes")
   
@@ -596,4 +604,21 @@ model MonthlyServiceFee {
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
   
   @@map("monthly_service_fees")
+}
+
+model Dormitory {
+  id                    String   @id @default(uuid())
+  name                  String
+  address               String?
+  capacity              Int      @default(0)
+  currentOccupancy      Int      @default(0) @map("current_occupancy")
+  landlord              String?
+  safetyInspectionDate  DateTime? @map("safety_inspection_date")
+  
+  workers               Worker[]
+
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("dormitories")
 }
