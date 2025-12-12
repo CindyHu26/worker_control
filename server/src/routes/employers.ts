@@ -85,6 +85,47 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// Create Employer
+router.post('/', async (req, res) => {
+    try {
+        const {
+            companyName,
+            taxId,
+            responsiblePerson,
+            phoneNumber,
+            address
+        } = req.body;
+
+        if (!companyName || !taxId) {
+            return res.status(400).json({ error: 'Company name and Tax ID are required' });
+        }
+
+        // Check uniqueness
+        const existing = await prisma.employer.findUnique({
+            where: { taxId }
+        });
+
+        if (existing) {
+            return res.status(400).json({ error: 'Tax ID already exists' });
+        }
+
+        const newEmployer = await prisma.employer.create({
+            data: {
+                companyName,
+                taxId,
+                responsiblePerson,
+                phoneNumber,
+                address
+            }
+        });
+
+        res.status(201).json(newEmployer);
+    } catch (error) {
+        console.error('Create Employer Error:', error);
+        res.status(500).json({ error: 'Failed to create employer' });
+    }
+});
+
 // Create Recruitment Letter
 router.post('/:id/recruitment-letters', async (req, res) => {
     try {

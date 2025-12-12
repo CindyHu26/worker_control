@@ -8,6 +8,7 @@ import employerRoutes from './employers';
 import attachmentRoutes from './attachments';
 import commentRoutes from './comments';
 import documentRoutes from './documents';
+import deploymentRoutes from './deployments';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.use('/employers', employerRoutes);
 router.use('/attachments', attachmentRoutes);
 router.use('/comments', commentRoutes);
 router.use('/documents', documentRoutes);
+router.use('/deployments', deploymentRoutes);
 
 router.get('/', (req, res) => {
     res.json({ message: "TMS API v1" });
