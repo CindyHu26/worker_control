@@ -399,15 +399,24 @@ model WorkerPermitDetail {
 model WorkerTimeline {
   id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   deploymentId          String   @unique @map("deployment_id") @db.Uuid
-  medCheckDate          DateTime? @map("med_check_date") @db.Date
-  arcExpiryDate         DateTime? @map("arc_expiry_date") @db.Date
-  entryReportDeadline   DateTime? @map("entry_report_deadline") @db.Date
   
-  medCheck6moDeadline   DateTime? @map("med_check_6mo_deadline") @db.Date
-  medCheck18moDeadline  DateTime? @map("med_check_18mo_deadline") @db.Date
-  medCheck30moDeadline  DateTime? @map("med_check_30mo_deadline") @db.Date
+  // 1. Entry Phase Deadlines
+  entryMedCheckDeadline DateTime? @map("entry_med_check_deadline") @db.Date
+  empPermitDeadline     DateTime? @map("emp_permit_deadline") @db.Date
+  arcDeadline           DateTime? @map("arc_deadline") @db.Date
+
+  // 2. Regular Checks (Legacy names preserved, mapped to specific months)
+  medCheck6moDeadline   DateTime? @map("med_check_6mo_deadline") @db.Date // 6 months
+  medCheck18moDeadline  DateTime? @map("med_check_18mo_deadline") @db.Date // 18 months
+  medCheck30moDeadline  DateTime? @map("med_check_30mo_deadline") @db.Date // 30 months
+  
+  // 3. Document Expiries (Data driven)
   residencePermitExpiry DateTime? @map("residence_permit_expiry") @db.Date
   passportExpiry        DateTime? @map("passport_expiry") @db.Date
+  
+  // 4. Renewal Phase
+  renewalWindowStart    DateTime? @map("renewal_window_start") @db.Date // End - 4 months
+  renewalWindowEnd      DateTime? @map("renewal_window_end") @db.Date // End - 2 months
 
   deployment            Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
@@ -518,6 +527,7 @@ model JobOrder {
   orderDate           DateTime @default(now()) @map("order_date") @db.Date
   requiredWorkers     Int      @map("required_workers")
   expectedArrivalDate DateTime? @map("expected_arrival_date") @db.Date
+  localRecruitmentDeadline DateTime? @map("local_recruitment_deadline") @db.Date
   status              JobOrderStatus @default(open)
 
   employer            Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
@@ -584,4 +594,20 @@ model SystemComment {
 
   @@index([recordTableName, recordId])
   @@map("system_comments")
+}
+
+model Attachment {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  refId     String   @map("ref_id") @db.Uuid
+  refTable  String   @map("ref_table") @db.VarChar(50)
+
+  filePath  String   @map("file_path") @db.Text
+  fileName  String   @map("file_name") @db.VarChar(255)
+  fileType  String?  @map("file_type") @db.VarChar(100)
+  
+  uploaderId String? @map("uploader_id") @db.Uuid
+  uploadedAt DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
+
+  @@index([refTable, refId])
+  @@map("attachments")
 }
