@@ -13,6 +13,7 @@ import deploymentRoutes from './deployments';
 import usersRoutes from './users';
 import accountingRoutes from './accounting';
 import jobsRoutes from './jobs';
+import healthRoutes from './health';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.use('/deployments', deploymentRoutes);
 router.use('/users', usersRoutes);
 router.use('/accounting', accountingRoutes);
 router.use('/jobs', jobsRoutes);
+router.use('/health-checks', healthRoutes);
 
 router.get('/', (req, res) => {
     res.json({ message: "TMS API v1" });

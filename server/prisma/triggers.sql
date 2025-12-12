@@ -121,6 +121,9 @@ CREATE OR REPLACE FUNCTION auto_incident_health_detail()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.result = 'fail' THEN
+        -- Set recheck requirement
+        NEW.is_recheck_required = TRUE;
+
         INSERT INTO incidents (
             id,
             worker_id,
@@ -136,7 +139,7 @@ BEGIN
             uuid_generate_v4(),
             NEW.worker_id,
             (SELECT employer_id FROM deployments WHERE id = NEW.deployment_id LIMIT 1),
-            'Health Check Failed: ' || COALESCE(NEW.fail_reason, 'No reason provided'),
+            'Health Check Failed: ' || COALESCE(NEW.fail_reason, 'No reason provided') || '. Re-check Required.',
             'high',
             'open',
             TRUE,
@@ -144,6 +147,8 @@ BEGIN
             NOW(),
             NOW()
         );
+    ELSIF NEW.result = 'pass' AND NEW.check_type = 'recheck' THEN
+        NEW.is_recheck_required = FALSE;
     END IF;
     RETURN NEW;
 END;

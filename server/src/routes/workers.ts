@@ -140,7 +140,9 @@ router.get('/:id', async (req, res) => {
 
                 // Other
                 addressHistory: { orderBy: { startDate: 'desc' } },
+
                 insurances: { orderBy: { startDate: 'desc' } },
+                healthChecks: { orderBy: { checkDate: 'desc' } },
                 serviceAssignments: {
                     where: { endDate: null }, // Active Only
                     include: { internalUser: true }
@@ -277,7 +279,15 @@ router.put('/:id', async (req, res) => {
                         replacementLetterDate: body.replacementLetterDate ? new Date(body.replacementLetterDate) : undefined,
                         entryDate: body.entryDate ? new Date(body.entryDate) : undefined,
                         entryReportDate: body.entryReportDate ? new Date(body.entryReportDate) : undefined,
+                        entryReportDocNo: body.entryReportDocNo,
                         fingerprintDate: body.fingerprintDate ? new Date(body.fingerprintDate) : undefined,
+
+                        runawayReportDate: body.runawayReportDate ? new Date(body.runawayReportDate) : undefined,
+                        runawayReportDocNo: body.runawayReportDocNo,
+                        terminationPermitDate: body.terminationPermitDate ? new Date(body.terminationPermitDate) : undefined,
+                        terminationPermitNo: body.terminationPermitNo,
+                        transferPermitDate: body.transferPermitDate ? new Date(body.transferPermitDate) : undefined,
+                        transferPermitNo: body.transferPermitNo,
                     }
                 });
             }

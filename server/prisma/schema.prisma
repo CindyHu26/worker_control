@@ -231,6 +231,7 @@ model Deployment {
   jobDescription      String?  @map("job_description")
   entryDate           DateTime? @map("entry_date")
   entryReportSerial   String?  @map("entry_report_serial")
+  entryReportDocNo    String?  @map("entry_report_doc_no")
   flightNumber        String?  @map("flight_number")
   flightArrivalDate   DateTime? @map("flight_arrival_date") 
   visaLetterNo        String?  @map("visa_letter_no") 
@@ -241,7 +242,15 @@ model Deployment {
   healthInsuranceAmt  Decimal? @map("health_insurance_amt")
 
   terminationReason   String?  @map("termination_reason")
+
   terminationNotes    String?  @map("termination_notes")
+  
+  runawayReportDate       DateTime? @map("runaway_report_date")
+  runawayReportDocNo      String?   @map("runaway_report_doc_no")
+  terminationPermitDate   DateTime? @map("termination_permit_date")
+  terminationPermitNo     String?   @map("termination_permit_no")
+  transferPermitDate      DateTime? @map("transfer_permit_date")
+  transferPermitNo        String?   @map("transfer_permit_no")
   
   // Permit/Visa Details
   visaLetterDate      DateTime? @map("visa_letter_date")
@@ -338,6 +347,14 @@ model HealthCheck {
   hospitalName String?  @map("hospital_name")
   result       String   @default("pending") // Enum
   reportDate   DateTime? @map("report_date")
+  approvalDate DateTime? @map("approval_date")
+  approvalDocNo String?  @map("approval_doc_no")
+  
+  isRecheckRequired Boolean @default(false) @map("is_recheck_required")
+  recheckDate       DateTime? @map("recheck_date")
+  recheckResult     String?   @map("recheck_result")
+  treatmentHospital String?   @map("treatment_hospital")
+
   failReason   String?  @map("fail_reason")
 
   worker       Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
@@ -399,6 +416,11 @@ model WorkerInsurance {
   insuredAmount  Decimal? @map("insured_amount")
   startDate      DateTime @map("start_date")
   endDate        DateTime? @map("end_date")
+  
+  applyDate             DateTime? @map("apply_date")
+  effectiveDate         DateTime? @map("effective_date")
+  withdrawApplyDate     DateTime? @map("withdraw_apply_date")
+  withdrawEffectiveDate DateTime? @map("withdraw_effective_date")
 
   worker         Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
   deployment     Deployment? @relation(fields: [deploymentId], references: [id])

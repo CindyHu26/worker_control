@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { User, Briefcase, Calendar, FileText, AlertTriangle, ArrowRightLeft, XCircle, Users, Edit } from 'lucide-react';
+import { User, Briefcase, Calendar, FileText, AlertTriangle, ArrowRightLeft, XCircle, Users, Edit, FileBadge, Save } from 'lucide-react';
 import AttachmentManager from '../common/AttachmentManager';
+import GovtTabContent from './GovtTabContent';
 
 export default function WorkerDetailClient({ worker }: { worker: any }) {
     const [activeTab, setActiveTab] = useState(() => {
@@ -183,6 +184,8 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
     const currentDeployment = worker.deployments?.[0]; // Assuming sorted by desc
     const currentTimeline = currentDeployment?.timelines;
 
+
+
     return (
         <div className="p-8">
             {/* Header */}
@@ -301,6 +304,9 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                 </button>
                 <button onClick={() => setActiveTab('incidents')} className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'incidents' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>
                     <AlertTriangle size={18} /> 事件紀錄
+                </button>
+                <button onClick={() => setActiveTab('govt')} className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'govt' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>
+                    <FileBadge size={18} /> 行政函文
                 </button>
             </div>
 
@@ -431,6 +437,10 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                     <div className="text-center py-10 text-gray-500">
                         事件紀錄模組
                     </div>
+                )}
+
+                {activeTab === 'govt' && (
+                    <GovtTabContent worker={worker} currentDeployment={currentDeployment} />
                 )}
             </div>
 
