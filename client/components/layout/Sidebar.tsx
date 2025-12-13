@@ -23,6 +23,8 @@ export default function Sidebar() {
     const navItems = [
         { href: '/', label: '儀表板', subLabel: 'Dashboard', icon: LayoutDashboard },
         { href: '/portal', label: '功能導覽', subLabel: 'Portal', icon: Grid },
+        { href: '/health', label: '體檢管理', subLabel: 'Health Checks', icon: FileText }, // Added
+
         { href: '/workers', label: '移工管理', subLabel: 'Workers', icon: Users },
         { href: '/employers', label: '雇主管理', subLabel: 'Employers', icon: Briefcase },
         { href: '/recruitment', label: '招募進度', subLabel: 'Recruitment', icon: FileText },

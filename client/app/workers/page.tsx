@@ -41,7 +41,11 @@ export default function WorkersPage() {
             });
             if (searchParams.filter) query.append('filter', searchParams.filter);
 
-            const res = await fetch(`http://localhost:3001/api/workers?${query}`);
+            if (searchParams.filter) query.append('filter', searchParams.filter);
+
+            const res = await fetch(`http://localhost:3001/api/workers?${query}`, {
+                credentials: 'include'
+            });
             if (res.ok) {
                 const { data, meta } = await res.json();
                 setWorkers(data);

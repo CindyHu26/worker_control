@@ -28,18 +28,19 @@ router.get('/', async (req, res) => {
             const keyword = q as string;
             andConditions.push({
                 OR: [
-                    { englishName: { contains: keyword } }, // SQLite is case-insensitive by default for ASCII, but usually depends on collation
+                    { englishName: { contains: keyword } },
                     { chineseName: { contains: keyword } },
                     {
                         passports: {
-                            some: { passportNumber: { contains: keyword } }
+                            some: { passportNumber: { contains: keyword } } // Searches ALL passports history
                         }
                     },
                     {
                         arcs: {
-                            some: { arcNumber: { contains: keyword } }
+                            some: { arcNumber: { contains: keyword } } // Searches ALL ARCs history
                         }
-                    }
+                    },
+                    { oldPassportNumber: { contains: keyword } } // Legacy field
                 ]
             });
         }
@@ -122,8 +123,6 @@ router.get('/', async (req, res) => {
         if (andConditions.length > 0) {
             whereClause.AND = andConditions;
         }
-
-        // Execute Query with Pagination
         const [total, workers] = await Promise.all([
             prisma.worker.count({ where: whereClause }),
             prisma.worker.findMany({
@@ -135,6 +134,10 @@ router.get('/', async (req, res) => {
                         include: { employer: { select: { companyName: true } } }
                     },
                     passports: {
+                        orderBy: { issueDate: 'desc' }, // Get all for display? No, search list usually just needs match. 
+                        // But requirement says "Single Source of Truth... allowing lookup by old".
+                        // We filter for display in frontend usually.
+                        // Let's just return isCurrent: true for the main list view to show active one.
                         where: { isCurrent: true },
                         take: 1
                     }
@@ -158,6 +161,79 @@ router.get('/', async (req, res) => {
     } catch (error) {
         console.error('Search Workers Error:', error);
         res.status(500).json({ error: 'Failed to search workers' });
+    }
+});
+
+// POST /api/workers/:id/documents/renew
+router.post('/:id/documents/renew', async (req, res) => {
+    const { id } = req.params;
+    const { type, newNumber, issueDate, expiryDate, oldNumber } = req.body;
+    // type: 'passport' | 'arc'
+
+    if (!type || !newNumber || !issueDate || !expiryDate) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            if (type === 'passport') {
+                // 1. Check Global Uniqueness
+                const conflict = await tx.workerPassport.findFirst({
+                    where: { passportNumber: newNumber }
+                });
+                if (conflict) throw new Error(`Passport number ${newNumber} already exists.`);
+
+                // 2. Archive Current
+                await tx.workerPassport.updateMany({
+                    where: { workerId: id, isCurrent: true },
+                    data: { isCurrent: false }
+                });
+
+                // 3. Create New
+                const newDoc = await tx.workerPassport.create({
+                    data: {
+                        workerId: id,
+                        passportNumber: newNumber,
+                        issueDate: new Date(issueDate),
+                        expiryDate: new Date(expiryDate),
+                        isCurrent: true
+                    }
+                });
+                return newDoc;
+
+            } else if (type === 'arc') {
+                // 1. Check Global Uniqueness
+                const conflict = await tx.workerArc.findFirst({
+                    where: { arcNumber: newNumber }
+                });
+                if (conflict) throw new Error(`ARC number ${newNumber} already exists.`);
+
+                // 2. Archive Current
+                await tx.workerArc.updateMany({
+                    where: { workerId: id, isCurrent: true },
+                    data: { isCurrent: false }
+                });
+
+                // 3. Create New
+                const newDoc = await tx.workerArc.create({
+                    data: {
+                        workerId: id,
+                        arcNumber: newNumber,
+                        issueDate: new Date(issueDate),
+                        expiryDate: new Date(expiryDate),
+                        isCurrent: true
+                    }
+                });
+                return newDoc;
+            } else {
+                throw new Error('Invalid document type');
+            }
+        });
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Renew Document Error:', error);
+        res.status(400).json({ error: error.message });
     }
 });
 
@@ -218,8 +294,128 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/workers
+// POST /api/workers/check-duplicate
+router.post('/check-duplicate', async (req, res) => {
+    const { passportNumber, arcNumber, name } = req.body;
+    try {
+        const filters: any[] = [];
+        if (passportNumber) {
+            filters.push({ passports: { some: { passportNumber } } });
+            filters.push({ oldPassportNumber: passportNumber });
+        }
+        if (arcNumber) {
+            filters.push({ arcs: { some: { arcNumber } } });
+        }
+
+        if (filters.length === 0) {
+            return res.json({ found: false });
+        }
+
+        const existingWorker = await prisma.worker.findFirst({
+            where: {
+                OR: filters
+            },
+            include: {
+                passports: true,
+                deployments: {
+                    where: { status: 'active' },
+                    include: { employer: true }
+                }
+            }
+        });
+
+        if (existingWorker) {
+            return res.json({
+                found: true,
+                worker: existingWorker,
+                message: `Worker exists: ${existingWorker.englishName} ${existingWorker.chineseName || ''}`
+            });
+        }
+
+        res.json({ found: false });
+    } catch (error) {
+        console.error('Check Duplicate Error:', error);
+        res.status(500).json({ error: 'Failed to check duplicate' });
+    }
+});
+
+// POST /api/workers/full-entry (Atomic Creation)
+router.post('/full-entry', async (req, res) => {
+    try {
+        const body = req.body;
+        // Body includes: bio-data, deployment info
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create Worker
+            const worker = await tx.worker.create({
+                data: {
+                    englishName: body.englishName,
+                    chineseName: body.chineseName,
+                    nationality: body.nationality,
+                    dob: new Date(body.dob),
+                    category: body.category || 'general', // care, manufacturing
+                    gender: body.gender,
+                    maritalStatus: body.maritalStatus,
+                    height: body.height ? Number(body.height) : undefined,
+                    weight: body.weight ? Number(body.weight) : undefined,
+                    bloodType: body.bloodType,
+                    religion: body.religion,
+                    educationLevel: body.educationLevel,
+                    birthPlace: body.birthPlace,
+                    spouseName: body.spouseName,
+                    overseasFamilyContact: body.overseasFamilyContact,
+                    overseasContactPhone: body.overseasContactPhone,
+                    emergencyContactPhone: body.emergencyContactPhone,
+                    mobilePhone: body.mobilePhone,
+                    lineId: body.lineId,
+                    bankAccountNo: body.bankAccountNo,
+                    bankCode: body.bankCode,
+                }
+            });
+
+            // 2. Create Passport (Current)
+            if (body.passportNumber) {
+                await tx.workerPassport.create({
+                    data: {
+                        workerId: worker.id,
+                        passportNumber: body.passportNumber,
+                        issueDate: body.passportIssueDate ? new Date(body.passportIssueDate) : new Date(),
+                        expiryDate: body.passportExpiryDate ? new Date(body.passportExpiryDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 5)),
+                        isCurrent: true
+                    }
+                });
+            }
+
+            // 3. Create Deployment if Employer Selected
+            if (body.employerId) {
+                await tx.deployment.create({
+                    data: {
+                        workerId: worker.id,
+                        employerId: body.employerId,
+                        jobType: body.jobType, // NEW field in schema? Wait, Deployment has `jobType`
+                        status: 'pending', // Initial status
+                        startDate: body.contractStartDate ? new Date(body.contractStartDate) : new Date(),
+                        endDate: body.contractEndDate ? new Date(body.contractEndDate) : undefined,
+                        sourceType: body.recruitmentSource || 'direct_hiring',
+                        serviceStatus: body.serviceStatus || 'incoming',
+                        // processStage: 'recruitment', // Removed as it is not in schema
+                    }
+                });
+            }
+
+            return worker;
+        });
+
+        res.status(201).json(result);
+    } catch (error: any) {
+        console.error('Full Entry Error:', error);
+        res.status(500).json({ error: error.message || 'Failed to create worker entry' });
+    }
+});
+
+// POST /api/workers (Legacy - Keep for compatibility or redirect?)
 router.post('/', async (req, res) => {
+    // ... Legacy implementation kept ...
     try {
         const {
             englishName,

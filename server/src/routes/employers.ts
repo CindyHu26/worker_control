@@ -7,13 +7,16 @@ const router = Router();
 // GET /api/employers
 router.get('/', async (req, res) => {
     try {
-        const { q, page = '1', limit = '10' } = req.query;
+        const { q, page = '1', limit = '10', category } = req.query;
 
         const pageNum = parseInt(page as string);
         const limitNum = parseInt(limit as string);
         const skip = (pageNum - 1) * limitNum;
 
         const whereClause: any = {};
+        if (category) {
+            whereClause.category = category;
+        }
 
         if (q) {
             const keyword = q as string;
@@ -22,6 +25,7 @@ router.get('/', async (req, res) => {
                 { taxId: { contains: keyword } },
                 { responsiblePerson: { contains: keyword } }
             ];
+            // Add HomeCare specific search later if needed (e.g. Patient Name)
         }
 
         const [total, employers] = await Promise.all([
@@ -29,6 +33,9 @@ router.get('/', async (req, res) => {
             prisma.employer.findMany({
                 where: whereClause,
                 include: {
+                    factoryInfo: true,
+                    homeCareInfo: { include: { patients: true } },
+                    institutionInfo: true,
                     _count: {
                         select: { deployments: { where: { status: 'active' } } }
                     }
@@ -54,37 +61,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get Employer Details
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const employer = await prisma.employer.findUnique({
-            where: { id },
-            include: {
-                recruitmentLetters: {
-                    orderBy: {
-                        issueDate: 'desc'
-                    }
-                },
-                _count: {
-                    select: {
-                        deployments: true
-                    }
-                }
-            }
-        });
-
-        if (!employer) {
-            return res.status(404).json({ error: 'Employer not found' });
-        }
-
-        res.json(employer);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch employer details' });
-    }
-});
-
 // Create Employer
 router.post('/', async (req, res) => {
     try {
@@ -93,7 +69,21 @@ router.post('/', async (req, res) => {
             taxId,
             responsiblePerson,
             phoneNumber,
-            address
+            address,
+            faxNumber,
+            // Polymorphic fields
+            category,
+            // Manufacturing
+            factoryRegistrationNo,
+            industryType,
+            // Home Care
+            patientName,
+            patientIdNo,
+            careAddress,
+            relationship,
+            // Institution
+            institutionCode,
+            bedCount
         } = req.body;
 
         if (!companyName || !taxId) {
@@ -109,14 +99,56 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Tax ID already exists' });
         }
 
-        const newEmployer = await prisma.employer.create({
-            data: {
-                companyName,
-                taxId,
-                responsiblePerson,
-                phoneNumber,
-                address
+        // Transactional Create
+        const newEmployer = await prisma.$transaction(async (tx) => {
+            const emp = await tx.employer.create({
+                data: {
+                    companyName,
+                    taxId,
+                    responsiblePerson,
+                    phoneNumber,
+                    address,
+                    faxNumber,
+                    category: category || 'MANUFACTURING'
+                }
+            });
+
+            if (category === 'MANUFACTURING') {
+                await tx.factoryInfo.create({
+                    data: {
+                        employerId: emp.id,
+                        factoryRegistrationNo,
+                        industryType
+                    }
+                });
+            } else if (category === 'HOME_CARE') {
+                const hc = await tx.homeCareInfo.create({
+                    data: {
+                        employerId: emp.id,
+                    }
+                });
+                if (patientName) {
+                    await tx.patient.create({
+                        data: {
+                            homeCareInfoId: hc.id,
+                            name: patientName,
+                            idNo: patientIdNo,
+                            careAddress,
+                            relationship
+                        }
+                    });
+                }
+            } else if (category === 'INSTITUTION') {
+                await tx.institutionInfo.create({
+                    data: {
+                        employerId: emp.id,
+                        institutionCode,
+                        bedCount: bedCount ? Number(bedCount) : undefined
+                    }
+                });
             }
+
+            return emp;
         });
 
         res.status(201).json(newEmployer);

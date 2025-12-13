@@ -15,26 +15,36 @@ router.post('/', async (req, res) => {
             jobType
         } = req.body;
 
-        if (!workerId || !employerId || !recruitmentLetterId || !startDate) {
+        if (!workerId || !employerId || !startDate) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Validate Recruitment Letter Quota
-            const letter = await tx.employerRecruitmentLetter.findUnique({
-                where: { id: recruitmentLetterId }
-            });
+            // 1. Validate Recruitment Letter Quota (If provided)
+            if (recruitmentLetterId) {
+                const letter = await tx.employerRecruitmentLetter.findUnique({
+                    where: { id: recruitmentLetterId }
+                });
 
-            if (!letter) {
-                throw new Error('Recruitment Letter not found');
-            }
+                if (!letter) {
+                    throw new Error('Recruitment Letter not found');
+                }
 
-            if (letter.employerId !== employerId) {
-                throw new Error('Recruitment Letter does not belong to this employer');
-            }
+                if (letter.employerId !== employerId) {
+                    throw new Error('Recruitment Letter does not belong to this employer');
+                }
 
-            if (letter.usedQuota >= letter.approvedQuota) {
-                throw new Error('招募函名額已滿 (Recruitment Quota Exceeded)');
+                if (letter.usedQuota >= letter.approvedQuota) {
+                    throw new Error('招募函名額已滿 (Recruitment Quota Exceeded)');
+                }
+
+                // Increment Quota
+                await tx.employerRecruitmentLetter.update({
+                    where: { id: recruitmentLetterId },
+                    data: {
+                        usedQuota: { increment: 1 }
+                    }
+                });
             }
 
             // 2. Validate Worker Availability (Double check)
@@ -60,14 +70,6 @@ router.post('/', async (req, res) => {
                     status: 'active',
                     serviceStatus: 'active_service',
                     sourceType: 'direct_hiring' // or logic to determine
-                }
-            });
-
-            // 4. Increment Quota
-            await tx.employerRecruitmentLetter.update({
-                where: { id: recruitmentLetterId },
-                data: {
-                    usedQuota: { increment: 1 }
                 }
             });
 

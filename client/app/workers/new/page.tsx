@@ -1,227 +1,24 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ChevronLeft, Save, User } from 'lucide-react';
+import React from 'react';
 import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+import WorkerWizard from '@/components/workers/WorkerWizard';
 
 export default function NewWorkerPage() {
-    const router = useRouter();
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-
-    const [formData, setFormData] = useState({
-        englishName: '',
-        chineseName: '',
-        nationality: 'Indonesia',
-        dob: '',
-        passportNumber: '',
-        passportIssueDate: '',
-        passportExpiryDate: '',
-        mobilePhone: ''
-    });
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-
-        try {
-            const res = await fetch('http://localhost:3001/api/workers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || '系統錯誤，請稍後再試');
-            }
-
-            // Success
-            alert('新增成功');
-            router.push('/workers');
-            router.refresh();
-        } catch (err: any) {
-            setError(err.message || '系統錯誤，請稍後再試');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
-        <div className="p-8 max-w-2xl mx-auto">
+        <div className="p-8 max-w-5xl mx-auto">
             <div className="mb-6 flex items-center gap-4">
                 <Link href="/workers" className="p-2 hover:bg-slate-100 rounded-full transition">
                     <ChevronLeft size={24} className="text-slate-600" />
                 </Link>
-                <h1 className="text-2xl font-bold text-slate-900">新增移工 (New Worker)</h1>
+                <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-slate-900">新增移工 (New Worker Registration)</h1>
+                    <p className="text-slate-500 text-sm">Create a new worker profile or add deployment to existing worker.</p>
+                </div>
             </div>
 
-            {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 border border-red-100">
-                    {error}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
-                <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-100">
-                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
-                        <User size={24} />
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-semibold text-slate-800">移工基本資料</h2>
-                        <p className="text-sm text-slate-500">請填寫移工的個人詳細資料。</p>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    {/* Names */}
-                    <div className="grid grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                英文姓名 <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="englishName"
-                                required
-                                value={formData.englishName}
-                                onChange={handleChange}
-                                className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                placeholder="需與護照一致 e.g. ALAN SMITH"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                中文姓名
-                            </label>
-                            <input
-                                type="text"
-                                name="chineseName"
-                                value={formData.chineseName}
-                                onChange={handleChange}
-                                className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                placeholder="e.g. 王大明"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Nationality & DOB */}
-                    <div className="grid grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                國籍 <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                name="nationality"
-                                value={formData.nationality}
-                                onChange={handleChange}
-                                className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-                            >
-                                <option value="Indonesia">印尼 (Indonesia)</option>
-                                <option value="Vietnam">越南 (Vietnam)</option>
-                                <option value="Philippines">菲律賓 (Philippines)</option>
-                                <option value="Thailand">泰國 (Thailand)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                出生日期 <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="date"
-                                name="dob"
-                                required
-                                value={formData.dob}
-                                onChange={handleChange}
-                                className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Mobile */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            手機號碼
-                        </label>
-                        <input
-                            type="tel"
-                            name="mobilePhone"
-                            value={formData.mobilePhone}
-                            onChange={handleChange}
-                            className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                            placeholder="e.g. 0912-345-678"
-                        />
-                    </div>
-
-                    {/* Passport Info Section */}
-                    <div className="pt-6 border-t border-slate-100">
-                        <h3 className="text-md font-semibold text-slate-800 mb-4">護照資料 (Passport Info) - 改寫護照</h3>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="col-span-1">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    護照號碼
-                                </label>
-                                <input
-                                    type="text"
-                                    name="passportNumber"
-                                    value={formData.passportNumber}
-                                    onChange={handleChange}
-                                    className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                    placeholder="e.g. A12345678"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    發照日期 (Issue)
-                                </label>
-                                <input
-                                    type="date"
-                                    name="passportIssueDate"
-                                    value={formData.passportIssueDate}
-                                    onChange={handleChange}
-                                    className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    有效期限 (Expiry)
-                                </label>
-                                <input
-                                    type="date"
-                                    name="passportExpiryDate"
-                                    value={formData.passportExpiryDate}
-                                    onChange={handleChange}
-                                    className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                />
-                            </div>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-2">若填寫此區塊，系統將自動建立護照紀錄。</p>
-                    </div>
-
-                    <div className="flex justify-end pt-6">
-                        <Link
-                            href="/workers"
-                            className="px-6 py-2 mr-4 text-slate-600 hover:bg-slate-100 rounded-lg transition"
-                        >
-                            取消 (Cancel)
-                        </Link>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Save size={18} />
-                            {loading ? '儲存中...' : '儲存資料 (Save)'}
-                        </button>
-                    </div>
-                </div>
-            </form>
+            <WorkerWizard />
         </div>
     );
 }

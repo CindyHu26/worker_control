@@ -21,15 +21,20 @@ export default function EmployersPage() {
     const [loading, setLoading] = useState(true);
     const [meta, setMeta] = useState({ page: 1, limit: 10, totalPages: 1, total: 0 });
     const [searchParams, setSearchParams] = useState({ q: '' });
+    const [activeCategory, setActiveCategory] = useState('ALL');
 
     const fetchEmployers = async (page = 1) => {
         setLoading(true);
         try {
-            const query = new URLSearchParams({
+            const params: any = {
                 page: page.toString(),
                 limit: '10',
                 q: searchParams.q
-            });
+            };
+            if (activeCategory !== 'ALL') {
+                params.category = activeCategory;
+            }
+            const query = new URLSearchParams(params);
 
             const res = await fetch(`http://localhost:3001/api/employers?${query}`);
             if (res.ok) {
@@ -46,7 +51,7 @@ export default function EmployersPage() {
 
     useEffect(() => {
         fetchEmployers(1);
-    }, [searchParams]);
+    }, [searchParams, activeCategory]);
 
     const handleSearch = (params: any) => {
         setSearchParams(params);
@@ -56,6 +61,108 @@ export default function EmployersPage() {
         if (newPage >= 1 && newPage <= meta.totalPages) {
             fetchEmployers(newPage);
         }
+    };
+
+    const renderTableHeaders = () => {
+        switch (activeCategory) {
+            case 'HOME_CARE':
+                return (
+                    <tr>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Employer Name</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Patient Name</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Care Address</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Active Workers</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Actions</th>
+                    </tr>
+                );
+            case 'INSTITUTION':
+                return (
+                    <tr>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Institution Name</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Code</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Beds</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Active Workers</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Actions</th>
+                    </tr>
+                );
+            default: // MANUFACTURING & ALL
+                return (
+                    <tr>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Company Name</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Tax ID</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Representative</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Active Workers</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Actions</th>
+                    </tr>
+                );
+        }
+    };
+
+    const renderRow = (emp: Employer) => {
+        const commonActions = (
+            <td className="px-6 py-4">
+                <Link
+                    href={`/employers/${emp.id}`}
+                    className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline"
+                >
+                    View Details
+                </Link>
+            </td>
+        );
+
+        if (activeCategory === 'HOME_CARE') {
+            const patient = emp.homeCareInfo?.patients?.[0]; // Assuming 1st patient for list view
+            return (
+                <tr key={emp.id} className="hover:bg-slate-50 transition duration-150">
+                    <td className="px-6 py-4 font-bold text-slate-900">{emp.companyName || emp.responsiblePerson}</td>
+                    <td className="px-6 py-4 text-slate-600">{patient?.name || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600 truncate max-w-xs">{patient?.careAddress || '-'}</td>
+                    <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            ${(emp._count?.deployments || 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                            {emp._count?.deployments || 0} Workers
+                        </span>
+                    </td>
+                    {commonActions}
+                </tr>
+            );
+        } else if (activeCategory === 'INSTITUTION') {
+            return (
+                <tr key={emp.id} className="hover:bg-slate-50 transition duration-150">
+                    <td className="px-6 py-4 font-bold text-slate-900">{emp.companyName}</td>
+                    <td className="px-6 py-4 text-slate-600 font-mono">{emp.institutionInfo?.institutionCode || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600">{emp.institutionInfo?.bedCount || '-'}</td>
+                    <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            ${(emp._count?.deployments || 0) > 0 ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-600'}`}>
+                            {emp._count?.deployments || 0} Workers
+                        </span>
+                    </td>
+                    {commonActions}
+                </tr>
+            );
+        }
+
+        // Manufacturing / Default
+        return (
+            <tr key={emp.id} className="hover:bg-slate-50 transition duration-150">
+                <td className="px-6 py-4">
+                    <div className="font-bold text-slate-900">{emp.companyName}</div>
+                    {emp.phoneNumber && (
+                        <div className="text-xs text-slate-500 mt-1">{emp.phoneNumber}</div>
+                    )}
+                </td>
+                <td className="px-6 py-4 text-slate-600 font-mono text-sm">{emp.taxId}</td>
+                <td className="px-6 py-4 text-slate-600">{emp.responsiblePerson || '-'}</td>
+                <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                        ${(emp._count?.deployments || 0) > 0 ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'}`}>
+                        {emp._count?.deployments || 0} Workers
+                    </span>
+                </td>
+                {commonActions}
+            </tr>
+        );
     };
 
     return (
@@ -72,6 +179,24 @@ export default function EmployersPage() {
                     <Plus size={20} />
                     <span>New Employer</span>
                 </Link>
+            </div>
+
+            {/* Category Tabs */}
+            <div className="flex gap-2 mb-6 border-b border-slate-200">
+                {['ALL', 'MANUFACTURING', 'HOME_CARE', 'INSTITUTION'].map(cat => (
+                    <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeCategory === cat
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                            }`}
+                    >
+                        {cat === 'ALL' ? '全部 (All)' :
+                            cat === 'MANUFACTURING' ? '製造業 (Manufacturing)' :
+                                cat === 'HOME_CARE' ? '家庭看護 (Home Care)' : '養護機構 (Institution)'}
+                    </button>
+                ))}
             </div>
 
             <SearchToolbar
@@ -100,41 +225,10 @@ export default function EmployersPage() {
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Company Name</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Tax ID</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Representative</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Active Workers</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Actions</th>
-                            </tr>
+                            {renderTableHeaders()}
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {employers.map((emp) => (
-                                <tr key={emp.id} className="hover:bg-slate-50 transition duration-150">
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-slate-900">{emp.companyName}</div>
-                                        {emp.phoneNumber && (
-                                            <div className="text-xs text-slate-500 mt-1">{emp.phoneNumber}</div>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-600 font-mono text-sm">{emp.taxId}</td>
-                                    <td className="px-6 py-4 text-slate-600">{emp.responsiblePerson || '-'}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                            ${(emp._count?.deployments || 0) > 0 ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'}`}>
-                                            {emp._count?.deployments || 0} Workers
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <Link
-                                            href={`/employers/${emp.id}`}
-                                            className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline"
-                                        >
-                                            View Details
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
+                            {employers.map(renderRow)}
                         </tbody>
                     </table>
 
