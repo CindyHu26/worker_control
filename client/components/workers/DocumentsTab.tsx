@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Loader2, CheckSquare } from 'lucide-react';
+import { FileText, Download, Loader2, CheckSquare, Info } from 'lucide-react';
 import AttachmentManager from '../common/AttachmentManager';
+import PlaceholderGuide from '../documents/PlaceholderGuide';
 
 interface DocumentsTabProps {
     worker: any;
@@ -12,6 +13,7 @@ export default function DocumentsTab({ worker }: DocumentsTabProps) {
     const [docCategory, setDocCategory] = useState<string>('entry_packet');
     const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isGuideOpen, setIsGuideOpen] = useState(false);
 
     useEffect(() => {
         setIsTemplatesLoading(true);
@@ -88,6 +90,8 @@ export default function DocumentsTab({ worker }: DocumentsTabProps) {
 
     return (
         <div className="flex gap-6 h-[600px]">
+            <PlaceholderGuide isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+
             {/* Sidebar */}
             <div className="w-1/4 space-y-2 h-full flex flex-col">
                 <h4 className="font-bold text-slate-700 mb-2">文件類別 (Category)</h4>
@@ -98,7 +102,8 @@ export default function DocumentsTab({ worker }: DocumentsTabProps) {
                         { id: 'medical_check', label: '定期體檢 (Medical)' },
                         { id: 'transfer_exit', label: '轉出/離境 (Transfer)' },
                         { id: 'entry_report', label: '入國通報 (Report)' },
-                        { id: 'permit_app', label: '函文申請 (Permit)' }
+                        { id: 'permit_app', label: '函文申請 (Permit)' },
+                        { id: 'contract', label: '勞動契約 (Contract)' }
                     ].map(cat => (
                         <button
                             key={cat.id}
@@ -122,9 +127,18 @@ export default function DocumentsTab({ worker }: DocumentsTabProps) {
             {/* Main Content */}
             <div className="w-3/4 flex flex-col h-full">
                 <div className="flex justify-between items-center mb-4 shrink-0">
-                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                        文件列表 ({docCategory})
-                    </h3>
+                    <div className="flex items-center gap-3">
+                        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                            文件列表 ({docCategory})
+                        </h3>
+                        <button
+                            onClick={() => setIsGuideOpen(true)}
+                            className="text-slate-400 hover:text-blue-600 transition"
+                            title="Template Placeholders Guide"
+                        >
+                            <Info size={18} />
+                        </button>
+                    </div>
                     <button
                         disabled={selectedTemplates.length === 0 || isGenerating}
                         onClick={() => handleDownload(selectedTemplates)}

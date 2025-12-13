@@ -34,7 +34,7 @@ router.post('/', async (req, res) => {
             }
 
             if (letter.usedQuota >= letter.approvedQuota) {
-                throw new Error('Recruitment Letter quota exceeded');
+                throw new Error('招募函名額已滿 (Recruitment Quota Exceeded)');
             }
 
             // 2. Validate Worker Availability (Double check)
@@ -69,6 +69,13 @@ router.post('/', async (req, res) => {
                 data: {
                     usedQuota: { increment: 1 }
                 }
+            });
+
+            // 5. Initialize Worker Timeline (Empty or based on start date?)
+            // If we have startDate, we can init some things, but Health Checks depend on Entry Date.
+            // Let's create an empty timeline placeholder.
+            await tx.workerTimeline.create({
+                data: { deploymentId: newDeployment.id }
             });
 
             return newDeployment;

@@ -298,6 +298,30 @@ router.put('/:id', async (req, res) => {
                         transferPermitNo: body.transferPermitNo,
                     }
                 });
+
+                // Auto-Calculate Deadlines if entryDate is updated
+                if (body.entryDate) {
+                    const entry = new Date(body.entryDate);
+                    const med6 = new Date(entry); med6.setMonth(med6.getMonth() + 6);
+                    const med18 = new Date(entry); med18.setMonth(med18.getMonth() + 18);
+                    const med30 = new Date(entry); med30.setMonth(med30.getMonth() + 30);
+
+                    // Upsert Timeline
+                    await tx.workerTimeline.upsert({
+                        where: { deploymentId: activeDeployment.id },
+                        update: {
+                            medCheck6moDeadline: med6,
+                            medCheck18moDeadline: med18,
+                            medCheck30moDeadline: med30
+                        },
+                        create: {
+                            deploymentId: activeDeployment.id,
+                            medCheck6moDeadline: med6,
+                            medCheck18moDeadline: med18,
+                            medCheck30moDeadline: med30
+                        }
+                    });
+                }
             }
 
             return updatedWorker;
@@ -406,6 +430,29 @@ router.post('/:id/arrange-entry', async (req, res) => {
                     flightNumber,
                     flightArrivalDate: new Date(flightArrivalDate),
                     entryDate: new Date(flightArrivalDate),
+                }
+            });
+
+            // 3. Auto-Calculate Health Check Deadlines
+            // 6 months, 18 months, 30 months from entry date
+            const entry = new Date(flightArrivalDate);
+            const med6 = new Date(entry); med6.setMonth(med6.getMonth() + 6);
+            const med18 = new Date(entry); med18.setMonth(med18.getMonth() + 18);
+            const med30 = new Date(entry); med30.setMonth(med30.getMonth() + 30);
+
+            // Upsert Timeline
+            await tx.workerTimeline.upsert({
+                where: { deploymentId: currentDeployment.id },
+                update: {
+                    medCheck6moDeadline: med6,
+                    medCheck18moDeadline: med18,
+                    medCheck30moDeadline: med30
+                },
+                create: {
+                    deploymentId: currentDeployment.id,
+                    medCheck6moDeadline: med6,
+                    medCheck18moDeadline: med18,
+                    medCheck30moDeadline: med30
                 }
             });
 

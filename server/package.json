@@ -20,6 +20,7 @@
     "@prisma/client": "^5.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/node-cron": "^3.0.11",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "docxtemplater": "^3.67.6",
@@ -27,6 +28,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "pdf-lib": "^1.17.1",
     "pizzip": "^3.2.0"
   },

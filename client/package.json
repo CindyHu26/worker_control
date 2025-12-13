@@ -9,7 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/react": "^3.30.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "date-fns": "^2.30.0",
+    "framer-motion": "^12.23.26",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.294.0",
     "next": "14.0.3",

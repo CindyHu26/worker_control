@@ -175,15 +175,37 @@ router.post('/generate-monthly-fees', async (req, res) => {
 });
 
 /**
+ * Utility to get Fee Amount based on Nationality
+ */
+async function getFeeAmount(name: string, nationality: string | null): Promise<number | null> {
+    // 1. Try Specific Nationality Match
+    if (nationality) {
+        const specific = await prisma.feeItem.findFirst({
+            where: { name, nationality }
+        });
+        if (specific) return Number(specific.defaultAmount);
+    }
+
+    // 2. Try Fallback (General/Null Nationality)
+    const general = await prisma.feeItem.findFirst({
+        where: { name, nationality: null }
+    });
+
+    if (general) return Number(general.defaultAmount);
+
+    return null;
+}
+
+/**
  * POST /api/accounting/bills/create-fixed
  * Creates a ONE-TIME fixed fee bill (e.g., ARC, Medical, Passport)
- * No pro-rata calculation. Uses exact amount provided.
+ * No pro-rata calculation. Uses exact amount provided OR looks up standard fee.
  */
 router.post('/bills/create-fixed', async (req, res) => {
-    const { workerId, feeType, amount, description, billDate } = req.body;
+    const { workerId, feeType, name, amount, description, billDate } = req.body;
 
-    if (!workerId || !amount || !description) {
-        return res.status(400).json({ error: 'Missing required fields: workerId, amount, description' });
+    if (!workerId || (!amount && !name)) {
+        return res.status(400).json({ error: 'Missing required fields: workerId. Either "amount" or "name" (for lookup) must be provided.' });
     }
 
     try {
@@ -193,6 +215,24 @@ router.post('/bills/create-fixed', async (req, res) => {
         });
 
         if (!worker) return res.status(404).json({ error: 'Worker not found' });
+
+        let finalAmount = amount ? Number(amount) : 0;
+        let finalDesc = description;
+
+        // Auto-populate amount if missing
+        if (!amount && name) {
+            const lookUpAmount = await getFeeAmount(name, worker.nationality);
+            if (lookUpAmount !== null) {
+                finalAmount = lookUpAmount;
+                if (!finalDesc) finalDesc = `${name} (${worker.nationality || 'General'})`;
+            } else {
+                return res.status(400).json({ error: `Fee standard not found for item: ${name} (Nationality: ${worker.nationality})` });
+            }
+        }
+
+        if (!finalDesc && name) finalDesc = name;
+        if (!finalDesc) return res.status(400).json({ error: 'Description is required if not auto-generated.' });
+
 
         const activeDeployment = worker.deployments[0]; // Can be null if no active deployment
         const billingDate = billDate ? new Date(billDate) : new Date();
@@ -209,12 +249,12 @@ router.post('/bills/create-fixed', async (req, res) => {
                 month,
                 billingDate: billingDate,
                 dueDate: new Date(billingDate.getTime() + 7 * 24 * 60 * 60 * 1000), // Due in 7 days default
-                totalAmount: Number(amount),
+                totalAmount: finalAmount,
                 status: 'draft',
                 items: {
                     create: {
-                        description,
-                        amount: Number(amount),
+                        description: finalDesc,
+                        amount: finalAmount,
                         feeCategory: feeType || 'other_fee'
                     }
                 }

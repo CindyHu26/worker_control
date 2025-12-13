@@ -480,9 +480,25 @@ model JobOrder {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  interviews Interview[]
+  interviews          Interview[]
+  domesticRecruitment DomesticRecruitment?
 
   @@map("job_orders")
+}
+
+model DomesticRecruitment {
+  id                     String   @id @default(uuid())
+  jobOrderId             String   @unique @map("job_order_id")
+  recruitmentDate        DateTime @map("recruitment_date")
+  certificateNumber      String?  @map("certificate_number")
+  noViolationCertificate String?  @map("no_violation_certificate")
+
+  jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("domestic_recruitments")
 }
 
 model Interview {
@@ -574,6 +590,8 @@ model FeeItem {
   name          String
   defaultAmount Decimal @map("default_amount")
   category      String // Enum: service_fee, placement_fee, official_fee, other
+  nationality   String? // Optional: VN, ID, PH, TH
+  description   String?
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -624,6 +642,7 @@ model DocumentTemplate {
   filePath    String  @map("file_path")
   description String?
   isActive    Boolean @default(true) @map("is_active")
+  nationality String? // Optional: VN, ID, PH, TH
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")

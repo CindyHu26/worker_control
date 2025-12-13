@@ -6,6 +6,7 @@ import fs from 'fs';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import multer from 'multer';
+import { buildWorkerDocumentContext, getTemplateKeys } from '../utils/documentContext';
 
 const router = Router();
 
@@ -95,6 +96,30 @@ router.post('/templates', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields: name, category' });
         }
 
+        // Validate Template Tags
+        let validationWarning: string | null = null;
+        try {
+            const content = fs.readFileSync(req.file.path, 'binary');
+            const zip = new PizZip(content);
+            const docXml = zip.file('word/document.xml')?.asText() || '';
+
+            // Simple regex to find {tag_name}
+            // Note: This matches raw XML text, which might be fragmented.
+            // But it works for simple cases and advises the user.
+            const tagRegex = /\{([a-zA-Z0-9_]+)\}/g;
+            const matches = [...docXml.matchAll(tagRegex)].map(m => m[1]);
+            const uniqueTags = [...new Set(matches)];
+
+            const allowedKeys = getTemplateKeys();
+            const unknownTags = uniqueTags.filter(tag => !allowedKeys.includes(tag));
+
+            if (unknownTags.length > 0) {
+                validationWarning = `Detected unknown tags: {${unknownTags.join('}, {')}}. Please check for typos.`;
+            }
+        } catch (err) {
+            console.warn('Template Validation Warning: Failed to parse docx', err);
+        }
+
         // Store relative path from templates directory
         const relativePath = path.relative(templatesDir, req.file.path).replace(/\\/g, '/');
         const filePath = `/templates/${relativePath}`;
@@ -112,6 +137,7 @@ router.post('/templates', upload.single('file'), async (req, res) => {
 
         res.status(201).json({
             message: 'Template uploaded successfully',
+            warning: validationWarning,
             template: {
                 id: template.id,
                 name: template.name,
@@ -131,156 +157,66 @@ router.post('/templates', upload.single('file'), async (req, res) => {
 });
 
 // POST /api/documents/generate
-// Generate documents for a worker
 router.post('/generate', async (req, res) => {
     try {
-        const { workerId, templateIds } = req.body;
+        const { workerId, templateIds, category } = req.body;
 
-        if (!workerId || !templateIds || !Array.isArray(templateIds) || templateIds.length === 0) {
-            return res.status(400).json({ error: 'Missing required parameters: workerId, templateIds (array)' });
+        if (!workerId) {
+            return res.status(400).json({ error: 'Missing required parameter: workerId' });
         }
 
-        // 1. Fetch Comprehensive Data
-        const worker = await prisma.worker.findUnique({
-            where: { id: workerId },
-            include: {
-                // Foreign Agency
-                foreignAgency: true,
-                // Deployment & Employer (with Agency Check)
-                deployments: {
-                    where: { status: { in: ['active', 'pending'] } },
-                    orderBy: { startDate: 'desc' },
-                    take: 1,
-                    include: {
-                        employer: {
-                            include: { agency: true }
-                        }
-                    }
-                },
-                // Dormitory (basic info, detailed info comes from bed relation)
-                dormitory: true,
-                bed: {
-                    include: {
-                        room: {
-                            include: { dormitory: true }
-                        }
-                    }
-                },
-                // Docs
-                passports: { where: { isCurrent: true }, take: 1 },
-                arcs: { where: { isCurrent: true }, take: 1 }
-            }
-        });
+        // 1. Build Global Context
+        const context = await buildWorkerDocumentContext(workerId);
 
-        if (!worker) {
-            return res.status(404).json({ error: 'Worker not found' });
+        // 2. Select Templates
+        let selectedTemplates: any[] = [];
+
+        if (templateIds && Array.isArray(templateIds) && templateIds.length > 0) {
+            // Manual Selection
+            selectedTemplates = await prisma.documentTemplate.findMany({
+                where: { id: { in: templateIds }, isActive: true }
+            });
+        } else if (category) {
+            // Auto Select by Category + Nationality
+            const allCatTemplates = await prisma.documentTemplate.findMany({
+                where: { category, isActive: true }
+            });
+
+            // Filter logic: Prefer specific nationality, allow general
+            selectedTemplates = allCatTemplates.filter(t => {
+                // If template has specific nationality, it MUST match
+                if (t.nationality) {
+                    return t.nationality === context.worker_nationality;
+                }
+                // If template implies general (null nationality), it's valid for everyone
+                return true;
+            });
+
+            // Refinement: If specific exists, maybe exclude general?
+            // Current simple logic: Include all valid candidates.
+            // But usually we just want ONE contract.
+            // Let's stick to: "If match nationality OR null"
+        } else {
+            return res.status(400).json({ error: 'Either templateIds or category must be provided.' });
         }
 
-        // Fetch Default Agency Company (fallback)
-        const defaultAgency = await prisma.agencyCompany.findFirst({
-            where: { isDefault: true }
-        });
+        if (selectedTemplates.length === 0) {
+            return res.status(404).json({ error: 'No matching templates found.' });
+        }
 
-        const deployment = worker.deployments[0];
-        const employer = deployment?.employer;
-
-        // Determine Agency Company: Employer's specific agency -> Default Agency -> Empty object
-        const agencyCompany = employer?.agency || defaultAgency || {} as any;
-
-        const foreignAgency = worker.foreignAgency || {} as any;
-
-        const passport = worker.passports[0];
-        const arc = worker.arcs[0];
-
-        // Determine Dorm Info (from explicit Bed relation first, then fallback to Dormitory relation)
-        const dormBed = worker.bed;
-        const dormRoom = dormBed?.room;
-        const dormitory = dormRoom?.dormitory || worker.dormitory; // Fallback if assigned to dorm but not bed
-
-        // 2. Map Data for Tags
-        const tags = {
-            // Worker
-            worker_name_cn: worker.chineseName || '',
-            worker_name_en: worker.englishName || '',
-            worker_nationality: worker.nationality || '',
-            worker_dob: worker.dob ? new Date(worker.dob).toLocaleDateString() : '',
-            worker_mobile: worker.mobilePhone || '',
-            worker_address_foreign: worker.foreignAddress || '',
-
-            // Foreign Agency
-            foreign_agency_name: foreignAgency.name || '',
-            foreign_agency_code: foreignAgency.code || '',
-            foreign_agency_country: foreignAgency.country || '',
-
-            // Agency Company (Internal)
-            agency_name: agencyCompany.name || '',
-            agency_license_no: agencyCompany.licenseNo || '',
-            agency_tax_id: agencyCompany.taxId || '',
-            agency_address: agencyCompany.address || '',
-            agency_phone: agencyCompany.phone || '',
-            agency_fax: agencyCompany.fax || '',
-            agency_email: agencyCompany.email || '',
-            agency_responsible_person: agencyCompany.responsiblePerson || '',
-
-            // ID Documents
-            passport_no: passport?.passportNumber || '',
-            passport_issue_date: passport?.issueDate ? new Date(passport.issueDate).toLocaleDateString() : '',
-            passport_expiry_date: passport?.expiryDate ? new Date(passport.expiryDate).toLocaleDateString() : '',
-            arc_no: arc?.arcNumber || '',
-            arc_issue_date: arc?.issueDate ? new Date(arc.issueDate).toLocaleDateString() : '',
-            arc_expiry_date: arc?.expiryDate ? new Date(arc.expiryDate).toLocaleDateString() : '',
-
-            // Employer
-            employer_name: employer?.companyName || '',
-            employer_tax_id: employer?.taxId || '',
-            employer_phone: employer?.phoneNumber || '',
-            employer_address: employer?.address || '',
-            employer_rep: employer?.responsiblePerson || '',
-
-            // Job / Deployment
-            job_description: deployment?.jobDescription || '',
-            entry_date: deployment?.entryDate ? new Date(deployment.entryDate).toLocaleDateString() : '',
-            contract_start: deployment?.startDate ? new Date(deployment.startDate).toLocaleDateString() : '',
-            contract_end: deployment?.endDate ? new Date(deployment.endDate).toLocaleDateString() : '',
-
-            // Dormitory
-            dorm_name: dormitory?.name || '',
-            dorm_address: dormitory?.address || '',
-            dorm_landlord: dormitory?.landlordName || '',
-            dorm_room: dormRoom?.roomNumber || '',
-            dorm_bed: dormBed?.bedCode || '',
-
-            // System
-            today: new Date().toLocaleDateString(),
-            year: new Date().getFullYear(),
-            month: new Date().getMonth() + 1,
-            day: new Date().getDate()
-        };
+        const tags = context; // Direct mapping using the global context builder
 
         // 3. Generate Files
         const generatedFiles: { name: string, content: Buffer }[] = [];
-        const templates = await prisma.documentTemplate.findMany({
-            where: { id: { in: templateIds } } // If ID matches name in seed, this works. If UUID, user must send UUID.
-            // Note: seed.ts creates UUIDs if we don't force 'name' as ID. 
-            // In listed API, we returned {id...}. Front-end should send back those IDs.
-        });
 
-        for (const tmpl of templates) {
+        for (const tmpl of selectedTemplates) {
             try {
-                // Resolve path relative to project root or absolute
-                // Assuming filePath in DB starts with /templates/...
-                // We need to map it to real path d:\worker_control\server\templates
-                // OR checking where templates are stored.
-                // Step 155 showed: path.join(__dirname, '../../templates/...')
-                // So /templates in basic root.
-
-                // Remove leading slash if present to avoid absolute path confusion on Windows
                 const cleanPath = tmpl.filePath.startsWith('/') || tmpl.filePath.startsWith('\\') ? tmpl.filePath.slice(1) : tmpl.filePath;
                 const templateAbsPath = path.join(__dirname, '../../', cleanPath);
 
                 if (!fs.existsSync(templateAbsPath)) {
                     console.warn(`Template file missing: ${templateAbsPath}`);
-                    continue; // Skip valid template record if file missing
+                    continue;
                 }
 
                 const content = fs.readFileSync(templateAbsPath, 'binary');
@@ -290,8 +226,6 @@ router.post('/generate', async (req, res) => {
                     linebreaks: true,
                 });
 
-                // Render Tag
-                // Allow missing tags to be empty string instead of undefined
                 doc.setData(tags);
                 doc.render();
 
@@ -300,9 +234,6 @@ router.post('/generate', async (req, res) => {
                     compression: 'DEFLATE',
                 });
 
-                // Filename
-                // e.g. "LaborInsurance_JohnDoe.docx"
-                // Clean name
                 const safeTmplName = tmpl.name.replace(/[^a-z0-9\u4e00-\u9fa5]/gi, '_');
                 const safeWorkerName = tags.worker_name_en.replace(/[^a-z0-9]/gi, '_');
                 const filename = `${safeTmplName}_${safeWorkerName}.docx`;
@@ -311,33 +242,28 @@ router.post('/generate', async (req, res) => {
 
             } catch (err) {
                 console.error(`Error generating template ${tmpl.name}:`, err);
-                // Continue with others
             }
         }
 
         if (generatedFiles.length === 0) {
-            return res.status(404).json({ error: 'No documents could be generated (files missing or invalid IDs).' });
+            return res.status(404).json({ error: 'No documents could be generated (files missing or invalid criteria).' });
         }
 
         // 4. Response
         if (generatedFiles.length === 1) {
-            // Single File
             const file = generatedFiles[0];
             res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(file.name)}`);
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
             res.send(file.content);
         } else {
-            // Multi File ZIP
             const zip = new PizZip();
             for (const f of generatedFiles) {
                 zip.file(f.name, f.content);
             }
-
             const zipBuffer = zip.generate({
                 type: 'nodebuffer',
                 compression: 'DEFLATE'
             });
-
             const zipName = `${tags.worker_name_en}_Documents.zip`;
             res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(zipName)}`);
             res.setHeader('Content-Type', 'application/zip');

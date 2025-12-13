@@ -47,7 +47,13 @@ async function main() {
 
         // Category: permit_app (許可函申請)
         { name: '聘僱許可申請書', category: 'permit_app', filePath: '/templates/permit_app/hiring_permit.docx' },
-        { name: '居留證申請書', category: 'permit_app', filePath: '/templates/permit_app/arc_application.docx' }
+        { name: '居留證申請書', category: 'permit_app', filePath: '/templates/permit_app/arc_application.docx' },
+
+        // Category: contract (勞動契約 Labor Contract)
+        { name: 'Labor Contract (VN)', category: 'contract', filePath: '/templates/contract/contract_VN.docx', nationality: 'VN' },
+        { name: 'Labor Contract (ID)', category: 'contract', filePath: '/templates/contract/contract_ID.docx', nationality: 'ID' },
+        { name: 'Labor Contract (PH)', category: 'contract', filePath: '/templates/contract/contract_PH.docx', nationality: 'PH' },
+        { name: 'Labor Contract (TH)', category: 'contract', filePath: '/templates/contract/contract_TH.docx', nationality: 'TH' }
     ];
 
     for (const t of templates) {
@@ -60,6 +66,7 @@ async function main() {
                     name: t.name,
                     category: t.category,
                     filePath: t.filePath,
+                    nationality: (t as any).nationality, // Optional
                     isActive: true
                 }
             });
@@ -74,7 +81,56 @@ async function main() {
         }
     }
 
-    // 4. System Settings
+    // 4. Seed Fee Items (Nationality Specific)
+    console.log('Seeding fee items...');
+    const feeItems = [
+        // Medical Checkup
+        { name: 'Medical Checkup (VN)', defaultAmount: 2000, category: 'official_fee', nationality: 'VN', description: 'Standard check for VN workers' },
+        { name: 'Medical Checkup (ID)', defaultAmount: 2500, category: 'official_fee', nationality: 'ID', description: 'Standard check for ID workers' },
+        { name: 'Medical Checkup (General)', defaultAmount: 2200, category: 'official_fee', nationality: null, description: 'Default checkup fee' },
+
+        // Residence Permit (ARC)
+        { name: 'Residence Permit (ARC)', defaultAmount: 1000, category: 'official_fee', nationality: null, description: 'ARC Application Fee' },
+
+        // Labor Contract Verification
+        { name: 'Contract Verification (PH)', defaultAmount: 1435, category: 'official_fee', nationality: 'PH', description: 'MECO verification fee' },
+        { name: 'Contract Verification (TH)', defaultAmount: 1200, category: 'official_fee', nationality: 'TH', description: 'Thailand Office verification fee' },
+        { name: 'Contract Verification (VN)', defaultAmount: 1000, category: 'official_fee', nationality: 'VN', description: 'Vietnam Office verification fee' }
+    ];
+
+    for (const f of feeItems) {
+        // Check if exists by name AND nationality to allow same name but diff nationality, OR unique name per nationality
+        // Ideally name should probably be unique or we check specific combination.
+        // Let's assume name is unique enough for this demo or we simply check one.
+        const exists = await prisma.feeItem.findFirst({
+            where: {
+                name: f.name,
+                nationality: f.nationality
+            }
+        });
+
+        if (!exists) {
+            await prisma.feeItem.create({
+                data: {
+                    name: f.name,
+                    defaultAmount: f.defaultAmount,
+                    category: f.category,
+                    nationality: f.nationality,
+                    description: f.description
+                }
+            });
+            console.log(`Created Fee Item: ${f.name}`);
+        } else {
+            // Update amount if changed
+            await prisma.feeItem.update({
+                where: { id: exists.id },
+                data: { defaultAmount: f.defaultAmount }
+            });
+            console.log(`Updated Fee Item: ${f.name}`);
+        }
+    }
+
+    // 5. System Settings
     console.log('System initialized.');
 }
 
