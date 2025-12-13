@@ -286,6 +286,7 @@ model Deployment {
   insurances    WorkerInsurance[]
   bills         Bill[]
   monthlyFee    MonthlyServiceFee?
+  feeSchedules  FeeSchedule[]
 
   @@map("deployments")
 }
@@ -591,6 +592,9 @@ model Bill {
   billingDate DateTime @map("billing_date")
   dueDate     DateTime @map("due_date")
   totalAmount Decimal  @map("total_amount")
+  paidAmount  Decimal  @default(0) @map("paid_amount")
+  balance     Decimal  @default(0)
+  previousBalance Decimal @default(0) @map("previous_balance")
 
   year               Int      @default(0) @map("year")
   month              Int      @default(0) @map("month")
@@ -604,7 +608,8 @@ model Bill {
   worker     Worker?     @relation(fields: [workerId], references: [id])
   employer   Employer?   @relation(fields: [employerId], references: [id])
   deployment Deployment? @relation(fields: [deploymentId], references: [id])
-  items      BillItem[]
+  items        BillItem[]
+  feeSchedules FeeSchedule[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -655,6 +660,27 @@ model MonthlyServiceFee {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("monthly_service_fees")
+}
+
+model FeeSchedule {
+  id              String   @id @default(uuid())
+  deploymentId    String   @map("deployment_id")
+  installmentNo   Int      @map("installment_no")
+  scheduleDate    DateTime @map("schedule_date")
+  expectedAmount  Decimal  @map("expected_amount")
+  paidAmount      Decimal  @default(0) @map("paid_amount")
+  status          String   @default("pending") // pending, partial, paid, overdue
+  description     String?
+  
+  billId          String?  @map("bill_id")
+  
+  deployment      Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  bill            Bill?      @relation(fields: [billId], references: [id]) 
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("fee_schedules")
 }
 
 // =========================================

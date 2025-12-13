@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CreditCard, Save, X, DollarSign, Building } from 'lucide-react';
+import FeeScheduleTable from './FeeScheduleTable';
 
 interface FinanceTabProps {
     worker: any;
@@ -185,6 +186,15 @@ export default function FinanceTab({ worker, onUpdate }: FinanceTabProps) {
                         </div>
                     </div>
                 </div>
+                {/* Fee Schedule Section */}
+                {worker.deployments && worker.deployments.length > 0 && (
+                    <div className="mt-8 pt-8 border-t border-slate-200">
+                        <FeeScheduleTable
+                            schedules={worker.deployments[0].feeSchedules || []}
+                            onRefresh={() => onUpdate(worker)} // Trigger a re-fetch at parent level effectively
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

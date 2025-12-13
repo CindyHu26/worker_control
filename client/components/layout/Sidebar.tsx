@@ -13,6 +13,7 @@ import {
     ChevronRight,
     Grid
 } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
@@ -131,16 +132,20 @@ export default function Sidebar() {
 
             {/* User Profile / Footer */}
             <div className="p-4 border-t border-slate-800/50 bg-slate-950/30">
-                <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center ring-2 ring-slate-800">
-                        <span className="text-xs font-bold text-slate-300">AD</span>
-                    </div>
-                    {!collapsed && (
-                        <div className="overflow-hidden">
-                            <p className="text-sm font-medium text-white truncate">Admin User</p>
-                            <p className="text-xs text-slate-500 truncate">admin@tms.com</p>
+                <div className={`flex items-center justify-between ${collapsed ? 'flex-col gap-4' : ''}`}>
+                    <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center ring-2 ring-slate-800">
+                            <span className="text-xs font-bold text-slate-300">AD</span>
                         </div>
-                    )}
+                        {!collapsed && (
+                            <div className="overflow-hidden">
+                                <p className="text-sm font-medium text-white truncate">Admin User</p>
+                                <p className="text-xs text-slate-500 truncate">admin@tms.com</p>
+                            </div>
+                        )}
+                    </div>
+                    {/* Notifications */}
+                    <NotificationBell />
                 </div>
             </div>
 

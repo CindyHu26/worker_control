@@ -4,156 +4,158 @@ import prisma from '../prisma';
 const router = Router();
 
 /**
+ * GET /api/accounting/bills
+ * List bills with optional filters
+ */
+router.get('/bills', async (req, res) => {
+    try {
+        const { year, month, status, workerId } = req.query;
+
+        const where: any = {};
+        if (year) where.year = Number(year);
+        if (month) where.month = Number(month);
+        if (status && status !== 'all') where.status = String(status);
+        if (workerId) where.workerId = String(workerId);
+
+        const bills = await prisma.bill.findMany({
+            where,
+            include: {
+                worker: { select: { chineseName: true, englishName: true } },
+                items: true
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(bills);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch bills' });
+    }
+});
+
+/**
  * POST /api/accounting/generate-monthly-fees
- * Generates RECURRING monthly fees (Service Fee, Accommodation Fee)
- * Uses strict pro-rata logic: Amount = Round(MonthlyFee * (ActiveDays / 30))
+ * Generates Monthly Bills based on FeeSchedule (Current + Arrears)
  */
 router.post('/generate-monthly-fees', async (req, res) => {
     const { year, month } = req.body;
 
-    // Validate inputs
     if (!year || !month || month < 1 || month > 12) {
         return res.status(400).json({ error: 'Valid Year and Month (1-12) required' });
     }
 
     try {
-        // 1. Define Target Billing Period (Use UTC to match Prisma)
-        const targetMonthStart = new Date(Date.UTC(year, month - 1, 1)); // 1st of month UTC
-        const targetMonthEnd = new Date(Date.UTC(year, month, 0)); // Last day of month UTC
+        // Construct target range for CURRENT month's schedule
+        const startOfMonth = new Date(Date.UTC(year, month - 1, 1));
+        const endOfMonth = new Date(Date.UTC(year, month, 1)); // Exclusive upper bound
 
-        // 2. Find all active deployments
-        // We consider deployments that overlap with our target month
-        // status='active' is a good basic filter, but we might want to double check logic if they ended mid-month but status is still active? 
-        // For now, reliance on status='active' + endDate check is standard.
-        const deployments = await prisma.deployment.findMany({
+        // Find relevant fee schedules for the current month
+        const currentSchedules = await prisma.feeSchedule.findMany({
             where: {
-                status: 'active'
+                scheduleDate: {
+                    gte: startOfMonth,
+                    lt: endOfMonth
+                },
+                status: 'pending' // Only bill pending items
             },
-            include: {
-                monthlyFee: true,
-                worker: true
-            }
+            include: { deployment: true }
         });
 
+        // Group by deploymentId to generate one bill per deployment
+        const deploymentGroups = new Map<string, typeof currentSchedules>();
+        for (const sch of currentSchedules) {
+            const key = sch.deploymentId;
+            if (!deploymentGroups.has(key)) deploymentGroups.set(key, []);
+            deploymentGroups.get(key)?.push(sch);
+        }
+
         let generatedCount = 0;
-        const skippedDeployments: string[] = [];
+        const skippedReasons: string[] = [];
 
         await prisma.$transaction(async (tx) => {
-            for (const deployment of deployments) {
-                const { id: deploymentId, workerId, startDate, endDate, monthlyFee } = deployment;
+            for (const [deploymentId, schedules] of deploymentGroups) {
+                const deployment = schedules[0].deployment;
+                const workerId = deployment.workerId;
 
-                // === STEP 1: Determine Effective Dates ===
-                // Start = Max(MonthStart, DeploymentStart)
-                const startDates = [targetMonthStart, new Date(startDate)];
-                const effectiveStart = new Date(Math.max(...startDates.map(d => d.getTime())));
+                // 1. Calculate Current Amount
+                let currentAmount = 0;
+                const billItems = [];
+                const scheduleIdsToLink: string[] = [];
 
-                // End = Min(MonthEnd, DeploymentEnd (if exists))
-                const endDates = [targetMonthEnd];
-                if (endDate) endDates.push(new Date(endDate));
-                const effectiveEnd = new Date(Math.min(...endDates.map(d => d.getTime())));
-
-                // === STEP 2: Calculate Active Days ===
-                // Difference in milliseconds
-                const diffTime = effectiveEnd.getTime() - effectiveStart.getTime();
-                // Convert to days and add 1 (inclusive)
-                const activeDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-                if (activeDays <= 0) {
-                    skippedDeployments.push(`Worker ${workerId.substring(0, 8)}: ${activeDays} days (not billable)`);
-                    continue;
+                for (const sch of schedules) {
+                    currentAmount += Number(sch.expectedAmount);
+                    billItems.push({
+                        description: sch.description || `Service Fee (Period ${sch.installmentNo})`,
+                        amount: Number(sch.expectedAmount),
+                        feeCategory: 'service_fee'
+                    });
+                    scheduleIdsToLink.push(sch.id);
                 }
 
-                // === STEP 3: Determine Fee Rates ===
-                // Service Fee (Tiered by year)
-                // We calculate "Contract Year" based on startDate
-                const serviceStart = new Date(startDate);
-                // Simple approx for contract year: 
-                // Months elapsed = (TargetYear - StartYear)*12 + (TargetMonth - StartMonth)
-                // If months < 12 => Year 1, < 24 => Year 2, etc.
-                const monthsElapsed = (year - serviceStart.getFullYear()) * 12 + (month - (serviceStart.getMonth() + 1));
-
-                const fees = monthlyFee || { amountYear1: 1800, amountYear2: 1700, amountYear3: 1500, accommodationFee: 0 };
-
-                let serviceFeeRate = 0;
-                if (monthsElapsed < 12) serviceFeeRate = Number(fees.amountYear1);
-                else if (monthsElapsed < 24) serviceFeeRate = Number(fees.amountYear2);
-                else serviceFeeRate = Number(fees.amountYear3);
-
-                const accommodationFeeRate = Number(fees.accommodationFee || 0);
-
-                // === STEP 4: Calculate Bill Amounts (Pro-Rata) ===
-                // Formula: Round(Rate * (ActiveDays / 30))
-
-                const serviceFeeAmount = Math.round(serviceFeeRate * (activeDays / 30));
-                const accommodationFeeAmount = Math.round(accommodationFeeRate * (activeDays / 30));
-
-                if (serviceFeeAmount <= 0 && accommodationFeeAmount <= 0) {
-                    skippedDeployments.push(`Worker ${workerId.substring(0, 8)}: Amounts are 0`);
-                    continue;
-                }
-
-                // === STEP 5: Check Duplicate Bill ===
-                // We check if we already billed this worker for this month/year with service/accom fees
-                const existingBill = await tx.bill.findFirst({
+                // 2. Check Arrears (Previous Unpaid Schedules)
+                // Find all schedules for this deployment BEFORE this month that are not paid
+                const arrearsSchedules = await tx.feeSchedule.findMany({
                     where: {
-                        workerId,
+                        deploymentId: deploymentId,
+                        scheduleDate: { lt: startOfMonth },
+                        status: { not: 'paid' }
+                    }
+                });
+
+                let arrearsAmount = 0;
+                for (const arr of arrearsSchedules) {
+                    const outstanding = Number(arr.expectedAmount) - Number(arr.paidAmount);
+                    if (outstanding > 0) {
+                        arrearsAmount += outstanding;
+                        // We link these too? Or just aggregate? 
+                        // Let's aggregate for clean bill items but we technically "collect" for them.
+                        // Linking might be cleaner for tracking.
+                        scheduleIdsToLink.push(arr.id);
+                    }
+                }
+
+                if (arrearsAmount > 0) {
+                    billItems.push({
+                        description: `前期未結餘額 (Arrears via ${arrearsSchedules.length} items)`,
+                        amount: arrearsAmount,
+                        feeCategory: 'arrears'
+                    });
+                }
+
+                const totalAmount = currentAmount + arrearsAmount;
+
+                if (totalAmount <= 0) {
+                    skippedReasons.push(`Deployment ${deploymentId}: Total amount 0`);
+                    continue; // Skip
+                }
+
+                // 3. Create Bill
+                const newBill = await tx.bill.create({
+                    data: {
+                        billNo: `MTH-${year}${String(month).padStart(2, '0')}-${workerId.substring(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+                        payerType: 'worker',
+                        workerId: workerId,
+                        deploymentId: deploymentId,
                         year,
                         month,
+                        billingDate: new Date(),
+                        dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+                        totalAmount,
+                        balance: totalAmount, // Initial balance = total
+                        status: 'draft',
                         items: {
-                            some: {
-                                feeCategory: {
-                                    in: ['service_fee', 'accommodation_fee']
-                                }
-                            }
+                            create: billItems
                         }
                     }
                 });
 
-                if (existingBill) {
-                    skippedDeployments.push(`Worker ${workerId.substring(0, 8)}: Bill already exists`);
-                    continue;
-                }
-
-                // === STEP 6: Create Bill Items ===
-                const itemsToCreate = [];
-
-                if (serviceFeeAmount > 0) {
-                    itemsToCreate.push({
-                        description: `${year}/${String(month).padStart(2, '0')} 服務費 (在職: ${activeDays}天)`,
-                        amount: serviceFeeAmount,
-                        feeCategory: 'service_fee'
-                    });
-                }
-
-                if (accommodationFeeAmount > 0) {
-                    itemsToCreate.push({
-                        description: `${year}/${String(month).padStart(2, '0')} 住宿費 (在職: ${activeDays}天)`,
-                        amount: accommodationFeeAmount,
-                        feeCategory: 'accommodation_fee'
-                    });
-                }
-
-                // === STEP 7: Create Bill ===
-                const totalBillAmount = serviceFeeAmount + accommodationFeeAmount;
-
-                await tx.bill.create({
-                    data: {
-                        billNo: `MTH-${year}${String(month).padStart(2, '0')}-${workerId.substring(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`,
-                        payerType: 'worker',
-                        workerId,
-                        deploymentId,
-                        year,
-                        month,
-                        billingDate: new Date(),
-                        dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // Due in 15 days
-                        billingPeriodStart: effectiveStart,
-                        billingPeriodEnd: effectiveEnd,
-                        totalAmount: totalBillAmount,
-                        status: 'draft',
-                        items: {
-                            create: itemsToCreate
-                        }
-                    }
+                // 4. Link FeeSchedules to this Bill
+                // We update the 'billId' of the schedules. 
+                // Note: If an arrears schedule already has a billId, this overwrite might imply re-billing.
+                // For simplified flow, we allow "latest bill claims the schedule".
+                await tx.feeSchedule.updateMany({
+                    where: { id: { in: scheduleIdsToLink } },
+                    data: { billId: newBill.id }
                 });
 
                 generatedCount++;
@@ -161,10 +163,9 @@ router.post('/generate-monthly-fees', async (req, res) => {
         });
 
         res.json({
-            message: `Successfully generated ${generatedCount} bills for ${year}/${String(month).padStart(2, '0')}`,
+            message: `Generated ${generatedCount} bills`,
             generated: generatedCount,
-            skipped: skippedDeployments.length,
-            skippedReasons: skippedDeployments
+            skipped: skippedReasons.length
         });
 
     } catch (error: any) {
@@ -223,6 +224,116 @@ router.post('/bills/create-fixed', async (req, res) => {
         res.json(bill);
     } catch (error: any) {
         console.error('Create Fixed Bill Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/accounting/bills/pay
+ * Records a payment against a bill
+ */
+router.post('/bills/pay', async (req, res) => {
+    const { billId, amount, paymentDate } = req.body;
+
+    if (!billId || !amount) {
+        return res.status(400).json({ error: 'Bill ID and Amount are required' });
+    }
+
+    const payAmount = Number(amount);
+
+    if (payAmount <= 0) {
+        return res.status(400).json({ error: 'Payment amount must be positive' });
+    }
+
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Fetch Bill (with linked Schedules)
+            const bill = await tx.bill.findUnique({
+                where: { id: billId },
+                include: { feeSchedules: true }
+            });
+
+            if (!bill) throw new Error("Bill not found");
+
+            // 2. Update Bill Balance
+            const currentPaid = Number(bill.paidAmount);
+            const total = Number(bill.totalAmount);
+            const newPaid = currentPaid + payAmount;
+            const newBalance = total - newPaid;
+
+            // Update Bill Status
+            let newStatus = bill.status;
+            if (newBalance <= 0) newStatus = 'paid';
+            else if (newPaid > 0) newStatus = 'partial';
+
+            await tx.bill.update({
+                where: { id: billId },
+                data: {
+                    paidAmount: newPaid,
+                    balance: newBalance,
+                    status: newStatus
+                }
+            });
+
+            // 3. Allocate Payment to Linked FeeSchedules (FIFO / Waterfall)
+            // Strategy: We have a "pool" of new money (payAmount) to distribute.
+            // We look at all linked schedules. We should prioritize older ones? 
+            // Or just distributed? 
+            // Better strategy: We recalculate the status of schedules based on total cumulative payment?
+            // "Waterfall": Iterate schedules, fill them up one by one with the TOTAL paid amount.
+
+            // NOTE: This assumes this Bill is the ONLY source of payment for these schedules.
+            // If we have re-linking logic, it gets complex. 
+            // Simplified: Look at linked schedules, sort by date. Distribute `newPaid` across them.
+
+            // Sort schedules by date to pay off arrears ID first
+            const schedules = bill.feeSchedules.sort((a, b) =>
+                new Date(a.scheduleDate).getTime() - new Date(b.scheduleDate).getTime()
+            );
+
+            let remainingToAllocate = newPaid;
+
+            for (const sch of schedules) {
+                const required = Number(sch.expectedAmount);
+                // Currently paid for this specific schedule? 
+                // We overwrite "paidAmount" based on the waterfall allocation of the BILL's total payment.
+                // This means if I paid $1000 on the bill, the first schedule takes up to its amount, then next...
+
+                let allocatable = 0;
+                if (remainingToAllocate >= required) {
+                    allocatable = required;
+                    remainingToAllocate -= required;
+                } else {
+                    allocatable = remainingToAllocate;
+                    remainingToAllocate = 0;
+                }
+
+                let schStatus = 'pending';
+                if (allocatable >= required) schStatus = 'paid';
+                else if (allocatable > 0) schStatus = 'partial';
+                else schStatus = 'pending'; // or overdue
+
+                await tx.feeSchedule.update({
+                    where: { id: sch.id },
+                    data: {
+                        paidAmount: allocatable,
+                        status: schStatus
+                    }
+                });
+            }
+
+            return {
+                billId,
+                newBalance,
+                status: newStatus,
+                message: newBalance > 0 ? `尚有欠款 $${newBalance} (Remaining Balance)` : 'Payment Complete'
+            };
+        });
+
+        res.json(result);
+
+    } catch (error: any) {
+        console.error('Payment Error:', error);
         res.status(500).json({ error: error.message });
     }
 });

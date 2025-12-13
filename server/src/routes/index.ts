@@ -18,8 +18,10 @@ import healthRoutes from './health';
 import dormitoryRoutes from './dormitories';
 import settingsRoutes from './settings';
 import batchRoutes from './batch';
+import notificationsRoutes from './notifications';
 
 const router = Router();
+
 
 router.use('/auth', authRoutes);
 
@@ -45,5 +47,6 @@ router.use('/health-checks', healthRoutes);
 router.use('/dormitories', dormitoryRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/batch', batchRoutes);
+router.use('/notifications', notificationsRoutes);
 
 export default router;

@@ -125,4 +125,96 @@ router.post('/:id/terminate', async (req, res) => {
     }
 });
 
+// POST /api/deployments/:id/generate-schedule
+// Generates the Fee Schedule for the entire contract duration
+router.post('/:id/generate-schedule', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { overrideEndDate } = req.body;
+
+        const deployment = await prisma.deployment.findUnique({
+            where: { id },
+            include: { monthlyFee: true }
+        });
+
+        if (!deployment) return res.status(404).json({ error: 'Deployment not found' });
+
+        const startDate = deployment.entryDate ? new Date(deployment.entryDate) : new Date(deployment.startDate);
+
+        let endDate: Date;
+        if (overrideEndDate) {
+            endDate = new Date(overrideEndDate);
+        } else if (deployment.endDate) {
+            endDate = new Date(deployment.endDate);
+        } else {
+            // Default to 3 years from start if no end date
+            endDate = new Date(startDate);
+            endDate.setFullYear(endDate.getFullYear() + 3);
+        }
+
+        // Basic validation
+        if (startDate > endDate) {
+            return res.status(400).json({ error: 'Start date cannot be after end date' });
+        }
+
+        // Delete existing pending schedules to allow regeneration
+        await prisma.feeSchedule.deleteMany({
+            where: {
+                deploymentId: id,
+                status: 'pending'
+            }
+        });
+
+        const schedules = [];
+        let currentDate = new Date(startDate);
+        // Normalize to 1st of month for billing cycle logic?
+        // Or keep exact dates? 
+        // Standard practice: Fee is due monthly relative to start.
+        // E.g. Start Jan 15 -> Due Feb 15, Mar 15...
+        // Let's iterate by adding months to the start date.
+
+        let installment = 1;
+        const fees = deployment.monthlyFee || { amountYear1: 1800, amountYear2: 1700, amountYear3: 1500 };
+
+        while (currentDate <= endDate) {
+            // Determine expected amount based on year
+            // Year 1 (Months 1-12), Year 2 (13-24), Year 3 (25+)
+            let amount = Number(fees.amountYear1);
+            if (installment > 12 && installment <= 24) amount = Number(fees.amountYear2);
+            else if (installment > 24) amount = Number(fees.amountYear3);
+
+            // Don't generate if past the end date (edge case where loop condition might need check)
+            // But we want to cover the period.
+
+            schedules.push({
+                deploymentId: id,
+                installmentNo: installment,
+                scheduleDate: new Date(currentDate),
+                expectedAmount: amount,
+                status: 'pending',
+                description: `第 ${installment} 期服務費 (Year ${Math.ceil(installment / 12)})`
+            });
+
+            // Advance 1 month
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            installment++;
+        }
+
+        // Batch Create
+        await prisma.feeSchedule.createMany({
+            data: schedules
+        });
+
+        res.json({
+            success: true,
+            count: schedules.length,
+            period: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`
+        });
+
+    } catch (error: any) {
+        console.error('Generate Fee Schedule Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

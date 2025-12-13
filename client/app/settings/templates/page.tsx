@@ -1,0 +1,302 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import {
+    FileText, Upload, Trash2, Download,
+    Plus, Search, FolderOpen, AlertCircle, CheckCircle, Loader2
+} from 'lucide-react';
+
+const CATEGORIES = [
+    { id: 'entry_packet', label: '新入境套組 (Entry)' },
+    { id: 'handover_packet', label: '交工本 (Handover)' },
+    { id: 'medical_check', label: '定期體檢 (Medical)' },
+    { id: 'transfer_exit', label: '轉出/離境 (Transfer)' },
+    { id: 'entry_report', label: '入國通報 (Report)' },
+    { id: 'permit_app', label: '函文申請 (Permit)' }
+];
+
+export default function TemplateSettingsPage() {
+    const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0].id);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Modal State
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [uploadForm, setUploadForm] = useState({
+        name: '',
+        description: '',
+        category: CATEGORIES[0].id,
+        file: null as File | null
+    });
+    const [isUploading, setIsUploading] = useState(false);
+
+    const fetchTemplates = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch(`http://localhost:3001/api/documents/templates?category=${selectedCategory}`);
+            if (res.ok) {
+                const data = await res.json();
+                setTemplates(Array.isArray(data) ? data : []);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTemplates();
+        setUploadForm(prev => ({ ...prev, category: selectedCategory }));
+    }, [selectedCategory]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setUploadForm(prev => ({ ...prev, file: e.target.files![0] }));
+        }
+    };
+
+    const handleUpload = async () => {
+        if (!uploadForm.file || !uploadForm.name) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('file', uploadForm.file);
+        formData.append('name', uploadForm.name);
+        formData.append('description', uploadForm.description);
+        formData.append('category', uploadForm.category);
+
+        try {
+            const res = await fetch('http://localhost:3001/api/documents/templates', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                setIsUploadModalOpen(false);
+                setUploadForm({
+                    name: '',
+                    description: '',
+                    category: selectedCategory,
+                    file: null
+                });
+                fetchTemplates(); // Refresh
+                alert('上傳成功 (Upload Successful)');
+            } else {
+                const err = await res.json();
+                alert('Upload Failed: ' + (err.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error(error);
+            alert('System Error');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this template?')) return;
+        try {
+            // Assuming DELETE endpoint exists, if not, UI handles removal only visually?
+            // Checking backend routes... usually DELETE /:id
+            // If backend is missing DELETE, we might fail. Just trying for now.
+            const res = await fetch(`http://localhost:3001/api/documents/templates/${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                fetchTemplates();
+            } else {
+                alert('Delete Failed (Backend support pending?)');
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    return (
+        <div className="p-8 max-w-7xl mx-auto h-[calc(100vh-64px)] flex flex-col animate-in fade-in duration-500">
+            <div className="flex justify-between items-center mb-8 shrink-0">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900">文件範本管理 (Templates)</h1>
+                    <p className="text-slate-500 mt-2">管理系統自動生成文件所使用的 Word (.docx) 範本</p>
+                </div>
+                <button
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm hover:shadow"
+                >
+                    <Upload size={20} />
+                    <span>上傳新範本</span>
+                </button>
+            </div>
+
+            <div className="flex gap-8 flex-1 overflow-hidden">
+                {/* Categorized Sidebar */}
+                <div className="w-64 shrink-0 flex flex-col gap-2 overflow-y-auto pr-2">
+                    {CATEGORIES.map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setSelectedCategory(cat.id)}
+                            className={`text-left px-4 py-3 rounded-lg flex items-center gap-3 transition ${selectedCategory === cat.id
+                                    ? 'bg-blue-50 text-blue-700 font-bold border border-blue-100'
+                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
+                                }`}
+                        >
+                            <FolderOpen size={18} className={selectedCategory === cat.id ? 'text-blue-500' : 'text-slate-400'} />
+                            <span className="truncate">{cat.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Main Content */}
+                <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                            <FileText size={18} className="text-slate-400" />
+                            {CATEGORIES.find(c => c.id === selectedCategory)?.label}
+                            <span className="bg-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded-full ml-2">
+                                {templates.length}
+                            </span>
+                        </h3>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-0">
+                        {isLoading ? (
+                            <div className="flex justify-center items-center h-full text-slate-400">
+                                <Loader2 className="animate-spin mr-2" /> Loading...
+                            </div>
+                        ) : templates.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                                <FileText size={48} className="opacity-20 mb-4" />
+                                <p>此類別尚無範本 (No templates)</p>
+                            </div>
+                        ) : (
+                            <table className="w-full">
+                                <thead className="bg-slate-50 sticky top-0 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <tr>
+                                        <th className="p-4">範本名稱 (Name)</th>
+                                        <th className="p-4">描述 (Description)</th>
+                                        <th className="p-4 w-32">檔案大小</th>
+                                        <th className="p-4 w-24 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {templates.map(tmpl => (
+                                        <tr key={tmpl.id} className="hover:bg-slate-50 transition group">
+                                            <td className="p-4">
+                                                <div className="font-bold text-slate-800">{tmpl.name}</div>
+                                                <div className="text-xs text-slate-400 font-mono mt-0.5">{tmpl.filename}</div>
+                                            </td>
+                                            <td className="p-4 text-sm text-slate-600">
+                                                {tmpl.description || '-'}
+                                            </td>
+                                            <td className="p-4 text-sm text-slate-500 font-mono">
+                                                {/* Mock size if not in DB, roughly */}
+                                                KB
+                                            </td>
+                                            <td className="p-4 text-center flex justify-center gap-2 opacity-100">
+                                                {/* <button className="p-2 text-slate-400 hover:text-blue-600 transition"><Download size={18} /></button> */}
+                                                <button
+                                                    onClick={() => handleDelete(tmpl.id)}
+                                                    className="p-2 text-slate-400 hover:text-red-600 transition rounded hover:bg-red-50"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Upload Modal */}
+            {isUploadModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-slate-900">上傳新範本 (Upload Template)</h2>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">檔案 (Word .docx)</label>
+                                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-blue-400 transition cursor-pointer bg-slate-50 relative">
+                                    <input
+                                        type="file"
+                                        accept=".docx"
+                                        onChange={handleFileChange}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    />
+                                    {uploadForm.file ? (
+                                        <div className="flex items-center justify-center gap-2 text-blue-600 font-bold">
+                                            <CheckCircle size={20} />
+                                            {uploadForm.file.name}
+                                        </div>
+                                    ) : (
+                                        <div className="text-slate-500">
+                                            <Upload className="mx-auto mb-2 text-slate-400" />
+                                            Drag & drop or Click to browse
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">範本名稱 (Name)</label>
+                                <input
+                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={uploadForm.name}
+                                    onChange={e => setUploadForm({ ...uploadForm, name: e.target.value })}
+                                    placeholder="e.g. 勞動契約書 v2024"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">類別 (Category)</label>
+                                <select
+                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                    value={uploadForm.category}
+                                    onChange={e => setUploadForm({ ...uploadForm, category: e.target.value })}
+                                >
+                                    {CATEGORIES.map(c => (
+                                        <option key={c.id} value={c.id}>{c.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">描述 (Description)</label>
+                                <textarea
+                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none"
+                                    value={uploadForm.description}
+                                    onChange={e => setUploadForm({ ...uploadForm, description: e.target.value })}
+                                    placeholder="Optional description..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-8">
+                            <button
+                                onClick={() => setIsUploadModalOpen(false)}
+                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={handleUpload}
+                                disabled={isUploading || !uploadForm.file || !uploadForm.name}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {isUploading && <Loader2 className="animate-spin" size={16} />}
+                                上傳 (Upload)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

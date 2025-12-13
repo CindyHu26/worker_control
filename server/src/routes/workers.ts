@@ -129,6 +129,9 @@ router.get('/:id', async (req, res) => {
                             include: {
                                 permitDocument: true
                             }
+                        },
+                        feeSchedules: {
+                            orderBy: { installmentNo: 'asc' }
                         }
                     },
                     orderBy: { startDate: 'desc' }
