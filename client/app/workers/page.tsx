@@ -66,39 +66,39 @@ export default function WorkersPage() {
         <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">移工管理 (Workers)</h1>
-                    <p className="text-slate-500 mt-2">Manage worker profiles and documents.</p>
+                    <h1 className="text-3xl font-bold text-slate-900">移工管理</h1>
+                    <p className="text-slate-500 mt-2">管理移工資料與文件</p>
                 </div>
                 <Link
                     href="/workers/new"
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm hover:shadow"
                 >
                     <Plus size={20} />
-                    <span>New Worker</span>
+                    <span>新增移工</span>
                 </Link>
             </div>
 
             {/* Search Toolbar */}
             <SearchToolbar
                 onSearch={handleSearch}
-                placeholder="Search name, passport, arc..."
+                placeholder="搜尋姓名、護照、居留證..."
                 showNationality={true}
                 nationalityOptions={[
-                    { label: 'Indonesia', value: 'Indonesia' },
-                    { label: 'Vietnam', value: 'Vietnam' },
-                    { label: 'Philippines', value: 'Philippines' },
-                    { label: 'Thailand', value: 'Thailand' }
+                    { label: '印尼 (Indonesia)', value: 'Indonesia' },
+                    { label: '越南 (Vietnam)', value: 'Vietnam' },
+                    { label: '菲律賓 (Philippines)', value: 'Philippines' },
+                    { label: '泰國 (Thailand)', value: 'Thailand' }
                 ]}
                 statusOptions={[
-                    { label: 'Active', value: 'active' },
-                    { label: 'Inactive', value: 'inactive' }
+                    { label: '在職 (Active)', value: 'active' },
+                    { label: '非在職 (Inactive)', value: 'inactive' }
                 ]}
             />
 
             {/* Results Info */}
             {!loading && (
                 <p className="text-sm text-slate-500 mb-4 ml-1">
-                    Found {meta.total} records
+                    共找到 {meta.total} 筆資料
                 </p>
             )}
 
@@ -112,19 +112,19 @@ export default function WorkersPage() {
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <User size={32} className="text-slate-400" />
                     </div>
-                    <h3 className="text-lg font-medium text-slate-900">No workers found</h3>
-                    <p className="text-slate-500 mt-1">Try adjusting your filters or search terms.</p>
+                    <h3 className="text-lg font-medium text-slate-900">未找到移工資料</h3>
+                    <p className="text-slate-500 mt-1">請嘗試調整篩選條件或搜尋關鍵字。</p>
                 </div>
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Worker</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Nationality</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Current Status</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Employer</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">移工</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">國籍</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">目前狀態</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">雇主</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">操作</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -154,11 +154,11 @@ export default function WorkersPage() {
                                         <td className="px-6 py-4">
                                             {hasActiveDeployment ? (
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    Active
+                                                    在職
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                                                    Inactive
+                                                    非在職
                                                 </span>
                                             )}
                                         </td>
@@ -170,7 +170,7 @@ export default function WorkersPage() {
                                                 href={`/workers/${worker.id}`}
                                                 className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline"
                                             >
-                                                View Details
+                                                查看詳情
                                             </Link>
                                         </td>
                                     </tr>
@@ -192,11 +192,11 @@ export default function WorkersPage() {
                             `}
                         >
                             <ChevronLeft size={16} />
-                            Previous
+                            上一頁
                         </button>
 
                         <span className="text-sm text-slate-600 font-medium">
-                            Page {meta.page} of {meta.totalPages}
+                            第 {meta.page} 頁 / 共 {meta.totalPages} 頁
                         </span>
 
                         <button
@@ -209,12 +209,13 @@ export default function WorkersPage() {
                                 }
                             `}
                         >
-                            Next
+                            下一頁
                             <ChevronRight size={16} />
                         </button>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }

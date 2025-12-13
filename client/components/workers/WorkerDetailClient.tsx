@@ -1,125 +1,42 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { User, Briefcase, Calendar, FileText, AlertTriangle, ArrowRightLeft, XCircle, Users, Edit, FileBadge, CheckSquare, Download, Loader2 } from 'lucide-react';
-import AttachmentManager from '../common/AttachmentManager';
-import GovtTabContent from './GovtTabContent';
+import { User, Briefcase, Calendar, FileText, Home, ArrowRightLeft, XCircle, Users, Edit } from 'lucide-react';
 
-export default function WorkerDetailClient({ worker }: { worker: any }) {
+import IdentityTab from './IdentityTab';
+import JobTab from './JobTab';
+import FinanceTab from './FinanceTab';
+import DormTab from './DormTab';
+import DocumentsTab from './DocumentsTab';
+
+export default function WorkerDetailClient({ worker: initialWorker }: { worker: any }) {
+    const [worker, setWorker] = useState(initialWorker);
     const [activeTab, setActiveTab] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('activeWorkerTab');
             if (saved) {
-                localStorage.removeItem('activeWorkerTab'); // Clear after use
+                localStorage.removeItem('activeWorkerTab');
                 return saved;
             }
         }
-        return 'basic';
+        return 'basic'; // Identity
     });
 
-    // Generate Doc Logic
-    const [templates, setTemplates] = useState<any[]>([]);
-    const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
-    const [docCategory, setDocCategory] = useState<string>('entry_packet'); // Default Tab
-    const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
-
-    // Fetch templates when category changes or tab becomes 'documents'
-    useEffect(() => {
-        if (activeTab === 'documents') {
-            setIsTemplatesLoading(true);
-            fetch(`http://localhost:3001/api/documents/templates?category=${docCategory}`)
-                .then(res => res.json())
-                .then(data => {
-                    setTemplates(Array.isArray(data) ? data : []);
-                    setSelectedTemplates([]); // Reset selection on change
-                })
-                .catch(console.error)
-                .finally(() => setIsTemplatesLoading(false));
-        }
-    }, [activeTab, docCategory]);
-
-    const handleTemplateSelect = (id: string) => {
-        if (selectedTemplates.includes(id)) {
-            setSelectedTemplates(selectedTemplates.filter(tid => tid !== id));
-        } else {
-            setSelectedTemplates([...selectedTemplates, id]);
-        }
-    };
-
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            setSelectedTemplates(templates.map(t => t.id));
-        } else {
-            setSelectedTemplates([]);
-        }
-    };
-
-    const handleDownload = async (idsToDownload: string[]) => {
-        if (idsToDownload.length === 0) return;
-        setIsGenerating(true);
-        try {
-            const res = await fetch('http://localhost:3001/api/documents/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    workerId: worker.id,
-                    templateIds: idsToDownload
-                })
-            });
-
-            if (res.ok) {
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-
-                // Name guess
-                let filename = 'Document.docx';
-                const disposition = res.headers.get('Content-Disposition');
-                if (disposition && disposition.indexOf('attachment') !== -1) {
-                    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                    const matches = filenameRegex.exec(disposition);
-                    if (matches != null && matches[1]) {
-                        filename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
-                    }
-                }
-
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            } else {
-                const err = await res.json();
-                alert('Generation Failed: ' + (err.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error(error);
-            alert('System Error');
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    // Termination Modal
+    // Modals State
     const [showTermModal, setShowTermModal] = useState(false);
-    const [termForm, setTermForm] = useState({
-        endDate: '',
-        reason: 'contract_terminated',
-        notes: ''
-    });
-
-    // Transfer Modal
     const [showTransferModal, setShowTransferModal] = useState(false);
+    const [showEntryModal, setShowEntryModal] = useState(false);
+    const [showAssignModal, setShowAssignModal] = useState(false);
+
+    // Form States for Modals
+    const [termForm, setTermForm] = useState({ endDate: '', reason: 'contract_terminated', notes: '' });
     const [newEmployerId, setNewEmployerId] = useState('');
     const [transferDate, setTransferDate] = useState('');
+    const [entryForm, setEntryForm] = useState({ flightNumber: '', flightArrivalDate: '', pickupPerson: '' });
+    const [assignForm, setAssignForm] = useState({ salesId: '', serviceId: '', adminId: '', translatorId: '' });
 
-    // Service Team Logic
+    // Service Team Users
     const [users, setUsers] = useState<any[]>([]);
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [assignForm, setAssignForm] = useState({
-        salesId: '', serviceId: '', adminId: '', translatorId: ''
-    });
 
     useEffect(() => {
         // Fetch Users for assignment
@@ -129,33 +46,32 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
             .catch(console.error);
     }, []);
 
-    const handleAssignSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // Central Update Handler
+    const handleUpdate = async (updatedFields: any) => {
         try {
-            const res = await fetch(`http://localhost:3001/api/workers/${worker.id}/assign-team`, {
-                method: 'POST',
+            const res = await fetch(`http://localhost:3001/api/workers/${worker.id}`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(assignForm)
+                body: JSON.stringify(updatedFields)
             });
+
             if (res.ok) {
-                alert('團隊指派成功');
-                window.location.reload();
+                // Better approach: Re-fetch entire worker to ensure data consistency
+                const fullRes = await fetch(`http://localhost:3001/api/workers/${worker.id}`);
+                const fullData = await fullRes.json();
+                setWorker(fullData);
             } else {
-                alert('指派失敗');
+                const err = await res.json();
+                alert('Update Failed: ' + (err.error || 'Unknown error'));
+                throw new Error(err.error);
             }
-        } catch (e) {
-            console.error(e);
-            alert('系統錯誤');
+        } catch (error) {
+            console.error(error);
+            throw error;
         }
     };
 
-    // Arrange Entry Modal
-    const [showEntryModal, setShowEntryModal] = useState(false);
-    const [entryForm, setEntryForm] = useState({
-        flightNumber: '',
-        flightArrivalDate: '',
-        pickupPerson: ''
-    });
+    // --- Specific Action Handlers (Entry, Transfer, Terminate, Assign) ---
 
     const handleEntrySubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -165,74 +81,63 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(entryForm)
             });
-
             if (res.ok) {
                 alert('安排成功！系統已更新時程。');
-                localStorage.setItem('activeWorkerTab', 'timeline');
+                localStorage.setItem('activeWorkerTab', 'job'); // Switch to job tab
                 window.location.reload();
             } else {
                 alert('更新失敗');
             }
-        } catch (error) {
-            console.error(error);
-            alert('系統錯誤');
-        }
+        } catch (error) { console.error(error); alert('系統錯誤'); }
     };
 
     const handleTransfer = async () => {
         if (!newEmployerId || !transferDate) return alert('請填寫完整資訊');
-
         try {
             const res = await fetch(`http://localhost:3001/api/workers/${worker.id}/transfer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ newEmployerId, transferDate })
             });
-            if (res.ok) {
-                alert('轉換成功！');
-                window.location.reload();
-            } else {
-                alert('轉換失敗');
-            }
-        } catch (e) {
-            console.error(e);
-            alert('系統錯誤');
-        }
+            if (res.ok) { alert('轉換成功！'); window.location.reload(); }
+            else { alert('轉換失敗'); }
+        } catch (e) { console.error(e); alert('系統錯誤'); }
     };
 
     const handleTerminationSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const currentDeployment = worker.deployments?.[0];
         if (!currentDeployment) return alert('無有效聘僱可終止');
-
         try {
             const res = await fetch(`http://localhost:3001/api/deployments/${currentDeployment.id}/terminate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(termForm)
             });
-
-            if (res.ok) {
-                alert('合約已終止。');
-                window.location.reload();
-            } else {
-                const data = await res.json();
-                alert('操作失敗: ' + data.error);
-            }
-        } catch (e) {
-            console.error(e);
-            alert('系統錯誤');
-        }
+            if (res.ok) { alert('合約已終止。'); window.location.reload(); }
+            else { const data = await res.json(); alert('操作失敗: ' + data.error); }
+        } catch (e) { console.error(e); alert('系統錯誤'); }
     };
 
+    const handleAssignSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`http://localhost:3001/api/workers/${worker.id}/assign-team`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(assignForm)
+            });
+            if (res.ok) { alert('團隊指派成功'); window.location.reload(); }
+            else { alert('指派失敗'); }
+        } catch (e) { console.error(e); alert('系統錯誤'); }
+    };
+
+    // Helper: Current Deployment
     const currentDeployment = worker.deployments?.[0]; // Assuming sorted by desc
-    const currentTimeline = currentDeployment?.timelines;
-
-
 
     return (
         <div className="p-8">
-            {/* Header */}
+            {/* Header / Summary Card */}
             <div className="bg-white p-6 rounded-lg shadow mb-6 flex justify-between items-center">
                 <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-2xl">
@@ -246,574 +151,235 @@ export default function WorkerDetailClient({ worker }: { worker: any }) {
                             ) : currentDeployment?.status === 'runaway' ? (
                                 <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-bold">Runaway (逃跑)</span>
                             ) : (
-                                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold">Inactive (非在職)</span>
+                                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold">Inactive ({currentDeployment?.status || '非在職'})</span>
                             )}
-                            <span>護照: {worker.passports[0]?.passportNumber || '-'}</span>
+                            <span className="text-sm">| 護照: {worker.passports?.[0]?.passportNumber || '-'}</span>
+                            <span className="text-sm">| 居留證: {worker.arcs?.[0]?.arcNumber || '-'}</span>
                         </p>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    {/* Arrange Entry Button - show only if active or pending */}
+                    {/* Action Buttons */}
                     {(currentDeployment?.status === 'active' || currentDeployment?.status === 'pending') && (
                         <>
-                            <button
-                                onClick={() => setShowEntryModal(true)}
-                                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow transition-colors"
-                            >
-                                <span className="font-bold">+</span>
-                                安排入境
+                            <button onClick={() => setShowEntryModal(true)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow transition-colors text-sm">
+                                <span className="font-bold">+</span> 安排入境
                             </button>
-
-                            <button
-                                onClick={() => setShowTransferModal(true)}
-                                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow transition-colors"
-                            >
-                                <ArrowRightLeft size={18} />
-                                轉換雇主
+                            <button onClick={() => setShowTransferModal(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow transition-colors text-sm">
+                                <ArrowRightLeft size={16} /> 轉換雇主
                             </button>
-
-                            <button
-                                onClick={() => setShowTermModal(true)}
-                                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow transition-colors"
-                            >
-                                <XCircle size={18} />
-                                終止合約
+                            <button onClick={() => setShowTermModal(true)} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow transition-colors text-sm">
+                                <XCircle size={16} /> 終止合約
                             </button>
                         </>
                     )}
                 </div>
             </div>
 
-            {/* Service Team Widget */}
-            <div className="bg-white p-6 rounded-lg shadow mb-6 border border-slate-200">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-lg flex items-center gap-2 text-slate-800">
-                        <Users className="text-blue-600" size={20} /> 服務團隊 (Service Team)
+            {/* Service Team Bar (Compact) */}
+            <div className="bg-slate-50 px-6 py-4 rounded-lg shadow-sm mb-6 border border-slate-200 flex justify-between items-center">
+                <div className="flex items-center gap-6">
+                    <h3 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide">
+                        <Users size={16} /> Service Team
                     </h3>
-                    <button
-                        onClick={() => {
-                            const map: any = {};
-                            worker.serviceAssignments?.forEach((sa: any) => {
-                                if (sa.role === 'sales_agent') map.salesId = sa.internalUserId;
-                                if (sa.role === 'service_staff') map.serviceId = sa.internalUserId;
-                                if (sa.role === 'admin_staff') map.adminId = sa.internalUserId;
-                                if (sa.role === 'translator') map.translatorId = sa.internalUserId;
-                            });
-                            setAssignForm({
-                                salesId: map.salesId || '',
-                                serviceId: map.serviceId || '',
-                                adminId: map.adminId || '',
-                                translatorId: map.translatorId || ''
-                            });
-                            setShowAssignModal(true);
-                        }}
-                        className="text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1 rounded transition flex items-center gap-1 font-medium"
-                    >
-                        <Edit size={14} /> 指派人員
+                    <div className="flex gap-4">
+                        {[
+                            { label: '業務', role: 'sales_agent' },
+                            { label: '服務', role: 'service_staff' },
+                            { label: '行政', role: 'admin_staff' },
+                            { label: '翻譯', role: 'translator' }
+                        ].map(item => {
+                            const assigned = worker.serviceAssignments?.find((sa: any) => sa.role === item.role);
+                            return (
+                                <div key={item.role} className="flex items-center gap-2 text-sm">
+                                    <span className="text-slate-400">{item.label}:</span>
+                                    <span className={`font-medium ${assigned ? 'text-slate-800' : 'text-slate-400 italic'}`}>
+                                        {assigned ? assigned.internalUser.username : '-'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                <button
+                    onClick={() => {
+                        const map: any = {};
+                        worker.serviceAssignments?.forEach((sa: any) => {
+                            if (sa.role === 'sales_agent') map.salesId = sa.internalUserId;
+                            if (sa.role === 'service_staff') map.serviceId = sa.internalUserId;
+                            if (sa.role === 'admin_staff') map.adminId = sa.internalUserId;
+                            if (sa.role === 'translator') map.translatorId = sa.internalUserId;
+                        });
+                        setAssignForm({
+                            salesId: map.salesId || '',
+                            serviceId: map.serviceId || '',
+                            adminId: map.adminId || '',
+                            translatorId: map.translatorId || ''
+                        });
+                        setShowAssignModal(true);
+                    }}
+                    className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                >
+                    <Edit size={12} /> Edit Team
+                </button>
+            </div>
+
+            {/* Tabs Navigation */}
+            <div className="bg-white rounded-t-lg border-b border-gray-200 shadow-sm mb-0">
+                <div className="flex overflow-x-auto">
+                    <button onClick={() => setActiveTab('basic')} className={`shrink-0 px-6 py-4 font-bold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'basic' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                        <User size={18} /> 基本資料
+                    </button>
+                    <button onClick={() => setActiveTab('job')} className={`shrink-0 px-6 py-4 font-bold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'job' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                        <Briefcase size={18} /> 聘僱與證件
+                    </button>
+                    <button onClick={() => setActiveTab('finance')} className={`shrink-0 px-6 py-4 font-bold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'finance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                        <div className="flex items-center text-lg">NT$</div> 財務管理
+                    </button>
+                    <button onClick={() => setActiveTab('dorm')} className={`shrink-0 px-6 py-4 font-bold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'dorm' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                        <Home size={18} /> 宿舍管理
+                    </button>
+                    <button onClick={() => setActiveTab('docs')} className={`shrink-0 px-6 py-4 font-bold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'docs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                        <FileText size={18} /> 行政文件 (Batch)
                     </button>
                 </div>
-                <div className="grid grid-cols-4 gap-4">
-                    {[
-                        { label: '業務人員 (Sales Agent)', role: 'sales_agent' },
-                        { label: '服務人員 (Service Staff)', role: 'service_staff' },
-                        { label: '行政人員 (Admin Staff)', role: 'admin_staff' },
-                        { label: '翻譯人員 (Translator)', role: 'translator' }
-                    ].map(item => {
-                        const assigned = worker.serviceAssignments?.find((sa: any) => sa.role === item.role);
-                        return (
-                            <div key={item.role} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                <span className="block text-xs uppercase text-slate-500 mb-1 font-semibold tracking-wider">{item.label}</span>
-                                <div className={`font-bold text-base ${assigned ? 'text-slate-800' : 'text-slate-400 italic'}`}>
-                                    {assigned ? assigned.internalUser.username : '未指派'}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200 mb-6">
-                <button onClick={() => setActiveTab('basic')} className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'basic' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>
-                    <User size={18} /> 基本資料
-                </button>
-                <button onClick={() => setActiveTab('deployment')} className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'deployment' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>
-                    <Briefcase size={18} /> 聘僱狀況
-                </button>
-                <button onClick={() => setActiveTab('timeline')} className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'timeline' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>
-                    <Calendar size={18} /> 時程與警示
-                </button>
-                <button onClick={() => setActiveTab('documents')} className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'documents' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>
-                    <FileText size={18} /> 文件管理
-                </button>
-                <button onClick={() => setActiveTab('incidents')} className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'incidents' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>
-                    <AlertTriangle size={18} /> 事件紀錄
-                </button>
-                <button onClick={() => setActiveTab('govt')} className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'govt' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>
-                    <FileBadge size={18} /> 行政函文
-                </button>
+            {/* Tab Content */}
+            <div className="bg-white p-8 rounded-b-lg shadow min-h-[500px]">
+                {activeTab === 'basic' && <IdentityTab worker={worker} onUpdate={handleUpdate} />}
+                {activeTab === 'job' && <JobTab worker={worker} currentDeployment={currentDeployment} onUpdate={handleUpdate} />}
+                {activeTab === 'finance' && <FinanceTab worker={worker} onUpdate={handleUpdate} />}
+                {activeTab === 'dorm' && <DormTab worker={worker} />}
+                {activeTab === 'docs' && <DocumentsTab worker={worker} />}
             </div>
 
-            {/* Content */}
-            <div className="bg-white p-6 rounded-lg shadow min-h-[400px]">
-                {activeTab === 'basic' && (
-                    <div className="grid grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-500">國籍</label>
-                            <p className="mt-1 text-lg">{worker.nationality}</p>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-500">生日</label>
-                            <p className="mt-1 text-lg">{new Date(worker.dob).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-500">手機</label>
-                            <p className="mt-1 text-lg">{worker.mobilePhone || '-'}</p>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-500">國外地址</label>
-                            <p className="mt-1 text-lg">{worker.foreignAddress || '-'}</p>
-                        </div>
-                    </div>
-                )}
+            {/* --- Modals (Entry, Transfer, Terminate, Assign) --- */}
 
-                {activeTab === 'deployment' && (
-                    <div>
-                        <h3 className="font-bold text-lg mb-4">目前聘僱</h3>
-                        {/* Show Termination Info if ended */}
-                        {currentDeployment?.terminationReason && (
-                            <div className="bg-red-50 p-4 rounded border border-red-100 mb-4">
-                                <h4 className="font-bold text-red-800 mb-2">合約已終止</h4>
-                                <div className="grid grid-cols-2 gap-4 text-sm text-red-700">
-                                    <div>原因: {currentDeployment.terminationReason}</div>
-                                    <div>日期: {currentDeployment.endDate ? new Date(currentDeployment.endDate).toLocaleDateString() : '-'}</div>
-                                    <div className="col-span-2">備註: {currentDeployment.terminationNotes || '-'}</div>
-                                </div>
+            {/* Create Entry Modal */}
+            {showEntryModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-[500px]">
+                        <h2 className="text-xl font-bold mb-4">安排入境 (Arrange Entry)</h2>
+                        <form onSubmit={handleEntrySubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">班機號碼 (Flight No.)</label>
+                                <input type="text" required className="w-full border p-2 rounded" value={entryForm.flightNumber} onChange={e => setEntryForm({ ...entryForm, flightNumber: e.target.value })} placeholder="e.g. BR-123" />
                             </div>
-                        )}
-
-                        {currentDeployment ? (
-                            <div className="space-y-4">
-                                <div className="bg-blue-50 p-4 rounded border border-blue-100">
-                                    <p className="text-sm text-gray-500">雇主 (Employer)</p>
-                                    <p className="text-xl font-bold text-blue-800">{currentDeployment.employer.companyName}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <span className="text-gray-500">工作性質:</span> {currentDeployment.jobType}
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">班別:</span> {currentDeployment.shift}
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">入境日期:</span> {currentDeployment.entryDate ? new Date(currentDeployment.entryDate).toLocaleDateString() : '-'}
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">班機號碼:</span> {currentDeployment.flightNumber || '-'}
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">起始日期:</span> {new Date(currentDeployment.startDate).toLocaleDateString()}
-                                    </div>
-                                </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">抵達日期 (Arrival Date)</label>
+                                <input type="date" required className="w-full border p-2 rounded" value={entryForm.flightArrivalDate} onChange={e => setEntryForm({ ...entryForm, flightArrivalDate: e.target.value })} />
                             </div>
-                        ) : (
-                            <p>無有效聘僱資料</p>
-                        )}
-                    </div>
-                )}
-
-                {activeTab === 'timeline' && (
-                    <div>
-                        <h3 className="font-bold text-lg mb-4">關鍵時程 (Timelines)</h3>
-                        {!currentTimeline ? <p>尚無時程資料 - 請確認是否已安排入境或有聘僱紀錄</p> : (
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="border border-green-200 bg-green-50 p-3 rounded">
-                                    <span className="block text-green-800 text-sm font-semibold">入國體檢截止 (Entry Med Check)</span>
-                                    <span className="text-lg font-bold text-green-900">{currentTimeline.entryMedCheckDeadline ? new Date(currentTimeline.entryMedCheckDeadline).toLocaleDateString() : '-'}</span>
-                                    <p className="text-xs text-green-700 mt-1">入境後 3 日內</p>
-                                </div>
-                                <div className="border border-blue-200 bg-blue-50 p-3 rounded">
-                                    <span className="block text-blue-800 text-sm font-semibold">居留證申請截止 (ARC Application)</span>
-                                    <span className="text-lg font-bold text-blue-900">{currentTimeline.arcDeadline ? new Date(currentTimeline.arcDeadline).toLocaleDateString() : '-'}</span>
-                                    <p className="text-xs text-blue-700 mt-1">入境後 15 日內</p>
-                                </div>
-                                <div className="border p-3 rounded opacity-75">
-                                    <span className="block text-gray-500 text-sm">體檢(6個月)</span>
-                                    <span className="text-lg font-medium">{currentTimeline.medCheck6moDeadline ? new Date(currentTimeline.medCheck6moDeadline).toLocaleDateString() : '-'}</span>
-                                </div>
-                                <div className="border p-3 rounded opacity-75">
-                                    <span className="block text-gray-500 text-sm">體檢(18個月)</span>
-                                    <span className="text-lg font-medium">{currentTimeline.medCheck18moDeadline ? new Date(currentTimeline.medCheck18moDeadline).toLocaleDateString() : '-'}</span>
-                                </div>
-                                <div className="border p-3 rounded opacity-75">
-                                    <span className="block text-gray-500 text-sm">體檢(30個月)</span>
-                                    <span className="text-lg font-medium">{currentTimeline.medCheck30moDeadline ? new Date(currentTimeline.medCheck30moDeadline).toLocaleDateString() : '-'}</span>
-                                </div>
-                                <div className="border p-3 rounded opacity-75">
-                                    <span className="block text-gray-500 text-sm">居留證到期 (ARC Expiry)</span>
-                                    <span className="text-lg font-medium">{currentTimeline.arcExpiryDate ? new Date(currentTimeline.arcExpiryDate).toLocaleDateString() : '-'}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-
-                {activeTab === 'documents' && (
-                    <div className="flex gap-6">
-                        {/* Sidebar */}
-                        <div className="w-1/4 space-y-2">
-                            <h4 className="font-bold text-slate-700 mb-2">文件類別 (Category)</h4>
-                            {[
-                                { id: 'entry_packet', label: '新入境套組 (Entry)' },
-                                { id: 'handover_packet', label: '交工本 (Handover)' },
-                                { id: 'medical_check', label: '定期體檢 (Medical)' },
-                                { id: 'transfer_exit', label: '轉出/離境 (Transfer)' },
-                                { id: 'entry_report', label: '入國通報 (Report)' },
-                                { id: 'permit_app', label: '函文申請 (Permit)' }
-                            ].map(cat => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setDocCategory(cat.id)}
-                                    className={`w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition ${docCategory === cat.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                                >
-                                    <span className="font-medium">{cat.label}</span>
-                                    {docCategory === cat.id && <CheckSquare size={16} />}
-                                </button>
-                            ))}
-
-                            <div className="pt-6">
-                                <h4 className="font-bold text-slate-700 mb-2">已上傳文件</h4>
-                                <AttachmentManager refId={worker.id} refTable="workers" />
-                            </div>
-                        </div>
-
-                        {/* Main Content */}
-                        <div className="w-3/4">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                                    {docCategory === 'entry_packet' && '新入境套組 (Entry Packet)'}
-                                    {docCategory === 'entry_report' && '入國通報 (Entry Report)'}
-                                    {/* ... map others title based on state if needed ... */}
-                                    文件列表
-                                </h3>
-                                <button
-                                    disabled={selectedTemplates.length === 0 || isGenerating}
-                                    onClick={() => handleDownload(selectedTemplates)}
-                                    className={`px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow transition ${selectedTemplates.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
-                                >
-                                    {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
-                                    {selectedTemplates.length > 0 ? `下載選取 (${selectedTemplates.length})` : '批次下載'}
-                                </button>
-                            </div>
-
-                            <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
-                                {isTemplatesLoading ? (
-                                    <div className="p-8 text-center text-slate-400">Loading templates...</div>
-                                ) : templates.length === 0 ? (
-                                    <div className="p-8 text-center text-slate-400">在此類別無可用範本 (No templates found)</div>
-                                ) : (
-                                    <table className="w-full">
-                                        <thead className="bg-slate-50 border-b">
-                                            <tr>
-                                                <th className="w-12 p-3 text-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        onChange={(e) => handleSelectAll(e.target.checked)}
-                                                        checked={templates.length > 0 && selectedTemplates.length === templates.length}
-                                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                    />
-                                                </th>
-                                                <th className="text-left p-3 text-xs font-bold text-slate-500 uppercase tracking-wider">文件名稱</th>
-                                                <th className="text-left p-3 text-xs font-bold text-slate-500 uppercase tracking-wider">說明</th>
-                                                <th className="w-20 text-center p-3 text-xs font-bold text-slate-500 uppercase tracking-wider">操作</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {templates.map(tmpl => (
-                                                <tr key={tmpl.id} className="hover:bg-slate-50 transition">
-                                                    <td className="p-3 text-center">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                            checked={selectedTemplates.includes(tmpl.id)}
-                                                            onChange={() => handleTemplateSelect(tmpl.id)}
-                                                        />
-                                                    </td>
-                                                    <td className="p-3 font-medium text-slate-700">{tmpl.name}</td>
-                                                    <td className="p-3 text-sm text-slate-500">{tmpl.description || '-'}</td>
-                                                    <td className="p-3 text-center">
-                                                        <button
-                                                            onClick={() => handleDownload([tmpl.id])}
-                                                            title="下載單一文件"
-                                                            className="text-slate-400 hover:text-blue-600 transition"
-                                                        >
-                                                            <Download size={18} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-
-                {activeTab === 'incidents' && (
-                    <div className="text-center py-10 text-gray-500">
-                        事件紀錄模組
-                    </div>
-                )}
-
-                {activeTab === 'govt' && (
-                    <GovtTabContent worker={worker} currentDeployment={currentDeployment} />
-                )}
-            </div>
-
-            {/* Arrange Entry Modal */}
-            {
-                showEntryModal && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                        <div className="bg-white p-6 rounded-lg shadow-xl w-[500px]">
-                            <h2 className="text-xl font-bold mb-4">安排入境 (Arrange Entry)</h2>
-                            <form onSubmit={handleEntrySubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">班機號碼 (Flight No.)</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full border p-2 rounded"
-                                        value={entryForm.flightNumber}
-                                        onChange={e => setEntryForm({ ...entryForm, flightNumber: e.target.value })}
-                                        placeholder="e.g. BR-123"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">抵達日期 (Arrival Date)</label>
-                                    <input
-                                        type="date"
-                                        required
-                                        className="w-full border p-2 rounded"
-                                        value={entryForm.flightArrivalDate}
-                                        onChange={e => setEntryForm({ ...entryForm, flightArrivalDate: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">接機人員 (Pickup Contact)</label>
-                                    <input
-                                        type="text"
-                                        className="w-full border p-2 rounded"
-                                        value={entryForm.pickupPerson}
-                                        onChange={e => setEntryForm({ ...entryForm, pickupPerson: e.target.value })}
-                                        placeholder="姓名/電話"
-                                    />
-                                </div>
-
-                                <div className="flex justify-end gap-3 mt-6">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowEntryModal(false)}
-                                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-                                    >
-                                        取消
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                                    >
-                                        確認安排
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Transfer Modal */}
-            {
-                showTransferModal && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                        <div className="bg-white p-6 rounded-lg shadow-xl w-[500px]">
-                            <h2 className="text-xl font-bold mb-4">轉換雇主 (Transfer Employer)</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">新雇主 ID (UUID)</label>
-                                    <input
-                                        type="text"
-                                        value={newEmployerId}
-                                        onChange={e => setNewEmployerId(e.target.value)}
-                                        className="w-full border p-2 rounded"
-                                        placeholder="e.g. 550e8400-e29b-..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">生效日期 (Effective Date)</label>
-                                    <input
-                                        type="date"
-                                        value={transferDate}
-                                        onChange={e => setTransferDate(e.target.value)}
-                                        className="w-full border p-2 rounded"
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">接機人員 (Pickup Contact)</label>
+                                <input type="text" className="w-full border p-2 rounded" value={entryForm.pickupPerson} onChange={e => setEntryForm({ ...entryForm, pickupPerson: e.target.value })} placeholder="姓名/電話" />
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
-                                <button
-                                    onClick={() => setShowTransferModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-                                >
-                                    取消
-                                </button>
-                                <button
-                                    onClick={handleTransfer}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                                >
-                                    確認轉換
-                                </button>
+                                <button type="button" onClick={() => setShowEntryModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">取消</button>
+                                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">確認安排</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Transfer Modal */}
+            {showTransferModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-[500px]">
+                        <h2 className="text-xl font-bold mb-4">轉換雇主 (Transfer Employer)</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">新雇主 ID (UUID)</label>
+                                <input type="text" value={newEmployerId} onChange={e => setNewEmployerId(e.target.value)} className="w-full border p-2 rounded" placeholder="e.g. 550e8400-e29b-..." />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">生效日期 (Effective Date)</label>
+                                <input type="date" value={transferDate} onChange={e => setTransferDate(e.target.value)} className="w-full border p-2 rounded" />
                             </div>
                         </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button onClick={() => setShowTransferModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">取消</button>
+                            <button onClick={handleTransfer} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">確認轉換</button>
+                        </div>
                     </div>
-                )
-            }
+                </div>
+            )}
 
             {/* Termination Modal */}
             {showTermModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-[500px]">
-                        <h2 className="text-xl font-bold mb-4 text-red-700">終止聘僱作業 (Terminate Deployment)</h2>
-                        <div className="bg-red-50 p-3 rounded mb-4 text-sm text-red-800">
-                            警告：此操作將結束該移工目前的聘僱狀態。
-                        </div>
+                        <h2 className="text-xl font-bold mb-4 text-red-700">終止聘僱作業</h2>
                         <form onSubmit={handleTerminationSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">離職日 / 終止日 (End Date) *</label>
-                                <input
-                                    type="date"
-                                    required
-                                    className="w-full border p-2 rounded"
-                                    value={termForm.endDate}
-                                    onChange={e => setTermForm({ ...termForm, endDate: e.target.value })}
-                                />
+                                <label className="block text-sm font-medium mb-1">離職日 / 終止日</label>
+                                <input type="date" required className="w-full border p-2 rounded" value={termForm.endDate} onChange={e => setTermForm({ ...termForm, endDate: e.target.value })} />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">原因 (Reason)</label>
-                                <select
-                                    className="w-full border p-2 rounded"
-                                    value={termForm.reason}
-                                    onChange={e => setTermForm({ ...termForm, reason: e.target.value })}
-                                >
-                                    <option value="contract_terminated">雙方合意解約 / 期滿完工 (Terminated/Expired)</option>
-                                    <option value="transferred_out">轉換雇主 (Transferred Out)</option>
-                                    <option value="runaway">失去聯繫 (逃跑 / Runaway)</option>
+                                <label className="block text-sm font-medium mb-1">原因</label>
+                                <select className="w-full border p-2 rounded" value={termForm.reason} onChange={e => setTermForm({ ...termForm, reason: e.target.value })}>
+                                    <option value="contract_terminated">雙方合意解約 / 期滿</option>
+                                    <option value="transferred_out">轉換雇主</option>
+                                    <option value="runaway">失去聯繫 (逃跑)</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">備註 (Notes)</label>
-                                <textarea
-                                    className="w-full border p-2 rounded h-24"
-                                    value={termForm.notes}
-                                    onChange={e => setTermForm({ ...termForm, notes: e.target.value })}
-                                    placeholder="輸入備註 (Enter any additional details)..."
-                                />
+                                <label className="block text-sm font-medium mb-1">備註</label>
+                                <textarea className="w-full border p-2 rounded h-24" value={termForm.notes} onChange={e => setTermForm({ ...termForm, notes: e.target.value })} />
                             </div>
-
                             <div className="flex justify-end gap-3 mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowTermModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-                                >
-                                    取消
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium"
-                                >
-                                    確認終止
-                                </button>
+                                <button type="button" onClick={() => setShowTermModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">取消</button>
+                                <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">確認終止</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* Service Team Assign Modal */}
+            {/* Assign Team Modal */}
             {showAssignModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-[500px]">
-                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <Users size={20} className="text-blue-600" /> 指派服務團隊 (Assign Team)
-                        </h2>
+                        <h2 className="text-xl font-bold mb-4">指派服務團隊 (Assign Team)</h2>
                         <form onSubmit={handleAssignSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">業務人員 (Sales Agent)</label>
-                                <select
-                                    className="w-full border p-2 rounded"
-                                    value={assignForm.salesId}
-                                    onChange={e => setAssignForm({ ...assignForm, salesId: e.target.value })}
-                                >
-                                    <option value="">未指派 (Unassigned)</option>
-                                    {users.map(u => <option key={u.id} value={u.id}>{u.username} ({u.role})</option>)}
+                                <label className="block text-sm font-medium mb-1">業務人員</label>
+                                <select className="w-full border p-2 rounded" value={assignForm.salesId} onChange={e => setAssignForm({ ...assignForm, salesId: e.target.value })}>
+                                    <option value="">未指派</option>
+                                    {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">服務人員 (Service Staff)</label>
-                                <select
-                                    className="w-full border p-2 rounded"
-                                    value={assignForm.serviceId}
-                                    onChange={e => setAssignForm({ ...assignForm, serviceId: e.target.value })}
-                                >
-                                    <option value="">未指派 (Unassigned)</option>
-                                    {users.map(u => <option key={u.id} value={u.id}>{u.username} ({u.role})</option>)}
+                                <label className="block text-sm font-medium mb-1">服務人員</label>
+                                <select className="w-full border p-2 rounded" value={assignForm.serviceId} onChange={e => setAssignForm({ ...assignForm, serviceId: e.target.value })}>
+                                    <option value="">未指派</option>
+                                    {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">行政人員 (Admin Staff)</label>
-                                <select
-                                    className="w-full border p-2 rounded"
-                                    value={assignForm.adminId}
-                                    onChange={e => setAssignForm({ ...assignForm, adminId: e.target.value })}
-                                >
-                                    <option value="">未指派 (Unassigned)</option>
-                                    {users.map(u => <option key={u.id} value={u.id}>{u.username} ({u.role})</option>)}
+                                <label className="block text-sm font-medium mb-1">行政人員</label>
+                                <select className="w-full border p-2 rounded" value={assignForm.adminId} onChange={e => setAssignForm({ ...assignForm, adminId: e.target.value })}>
+                                    <option value="">未指派</option>
+                                    {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">翻譯人員 (Translator)</label>
-                                <select
-                                    className="w-full border p-2 rounded"
-                                    value={assignForm.translatorId}
-                                    onChange={e => setAssignForm({ ...assignForm, translatorId: e.target.value })}
-                                >
-                                    <option value="">未指派 (Unassigned)</option>
-                                    {users.map(u => <option key={u.id} value={u.id}>{u.username} ({u.role})</option>)}
+                                <label className="block text-sm font-medium mb-1">翻譯人員</label>
+                                <select className="w-full border p-2 rounded" value={assignForm.translatorId} onChange={e => setAssignForm({ ...assignForm, translatorId: e.target.value })}>
+                                    <option value="">未指派</option>
+                                    {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                                 </select>
                             </div>
-
-                            <div className="flex justify-end gap-3 mt-6 border-t pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAssignModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-                                >
-                                    取消
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                    確認指派
-                                </button>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button type="button" onClick={() => setShowAssignModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">取消</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">確認指派</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-
-        </div >
+        </div>
     );
 }

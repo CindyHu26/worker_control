@@ -34,17 +34,17 @@ export default function AccountingPage() {
 
     return (
         <div className="p-8 max-w-6xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-slate-800">財務管理 (Accounting/Billing)</h1>
+            <h1 className="text-3xl font-bold mb-8 text-slate-800">財務管理</h1>
 
             <div className="bg-white p-6 rounded-lg shadow border border-slate-200 w-full max-w-md">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-700">
-                    <Calendar className="text-blue-600" /> 月費帳單生成 (Monthly Service Fees)
+                    <Calendar className="text-blue-600" /> 月費帳單生成
                 </h2>
 
                 <div className="space-y-4">
                     <div className="flex gap-4">
                         <div className="flex-1">
-                            <label className="block text-sm font-medium mb-1">Year (年份)</label>
+                            <label className="block text-sm font-medium mb-1">年份</label>
                             <input
                                 type="number"
                                 className="w-full border p-2 rounded"
@@ -53,7 +53,7 @@ export default function AccountingPage() {
                             />
                         </div>
                         <div className="flex-1">
-                            <label className="block text-sm font-medium mb-1">Month (月份)</label>
+                            <label className="block text-sm font-medium mb-1">月份</label>
                             <select
                                 className="w-full border p-2 rounded"
                                 value={month}
@@ -72,7 +72,7 @@ export default function AccountingPage() {
                         className={`w-full py-3 rounded text-white font-bold transition flex justify-center items-center gap-2
                             ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                     >
-                        {loading ? '生成中 (Processing)...' : '執行生成 (Execute Generation)'}
+                        {loading ? '生成中...' : '執行生成'}
                     </button>
 
                     {result && (

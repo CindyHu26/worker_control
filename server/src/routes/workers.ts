@@ -123,6 +123,7 @@ router.get('/:id', async (req, res) => {
                 deployments: {
                     include: {
                         employer: true,
+                        recruitmentLetter: true,
                         timelines: true, // WorkerTimeline
                         permitDetails: {
                             include: {
@@ -236,31 +237,35 @@ router.put('/:id', async (req, res) => {
                     taxId: body.taxId,
                     religion: body.religion,
                     bloodType: body.bloodType,
+                    height: body.height ? Number(body.height) : undefined,
+                    weight: body.weight ? Number(body.weight) : undefined,
+                    isTaxResident: body.isTaxResident,
 
                     mobilePhone: body.mobilePhone,
                     overseasContactPhone: body.overseasContactPhone,
+                    overseasFamilyContact: body.overseasFamilyContact,
+                    emergencyContactPhone: body.emergencyContactPhone,
                     lineId: body.lineId,
                     foreignAddress: body.foreignAddress,
-                    email: body.email, // schema has email? worker model check... 
-                    // Checking schema step 289... Worker does NOT have email. Employer has email.
-                    // internal user has email. 
-                    // User requested "Email" in Tab 1. I missed adding it to schema.
-                    // "Contact: Mobile (TW/Home), Line ID, Email, Address (Residency/Foreign)."
-                    // I missed adding email to Worker model in step 292.
-                    // I will Skip email for now or add it? 
-                    // I'll skip it to avoid schema migration overhead in this step.
+                    maritalStatus: body.maritalStatus,
+                    spouseName: body.spouseName,
+                    educationLevel: body.educationLevel,
+                    birthPlace: body.birthPlace,
+                    marriageDate: body.marriageDate ? new Date(body.marriageDate) : undefined,
+                    divorceDate: body.divorceDate ? new Date(body.divorceDate) : undefined,
 
                     oldPassportNumber: body.oldPassportNumber,
 
                     bankCode: body.bankCode,
                     bankAccountNo: body.bankAccountNo,
+                    bankBranchName: body.bankBranchName,
+                    bankAccountHolder: body.bankAccountHolder,
                     loanBank: body.loanBank,
-                    loanAmount: body.loanAmount ? Number(body.loanAmount) : undefined, // Decimal handled by Prisma usually accepting number/string
+                    loanAmount: body.loanAmount ? Number(body.loanAmount) : undefined,
                 }
             });
 
             // 2. Update Active/Pending Deployment Fields
-            // (visaLetterNo, visaLetterDate, replacementLetterNumber, replacementLetterDate, entryDate, entryReportDate, fingerprintDate)
             const activeDeployment = await tx.deployment.findFirst({
                 where: {
                     workerId: id,

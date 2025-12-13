@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -21,21 +20,17 @@ export default function Sidebar() {
     const pathname = usePathname();
 
     const navItems = [
-        { href: '/', label: '儀表板', subLabel: '(Dashboard)', icon: LayoutDashboard },
-        { href: '/portal', label: '功能導覽', subLabel: '(Portal)', icon: Grid },
-        { href: '/workers', label: '移工管理', subLabel: '(Workers)', icon: Users },
-        { href: '/employers', label: '雇主資料', subLabel: '(Employers)', icon: Briefcase },
-        { href: '/recruitment', label: '招募進度', subLabel: '(Recruitment)', icon: FileText },
+        { href: '/', label: '儀表板', subLabel: 'Dashboard', icon: LayoutDashboard },
+        { href: '/portal', label: '功能導覽', subLabel: 'Portal', icon: Grid },
+        { href: '/workers', label: '移工管理', subLabel: 'Workers', icon: Users },
+        { href: '/employers', label: '雇主管理', subLabel: 'Employers', icon: Briefcase },
+        { href: '/recruitment', label: '招募進度', subLabel: 'Recruitment', icon: FileText },
     ];
 
     const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>, label: string) => {
         if (!collapsed) return;
         const rect = e.currentTarget.getBoundingClientRect();
-        // Since Sidebar is fixed/sticky or full height, we can use rect.top. 
-        // We generally expect the Sidebar to be top-aligned.
-        // To be safe relative to the sidebar container, we might need a ref, 
-        // but using rect.top is often "good enough" for fixed sidebars.
-        // However, if the sidebar scrolls, rect.top changes correctly.
+        // Since Sidebar is fixed/sticky, rect.top is absolute in viewport
         setHoveredItem({ label, top: rect.top });
     };
 
@@ -69,8 +64,8 @@ export default function Sidebar() {
                     </div>
                     {!collapsed && (
                         <div className="whitespace-nowrap transition-opacity duration-300">
-                            <h1 className="text-xl font-bold tracking-tight text-white">TMS 系统</h1>
-                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Migrant Worker System</p>
+                            <h1 className="text-xl font-bold tracking-tight text-white">TMS 系統</h1>
+                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">移工管理系統</p>
                         </div>
                     )}
                 </div>
@@ -129,7 +124,6 @@ export default function Sidebar() {
                     {!collapsed && (
                         <div className="whitespace-nowrap overflow-hidden">
                             <span className="block text-sm font-medium">系統設定</span>
-                            <span className="text-[10px] opacity-60 font-light block -mt-0.5">(Settings)</span>
                         </div>
                     )}
                 </Link>
@@ -150,15 +144,15 @@ export default function Sidebar() {
                 </div>
             </div>
 
-            {/* Custom Tooltip Portal (Rendered outside nav logic via absolute on aside) */}
+            {/* Custom Tooltip Portal (Rendered via fixed position) */}
             {collapsed && hoveredItem && (
                 <div
-                    className="fixed z-50 left-20 ml-4 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-md shadow-xl border border-slate-700 animate-in fade-in slide-in-from-left-2 duration-200 pointer-events-none"
+                    className="fixed z-50 left-20 ml-2 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded shadow-xl border border-slate-600 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 pointer-events-none"
                     style={{ top: hoveredItem.top + 8 }} // Align roughly with center of item
                 >
                     {hoveredItem.label}
-                    {/* Arrow */}
-                    <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-slate-800 border-l border-b border-slate-700 rotate-45" />
+                    {/* Tiny Arrow */}
+                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-slate-800 border-l border-b border-slate-600 rotate-45" />
                 </div>
             )}
         </aside>

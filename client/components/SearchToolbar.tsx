@@ -16,7 +16,7 @@ interface SearchToolbarProps {
 
 export default function SearchToolbar({
     onSearch,
-    placeholder = "Search...",
+    placeholder = "搜尋...",
     statusOptions = [],
     nationalityOptions = [],
     showNationality = false
@@ -66,7 +66,7 @@ export default function SearchToolbar({
             <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-slate-500 text-sm font-medium mr-1">
                     <Filter size={16} />
-                    <span>Filters:</span>
+                    <span>篩選:</span>
                 </div>
 
                 {/* Status Dropdown */}
@@ -75,7 +75,7 @@ export default function SearchToolbar({
                     onChange={(e) => setStatus(e.target.value)}
                     className="px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 min-w-[140px]"
                 >
-                    <option value="">All Statuses</option>
+                    <option value="">全部狀態</option>
                     {statusOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
@@ -88,7 +88,7 @@ export default function SearchToolbar({
                         onChange={(e) => setNationality(e.target.value)}
                         className="px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 min-w-[140px]"
                     >
-                        <option value="">All Nationalities</option>
+                        <option value="">全部國籍</option>
                         {nationalityOptions.map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
