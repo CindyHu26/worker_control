@@ -5,12 +5,13 @@ import prisma from '../prisma';
 const router = Router();
 
 // POST /api/deployments
+// POST /api/deployments
 router.post('/', async (req, res) => {
     try {
         const {
             workerId,
             employerId,
-            recruitmentLetterId,
+            entryPermitId,
             startDate,
             jobType
         } = req.body;
@@ -20,29 +21,30 @@ router.post('/', async (req, res) => {
         }
 
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Validate Recruitment Letter Quota (If provided)
-            if (recruitmentLetterId) {
-                const letter = await tx.employerRecruitmentLetter.findUnique({
-                    where: { id: recruitmentLetterId }
+            // 1. Validate Entry Permit (If provided)
+            if (entryPermitId) {
+                const permit = await tx.entryPermit.findUnique({
+                    where: { id: entryPermitId },
+                    include: { recruitmentLetter: true }
                 });
 
-                if (!letter) {
-                    throw new Error('Recruitment Letter not found');
+                if (!permit) {
+                    throw new Error('Entry Permit not found');
                 }
 
-                if (letter.employerId !== employerId) {
-                    throw new Error('Recruitment Letter does not belong to this employer');
+                if (permit.recruitmentLetter.employerId !== employerId) {
+                    throw new Error('Entry Permit does not belong to this employer');
                 }
 
-                if (letter.usedQuota >= letter.approvedQuota) {
-                    throw new Error('招募函名額已滿 (Recruitment Quota Exceeded)');
+                if (permit.usedCount >= permit.quota) {
+                    throw new Error('入國通知人數已滿 (Entry Permit Quota Exceeded)');
                 }
 
-                // Increment Quota
-                await tx.employerRecruitmentLetter.update({
-                    where: { id: recruitmentLetterId },
+                // Increment Usage
+                await tx.entryPermit.update({
+                    where: { id: entryPermitId },
                     data: {
-                        usedQuota: { increment: 1 }
+                        usedCount: { increment: 1 }
                     }
                 });
             }
@@ -64,18 +66,16 @@ router.post('/', async (req, res) => {
                 data: {
                     workerId,
                     employerId,
-                    recruitmentLetterId,
+                    entryPermitId, // Updated field
                     startDate: new Date(startDate),
                     jobType: jobType || 'general',
                     status: 'active',
                     serviceStatus: 'active_service',
-                    sourceType: 'direct_hiring' // or logic to determine
+                    sourceType: 'direct_hiring'
                 }
             });
 
-            // 5. Initialize Worker Timeline (Empty or based on start date?)
-            // If we have startDate, we can init some things, but Health Checks depend on Entry Date.
-            // Let's create an empty timeline placeholder.
+            // 4. Initialize Worker Timeline
             await tx.workerTimeline.create({
                 data: { deploymentId: newDeployment.id }
             });
