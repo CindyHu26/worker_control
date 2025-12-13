@@ -14,7 +14,8 @@ router.get('/job-orders', async (req, res) => {
                         companyName: true,
                         taxId: true
                     }
-                }
+                },
+                domesticRecruitment: true
             },
             orderBy: {
                 orderDate: 'desc'
@@ -30,15 +31,46 @@ router.get('/job-orders', async (req, res) => {
 // Create Job Order
 router.post('/job-orders', async (req, res) => {
     try {
-        const { employerId, requiredWorkers, orderDate } = req.body;
+        const { employerId, requiredWorkers, orderDate, domestic } = req.body;
+
+        // Validation: Domestic Recruitment Info
+        if (!domestic || !domestic.registryDate || !domestic.registryNumber || !domestic.laborViolationCertificateDate) {
+            return res.status(400).json({
+                error: 'Missing mandatory Domestic Recruitment Information (Registry Date, Registry Number, Labor Violation Certificate Date).'
+            });
+        }
+
+        // Validation: 21 Days Rule
+        const regDate = new Date(domestic.registryDate);
+        const ordDate = new Date(orderDate);
+        const laborCertDate = new Date(domestic.laborViolationCertificateDate);
+
+        const diffTime = ordDate.getTime() - regDate.getTime();
+        const diffDays = diffTime / (1000 * 3600 * 24);
+
+        if (diffDays < 21) {
+            return res.status(400).json({
+                error: `Domestic Recruitment period invalid. Registry Date must be at least 21 days before Job Order Date. (Gap: ${Math.floor(diffDays)} days)`
+            });
+        }
 
         const newJob = await prisma.jobOrder.create({
             data: {
                 employerId,
                 requiredWorkers: Number(requiredWorkers),
-                orderDate: new Date(orderDate),
+                orderDate: ordDate,
                 status: 'open',
-                // Trigger will calculate localRecruitmentDeadline automatically
+                domesticRecruitment: {
+                    create: {
+                        registryDate: regDate,
+                        registryNumber: domestic.registryNumber,
+                        laborViolationCertificateDate: laborCertDate,
+                        noViolationCertificateNumber: domestic.noViolationCertificateNumber
+                    }
+                }
+            },
+            include: {
+                domesticRecruitment: true
             }
         });
 

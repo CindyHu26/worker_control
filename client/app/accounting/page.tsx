@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Calendar, CheckCircle, Plus, DollarSign, FileText,
     AlertTriangle, Search, Filter, ArrowRight, User
 } from 'lucide-react';
 
 export default function AccountingPage() {
+    const router = useRouter();
     // Shared State
     const [activeTab, setActiveTab] = useState<'draft' | 'issued' | 'paid'>('draft');
     const [bills, setBills] = useState<any[]>([]);
@@ -195,8 +197,8 @@ export default function AccountingPage() {
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
                             className={`px-8 py-4 font-bold text-sm uppercase tracking-wide border-b-2 transition-colors ${activeTab === tab
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                                 }`}
                         >
                             {tab}
@@ -227,7 +229,11 @@ export default function AccountingPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {bills.map(bill => (
-                                    <tr key={bill.id} className="hover:bg-slate-50 transition">
+                                    <tr
+                                        key={bill.id}
+                                        onClick={() => router.push(`/accounting/bills/${bill.id}`)}
+                                        className="hover:bg-slate-50 transition cursor-pointer"
+                                    >
                                         <td className="p-4 font-mono text-slate-600">{bill.billNo}</td>
                                         <td className="p-4 font-bold text-slate-800">
                                             {bill.worker?.chineseName} <span className="text-slate-400 font-normal">{bill.worker?.englishName}</span>
@@ -243,8 +249,8 @@ export default function AccountingPage() {
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${bill.status === 'paid' ? 'bg-green-100 text-green-700' :
-                                                    bill.status === 'issued' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-slate-100 text-slate-700'
+                                                bill.status === 'issued' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-slate-100 text-slate-700'
                                                 }`}>
                                                 {bill.status}
                                             </span>

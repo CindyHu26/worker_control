@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from './providers';
+import CommandPalette from '@/components/CommandPalette';
 
 export default function RootLayout({
     children,
@@ -23,6 +24,7 @@ export default function RootLayout({
                 <Providers>
                     {/* Sidebar */}
                     <Sidebar />
+                    <CommandPalette />
 
                     {/* Main Content */}
                     <main className="flex-1 overflow-auto">

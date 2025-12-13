@@ -5,6 +5,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, User, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import SearchToolbar from '@/components/SearchToolbar';
+import BatchActionsBar from '@/components/BatchActionsBar';
+import BatchDocumentModal from '@/components/BatchDocumentModal';
 
 interface Worker {
     id: string;
@@ -20,8 +22,12 @@ export default function WorkersPage() {
     const [loading, setLoading] = useState(true);
     const [meta, setMeta] = useState({ page: 1, limit: 10, totalPages: 1, total: 0 });
 
+    // Selection State
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [showBatchDocs, setShowBatchDocs] = useState(false);
+
     // Search Params State
-    const [searchParams, setSearchParams] = useState({ q: '', status: '', nationality: '' });
+    const [searchParams, setSearchParams] = useState({ q: '', status: '', nationality: '', filter: '' });
 
     const fetchWorkers = async (page = 1) => {
         setLoading(true);
@@ -33,12 +39,14 @@ export default function WorkersPage() {
                 status: searchParams.status,
                 nationality: searchParams.nationality
             });
+            if (searchParams.filter) query.append('filter', searchParams.filter);
 
             const res = await fetch(`http://localhost:3001/api/workers?${query}`);
             if (res.ok) {
                 const { data, meta } = await res.json();
                 setWorkers(data);
                 setMeta(meta);
+                setSelectedIds(new Set());
             }
         } catch (error) {
             console.error('Failed to fetch workers:', error);
@@ -53,7 +61,11 @@ export default function WorkersPage() {
     }, [searchParams]);
 
     const handleSearch = (params: any) => {
-        setSearchParams(params);
+        setSearchParams(prev => ({ ...prev, ...params }));
+    };
+
+    const handleFilterPreset = (preset: string) => {
+        setSearchParams(prev => ({ ...prev, filter: prev.filter === preset ? '' : preset }));
     };
 
     const handlePageChange = (newPage: number) => {
@@ -62,8 +74,37 @@ export default function WorkersPage() {
         }
     };
 
+    // Selection Handlers
+    const toggleSelectAll = () => {
+        if (selectedIds.size === workers.length && workers.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(workers.map(w => w.id)));
+        }
+    };
+
+    const toggleSelect = (id: string) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedIds(newSet);
+    };
+
+    const handleBatchExportCsv = () => {
+        // Placeholder implementation
+        alert(`Exporting CSV for ${selectedIds.size} workers...`);
+    };
+
+    const handleBatchUpdateStatus = () => {
+        // Placeholder implementation
+        alert('Update Status feature coming soon!');
+    };
+
     return (
-        <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+        <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500 pb-24">
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">移工管理</h1>
@@ -76,6 +117,35 @@ export default function WorkersPage() {
                     <Plus size={20} />
                     <span>新增移工</span>
                 </Link>
+            </div>
+
+            {/* Quick Filters */}
+            <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm font-semibold text-slate-500 mr-2">Quick Filters:</span>
+                <button
+                    onClick={() => handleFilterPreset('expiring_30')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition
+                        ${searchParams.filter === 'expiring_30' ? 'bg-red-50 border-red-200 text-red-600 ring-1 ring-red-200' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}
+                    `}
+                >
+                    Expiring in 30 Days
+                </button>
+                <button
+                    onClick={() => handleFilterPreset('arriving_week')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition
+                        ${searchParams.filter === 'arriving_week' ? 'bg-blue-50 border-blue-200 text-blue-600 ring-1 ring-blue-200' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}
+                    `}
+                >
+                    Arriving This Week
+                </button>
+                <button
+                    onClick={() => handleFilterPreset('missing_docs')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition
+                        ${searchParams.filter === 'missing_docs' ? 'bg-amber-50 border-amber-200 text-amber-600 ring-1 ring-amber-200' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}
+                    `}
+                >
+                    Missing Documents
+                </button>
             </div>
 
             {/* Search Toolbar */}
@@ -120,6 +190,14 @@ export default function WorkersPage() {
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
+                                <th className="px-6 py-4 w-12 text-center">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                        checked={workers.length > 0 && selectedIds.size === workers.length}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </th>
                                 <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">移工</th>
                                 <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">國籍</th>
                                 <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">目前狀態</th>
@@ -131,9 +209,21 @@ export default function WorkersPage() {
                             {workers.map((worker) => {
                                 const activeDeployment = worker.deployments[0]; // We filtered for active
                                 const hasActiveDeployment = !!activeDeployment;
+                                const isSelected = selectedIds.has(worker.id);
 
                                 return (
-                                    <tr key={worker.id} className="hover:bg-slate-50 transition duration-150">
+                                    <tr
+                                        key={worker.id}
+                                        className={`hover:bg-slate-50 transition duration-150 ${isSelected ? 'bg-blue-50/50' : ''}`}
+                                    >
+                                        <td className="px-6 py-4 text-center">
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                checked={isSelected}
+                                                onChange={() => toggleSelect(worker.id)}
+                                            />
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div>
                                                 <div className="font-bold text-slate-900">{worker.englishName}</div>
@@ -216,6 +306,20 @@ export default function WorkersPage() {
                 </div>
             )
             }
+
+            <BatchActionsBar
+                selectedCount={selectedIds.size}
+                onClearSelection={() => setSelectedIds(new Set())}
+                onGenerateDocuments={() => setShowBatchDocs(true)}
+                onExportCsv={handleBatchExportCsv}
+                onUpdateStatus={handleBatchUpdateStatus}
+            />
+
+            <BatchDocumentModal
+                isOpen={showBatchDocs}
+                onClose={() => setShowBatchDocs(false)}
+                workerIds={Array.from(selectedIds)}
+            />
         </div >
     );
 }

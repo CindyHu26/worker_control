@@ -66,6 +66,59 @@ router.get('/', async (req, res) => {
             }
         }
 
+
+        // 3. Quick Filters
+        const { filter } = req.query;
+        if (filter) {
+            const now = new Date();
+            const in30Days = new Date(); in30Days.setDate(in30Days.getDate() + 30);
+            const nextWeek = new Date(); nextWeek.setDate(nextWeek.getDate() + 7);
+
+            if (filter === 'expiring_30') {
+                // Deployment ending soon
+                andConditions.push({
+                    deployments: {
+                        some: {
+                            status: 'active',
+                            endDate: {
+                                gte: now,
+                                lte: in30Days
+                            }
+                        }
+                    }
+                });
+            } else if (filter === 'arriving_week') {
+                // Flight arriving soon
+                andConditions.push({
+                    deployments: {
+                        some: {
+                            status: { in: ['active', 'pending'] },
+                            flightArrivalDate: {
+                                gte: now,
+                                lte: nextWeek
+                            }
+                        }
+                    }
+                });
+            } else if (filter === 'missing_docs') {
+                // Workers with NO current passport OR NO current ARC
+                andConditions.push({
+                    OR: [
+                        {
+                            passports: {
+                                none: { isCurrent: true }
+                            }
+                        },
+                        {
+                            arcs: {
+                                none: { isCurrent: true }
+                            }
+                        }
+                    ]
+                });
+            }
+        }
+
         if (andConditions.length > 0) {
             whereClause.AND = andConditions;
         }

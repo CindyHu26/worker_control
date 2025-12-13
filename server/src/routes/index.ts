@@ -19,8 +19,12 @@ import dormitoryRoutes from './dormitories';
 import settingsRoutes from './settings';
 import batchRoutes from './batch';
 import notificationsRoutes from './notifications';
+import exportsRoutes from './exports';
+import kanbanRoutes from './kanban';
+import searchRoutes from './search';
 
 const router = Router();
+
 
 
 router.use('/auth', authRoutes);
@@ -48,5 +52,8 @@ router.use('/dormitories', dormitoryRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/batch', batchRoutes);
 router.use('/notifications', notificationsRoutes);
+router.use('/exports', exportsRoutes);
+router.use('/kanban', kanbanRoutes);
+router.use('/search', searchRoutes);
 
 export default router;

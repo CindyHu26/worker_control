@@ -33,6 +33,9 @@ model InternalUser {
 
   comments         SystemComment[]  @relation("CommentAuthor")
   mentionsReceived CommentMention[] @relation("MentionedUser")
+  coordinatedDisputes DisputeRecord[] @relation("DisputeCoordinator")
+  handledResolutions  ResolutionLog[] @relation("ResolutionHandler")
+  advancePayments     AdvancePayment[] @relation("StaffAdvancePayments")
 
   @@map("internal_users")
 }
@@ -87,6 +90,8 @@ model Employer {
   incidents          Incident[]
   serviceAssignments ServiceAssignment[]
   jobOrders          JobOrder[]
+  transfersOut       TransferRecord[] @relation("TransferOldEmployer")
+  transfersIn        TransferRecord[] @relation("TransferNewEmployer")
 
   agencyCompanyId String? @map("agency_company_id")
   agency          AgencyCompany? @relation(fields: [agencyCompanyId], references: [id])
@@ -167,6 +172,8 @@ model Worker {
   addressHistory      WorkerAddressHistory[]
   interviewCandidates InterviewCandidate[]
   bills               Bill[]
+  transfers           TransferRecord[]
+  advancePayments     AdvancePayment[]
 
   @@map("workers")
 }
@@ -235,6 +242,7 @@ model Deployment {
   status        String    @default("active") // Enum as string
   serviceStatus String    @default("active_service") @map("service_status") // Enum as string
   sourceType    String    @default("direct_hiring") @map("source_type") // Enum as string
+  processStage  String    @default("recruitment") @map("process_stage") // recruitment, visa_processing, flight_booking, arrival, medical_check
 
   jobDescription     String?   @map("job_description")
   entryDate          DateTime? @map("entry_date")
@@ -287,6 +295,7 @@ model Deployment {
   bills         Bill[]
   monthlyFee    MonthlyServiceFee?
   feeSchedules  FeeSchedule[]
+  transfers     TransferRecord[]
 
   @@map("deployments")
 }
@@ -394,6 +403,7 @@ model Incident {
 
   worker   Worker?   @relation(fields: [workerId], references: [id])
   employer Employer? @relation(fields: [employerId], references: [id])
+  dispute  DisputeRecord?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -489,10 +499,13 @@ model JobOrder {
 model DomesticRecruitment {
   id                     String   @id @default(uuid())
   jobOrderId             String   @unique @map("job_order_id")
-  recruitmentDate        DateTime @map("recruitment_date")
-  certificateNumber      String?  @map("certificate_number")
-  noViolationCertificate String?  @map("no_violation_certificate")
-
+  
+  registryDate           DateTime @map("registry_date") // 求才登記日
+  registryNumber         String?  @map("registry_number") // 求才證明序號
+  
+  laborViolationCertificateDate DateTime? @map("labor_violation_certificate_date") // 無違法證明申請日
+  noViolationCertificateNumber  String?   @map("no_violation_certificate_number") // Kept for cert number
+  
   jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -598,6 +611,22 @@ model FeeItem {
   @@map("fee_items")
 }
 
+model InsuranceTier {
+  id            String   @id @default(uuid())
+  grade         Int
+  minSalary     Decimal  @map("min_salary")
+  maxSalary     Decimal  @map("max_salary")
+  laborFee      Decimal  @map("labor_fee")
+  healthFee     Decimal  @map("health_fee")
+  effectiveDate DateTime @default(now()) @map("effective_date")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("insurance_tiers")
+}
+
 model Bill {
   id        String @id @default(uuid())
   billNo    String @unique @map("bill_no")
@@ -628,6 +657,7 @@ model Bill {
   deployment Deployment? @relation(fields: [deploymentId], references: [id])
   items        BillItem[]
   feeSchedules FeeSchedule[]
+  invoice      Invoice?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -658,6 +688,7 @@ model BillItem {
   feeCategory String  @map("fee_category") // Enum
 
   bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  advancePayment AdvancePayment?
 
   @@map("bill_items")
 }
@@ -790,10 +821,6 @@ model MeterReading {
   @@map("meter_readings")
 }
 
-// =========================================
-// Agency Entities
-// =========================================
-
 model AgencyCompany {
   id                String   @id @default(uuid())
   name              String
@@ -815,6 +842,35 @@ model AgencyCompany {
   @@map("agency_companies")
 }
 
+model TransferRecord {
+  id           String   @id @default(uuid())
+  workerId     String   @map("worker_id")
+  deploymentId String   @map("deployment_id") // The deployment ending due to transfer
+  oldEmployerId String  @map("old_employer_id")
+  newEmployerId String? @map("new_employer_id")
+
+  status       String   @default("pending") // negotiating, agreed, mol_issued, completion_pending, completed, cancelled
+  
+  agreementDate       DateTime? @map("agreement_date") // 雙方/三方合意
+  molLetterNumber     String?   @map("mol_letter_number") // 廢聘號
+  molLetterDate       DateTime? @map("mol_letter_date")  // 廢聘日
+  
+  newEmployerRegDate  DateTime? @map("new_employer_reg_date") // 新雇主登記
+  transferDate        DateTime? @map("transfer_date") // 生效日
+
+  notes String?
+
+  worker       Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  deployment   Deployment @relation(fields: [deploymentId], references: [id])
+  oldEmployer  Employer   @relation("TransferOldEmployer", fields: [oldEmployerId], references: [id])
+  newEmployer  Employer?  @relation("TransferNewEmployer", fields: [newEmployerId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("transfer_records")
+}
+
 model ForeignAgency {
   id            String   @id @default(uuid())
   name          String
@@ -832,5 +888,97 @@ model ForeignAgency {
   workers       Worker[]
 
   @@map("foreign_agencies")
+}
+
+model DisputeRecord {
+  id              String   @id @default(uuid())
+  incidentId      String   @unique @map("incident_id")
+  
+  source          String   // 1955, Bureau, Internal
+  complaintType   String   @map("complaint_type") // Wage, Dorm, Management
+  
+  coordinatorId   String?  @map("coordinator_id")
+  coordinator     InternalUser? @relation("DisputeCoordinator", fields: [coordinatorId], references: [id])
+
+  status          String   @default("open") 
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  incident        Incident @relation(fields: [incidentId], references: [id])
+  resolutions     ResolutionLog[]
+
+  @@map("dispute_records")
+}
+
+model ResolutionLog {
+  id              String   @id @default(uuid())
+  disputeRecordId String   @map("dispute_record_id")
+  logDate         DateTime @default(now()) @map("log_date")
+  description     String
+  outcome         String?
+  
+  handlerId       String?  @map("handler_id")
+  handler         InternalUser? @relation("ResolutionHandler", fields: [handlerId], references: [id])
+
+  disputeRecord   DisputeRecord @relation(fields: [disputeRecordId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("resolution_logs")
+}
+
+model AdvancePayment {
+  id          String   @id @default(uuid())
+  payerId     String   @map("payer_id")
+  workerId    String?  @map("worker_id") // Usually associated with a worker/job
+  description String
+  amount      Decimal
+  receiptImage String? @map("receipt_image")
+  paymentDate DateTime @default(now()) @map("payment_date")
+  
+  status      String   @default("pending") // pending, approved, reimbursed, billed, rejected
+  
+  billItemId  String?  @unique @map("bill_item_id")
+  billItem    BillItem? @relation(fields: [billItemId], references: [id])
+
+  payer       InternalUser @relation("StaffAdvancePayments", fields: [payerId], references: [id])
+  worker      Worker?      @relation(fields: [workerId], references: [id])
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("advance_payments")
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  billId        String   @unique @map("bill_id")
+  
+  invoiceNumber String   @unique @map("invoice_number")
+  invoiceDate   DateTime @default(now()) @map("invoice_date") // Issued Date
+  
+  status        String   @default("issued") // issued, void, cancelled
+  
+  // ECPay / E-Invoice Specifics
+  randomCode    String?  @map("random_code") // RelNum or Random
+  totalAmount   Decimal  @map("total_amount")
+  
+  buyerName     String?  @map("buyer_name")
+  buyerIdentifier String? @map("buyer_identifier") // Tax ID
+  
+  carrierType   String?  @map("carrier_type")
+  carrierId     String?  @map("carrier_id")
+  donationCode  String?  @map("donation_code")
+  printMark     String?  @default("N") @map("print_mark")
+
+  // Relations
+  bill          Bill     @relation(fields: [billId], references: [id])
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("invoices")
 }
 

@@ -378,4 +378,258 @@ router.post('/bills/pay', async (req, res) => {
     }
 });
 
+// ... (existing code)
+
+/**
+ * POST /api/accounting/generate-payroll-deductions
+ * Generates Monthly Payroll Deduction Bills (Insurance + Tax)
+ */
+router.post('/generate-payroll-deductions', async (req, res) => {
+    const { year, month } = req.body; // e.g., 2025, 5
+
+    if (!year || !month) {
+        return res.status(400).json({ error: 'Year and Month required' });
+    }
+
+    try {
+        // 1. Get active deployments
+        // We assume "active" deployments need deductions
+        const deployments = await prisma.deployment.findMany({
+            where: { status: 'active', entryDate: { not: null } },
+            include: { worker: true, employer: true }
+        });
+
+        // 2. Get Insurance Tiers
+        const tiers = await prisma.insuranceTier.findMany({
+            where: { isActive: true },
+            orderBy: { grade: 'asc' }
+        });
+
+        const minWageTier = tiers[0];
+        const minWage = minWageTier ? Number(minWageTier.maxSalary) : 27470; // Fallback
+
+        let generatedCount = 0;
+
+        await prisma.$transaction(async (tx) => {
+            for (const d of deployments) {
+                const salary = d.basicSalary ? Number(d.basicSalary) : minWage;
+                const worker = d.worker;
+
+                const billItems = [];
+
+                // A. Insurance
+                const tier = tiers.find(t => salary >= Number(t.minSalary) && salary <= Number(t.maxSalary));
+
+                // Fallback to highest/lowest if out of range? Or specific error?
+                // We'll use the found tier or the default minWageTier
+                const selectedTier = tier || minWageTier;
+
+                if (selectedTier) {
+                    billItems.push({
+                        description: `勞保費 (Labor Insurance) - Grade ${selectedTier.grade}`,
+                        amount: Number(selectedTier.laborFee),
+                        feeCategory: 'labor_insurance'
+                    });
+                    billItems.push({
+                        description: `健保費 (Health Insurance) - Grade ${selectedTier.grade}`,
+                        amount: Number(selectedTier.healthFee),
+                        feeCategory: 'health_insurance'
+                    });
+                }
+
+                // B. Tax Logic
+                let taxRate = 0.05; // Default Resident Rate
+                let taxDesc = "Tax (Resident 5%)";
+
+                if (!worker.isTaxResident) {
+                    // Non-Resident Logic
+                    // Threshold: 1.5 * Min Wage
+                    const threshold = minWage * 1.5;
+                    if (salary <= threshold) {
+                        taxRate = 0.06;
+                        taxDesc = "Tax (Non-Resident Low Salary 6%)";
+                    } else {
+                        taxRate = 0.18;
+                        taxDesc = "Tax (Non-Resident High Salary 18%)";
+                    }
+                }
+
+                const taxAmount = Math.floor(salary * taxRate);
+                if (taxAmount > 0) {
+                    billItems.push({
+                        description: `${taxDesc} - Base: ${salary}`,
+                        amount: taxAmount,
+                        feeCategory: 'tax'
+                    });
+                }
+
+                if (billItems.length === 0) continue;
+
+                const totalAmount = billItems.reduce((sum, item) => sum + item.amount, 0);
+
+                // C. Create Bill
+                await tx.bill.create({
+                    data: {
+                        billNo: `PAY-${year}${String(month).padStart(2, '0')}-${worker.id.substring(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+                        payerType: 'worker',
+                        workerId: worker.id,
+                        deploymentId: d.id,
+                        year,
+                        month,
+                        billingDate: new Date(),
+                        dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days
+                        totalAmount,
+                        balance: totalAmount,
+                        status: 'draft',
+                        items: {
+                            create: billItems
+                        }
+                    }
+                });
+
+                generatedCount++;
+            }
+        });
+
+        res.json({ message: `Generated ${generatedCount} payroll deduction bills.` });
+
+    } catch (error: any) {
+        console.error('Payroll Generation Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/accounting/bills/:id
+ * Get bill detail with invoice information
+ */
+router.get('/bills/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const bill = await prisma.bill.findUnique({
+            where: { id },
+            include: {
+                worker: {
+                    select: {
+                        id: true,
+                        chineseName: true,
+                        englishName: true
+                    }
+                },
+                employer: {
+                    select: {
+                        id: true,
+                        companyName: true,
+                        taxId: true
+                    }
+                },
+                items: true,
+                invoice: true
+            }
+        });
+
+        if (!bill) {
+            return res.status(404).json({ error: 'Bill not found' });
+        }
+
+        res.json(bill);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch bill detail' });
+    }
+});
+
+/**
+ * POST /api/accounting/bills/:id/issue-invoice
+ * Issue an electronic invoice for a bill via ECPay
+ */
+router.post('/bills/:id/issue-invoice', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { printMark, carrierType, carrierId, donation, donationCode } = req.body;
+
+        // 1. Fetch Bill
+        const bill = await prisma.bill.findUnique({
+            where: { id },
+            include: {
+                worker: true,
+                employer: true,
+                items: true,
+                invoice: true
+            }
+        });
+
+        if (!bill) {
+            return res.status(404).json({ error: 'Bill not found' });
+        }
+
+        // Check if invoice already exists
+        if (bill.invoice) {
+            return res.status(400).json({ error: 'Invoice already issued for this bill' });
+        }
+
+        // Check bill status
+        if (bill.status === 'cancelled') {
+            return res.status(400).json({ error: 'Cannot issue invoice for cancelled bill' });
+        }
+
+        // 2. Prepare Invoice Data
+        // In a real implementation, you would call ECPay API here
+        // For now, we'll create a mock invoice
+
+        const invoiceNumber = `AB${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${Math.random().toString().substring(2, 10)}`;
+        const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+        // Determine buyer info
+        let buyerName = '';
+        let buyerIdentifier = '';
+
+        if (bill.payerType === 'employer' && bill.employer) {
+            buyerName = bill.employer.companyName;
+            buyerIdentifier = bill.employer.taxId;
+        } else if (bill.payerType === 'worker' && bill.worker) {
+            buyerName = bill.worker.chineseName || bill.worker.englishName;
+            // Workers typically don't have tax ID for B2C invoices
+        }
+
+        // 3. Create Invoice Record
+        const invoice = await prisma.invoice.create({
+            data: {
+                billId: bill.id,
+                invoiceNumber,
+                invoiceDate: new Date(),
+                status: 'issued',
+                randomCode,
+                totalAmount: bill.totalAmount,
+                buyerName,
+                buyerIdentifier,
+                carrierType: carrierType || null,
+                carrierId: carrierId || null,
+                donationCode: donationCode || null,
+                printMark: printMark || 'N'
+            }
+        });
+
+        // 4. Update Bill Status
+        await prisma.bill.update({
+            where: { id: bill.id },
+            data: {
+                status: bill.status === 'draft' ? 'issued' : bill.status,
+                invoiceNumber: invoiceNumber
+            }
+        });
+
+        res.json({
+            message: 'Invoice issued successfully',
+            invoiceNumber: invoice.invoiceNumber,
+            invoice
+        });
+
+    } catch (error: any) {
+        console.error('Invoice Issuance Error:', error);
+        res.status(500).json({ error: error.message || 'Failed to issue invoice' });
+    }
+});
+
 export default router;

@@ -317,4 +317,116 @@ router.post('/meters/:id/record', async (req, res) => {
     }
 });
 
+// POST /api/dormitories/calculate-cost-split
+router.post('/calculate-cost-split', async (req, res) => {
+    try {
+        const { year, month, totalAmount, dormitoryId, roomId, description } = req.body;
+
+        if (!year || !month || !totalAmount) {
+            return res.status(400).json({ error: 'Year, Month, and Amount are required' });
+        }
+        if (!dormitoryId && !roomId) {
+            return res.status(400).json({ error: 'DormitoryId or RoomId required' });
+        }
+
+        const startOfMonth = new Date(Number(year), Number(month) - 1, 1);
+        const endOfMonth = new Date(Number(year), Number(month), 0); // Last day
+        const daysInMonth = endOfMonth.getDate();
+
+        await prisma.$transaction(async (tx) => {
+            // 1. Find Workers
+            let workers: any[] = [];
+            if (roomId) {
+                const room = await tx.dormRoom.findUnique({
+                    where: { id: roomId },
+                    include: { beds: { include: { worker: { include: { deployments: { where: { status: 'active' } } } } } } }
+                });
+                workers = room?.beds.map(b => b.worker).filter(w => w !== null) || [];
+            } else if (dormitoryId) {
+                const dorm = await tx.dormitory.findUnique({
+                    where: { id: dormitoryId },
+                    include: { workers: { include: { deployments: { where: { status: 'active' } } } } }
+                });
+                workers = dorm?.workers || [];
+            }
+
+            if (workers.length === 0) {
+                throw new Error("No workers found in target location");
+            }
+
+            // 2. Calculate Occupancy Days
+            const workerCalculations = workers.map(w => {
+                const deployment = w.deployments?.[0]; // Assuming active deployment
+                let stayDays = daysInMonth;
+
+                if (deployment && deployment.entryDate) {
+                    const entry = new Date(deployment.entryDate);
+                    // If entered AFTER start of month
+                    if (entry > startOfMonth) {
+                        if (entry > endOfMonth) {
+                            stayDays = 0;
+                        } else {
+                            const diff = endOfMonth.getTime() - entry.getTime();
+                            stayDays = Math.floor(diff / (1000 * 3600 * 24)) + 1;
+                        }
+                    }
+                }
+
+                if (stayDays < 0) stayDays = 0;
+
+                return { worker: w, days: stayDays };
+            });
+
+            // 3. Sum Total Days
+            const totalOccupancyDays = workerCalculations.reduce((sum, item) => sum + item.days, 0);
+
+            if (totalOccupancyDays === 0) {
+                throw new Error("Total occupancy days is zero. Cannot split cost.");
+            }
+
+            // 4. Generate Bills
+            const costPerDay = Number(totalAmount) / totalOccupancyDays;
+
+            for (const item of workerCalculations) {
+                if (item.days <= 0) continue;
+
+                const workerShare = Math.round(costPerDay * item.days);
+                const worker = item.worker;
+
+                const billNo = `UTIL-${year}${String(month).padStart(2, '0')}-${worker.id.substring(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+
+                await tx.bill.create({
+                    data: {
+                        billNo,
+                        payerType: 'worker',
+                        workerId: worker.id,
+                        deploymentId: worker.deployments?.[0]?.id,
+                        year: Number(year),
+                        month: Number(month),
+                        billingDate: new Date(),
+                        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                        totalAmount: workerShare,
+                        status: 'draft',
+                        items: {
+                            create: {
+                                description: description || `Utility Split (${month}/${year}) - ${item.days} days`,
+                                amount: workerShare,
+                                feeCategory: 'utility_fee'
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        res.json({ message: 'Utility split calculated and billed successfully' });
+
+    } catch (error: any) {
+        console.error('Split Utility Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
+
+

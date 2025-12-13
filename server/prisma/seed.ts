@@ -130,7 +130,30 @@ async function main() {
         }
     }
 
-    // 5. System Settings
+    // 5. Seed Insurance Tiers
+    console.log('Seeding insurance tiers...');
+    const tiers = [
+        { grade: 1, minSalary: 0, maxSalary: 27470, laborFee: 604, healthFee: 426 },
+        { grade: 2, minSalary: 27471, maxSalary: 27600, laborFee: 604, healthFee: 426 },
+        { grade: 3, minSalary: 27601, maxSalary: 28800, laborFee: 633, healthFee: 446 },
+        { grade: 4, minSalary: 28801, maxSalary: 30300, laborFee: 666, healthFee: 470 },
+    ];
+
+    for (const t of tiers) {
+        const exists = await prisma.insuranceTier.findFirst({ where: { grade: t.grade } });
+        if (!exists) {
+            await prisma.insuranceTier.create({ data: t });
+            console.log(`Created Tier ${t.grade}`);
+        } else {
+            await prisma.insuranceTier.update({
+                where: { id: exists.id },
+                data: t
+            });
+            console.log(`Updated Tier ${t.grade}`);
+        }
+    }
+
+    // 6. System Settings
     console.log('System initialized.');
 }
 
