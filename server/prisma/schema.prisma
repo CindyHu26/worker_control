@@ -36,6 +36,7 @@ model InternalUser {
   coordinatedDisputes DisputeRecord[] @relation("DisputeCoordinator")
   handledResolutions  ResolutionLog[] @relation("ResolutionHandler")
   advancePayments     AdvancePayment[] @relation("StaffAdvancePayments")
+  assignedLeads       Lead[]           @relation("LeadAssigned")
 
   @@map("internal_users")
 }
@@ -353,6 +354,11 @@ model RecruitmentLetter {
   // So we can keep it for easy access or remove it. Let's keep it but manage it via logic.
   usedQuota     Int      @default(0) @map("used_quota")
 
+  // Information for M343 (Recruitment Application)
+  reviewFeeReceiptNo  String?   @map("review_fee_receipt_no")
+  reviewFeeDate       DateTime? @map("review_fee_date")
+  reviewFeeAmount     Int?      @default(0) @map("review_fee_amount")
+
   employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -446,6 +452,18 @@ model Deployment {
   basicSalary        Decimal?  @map("basic_salary")
   laborInsuranceAmt  Decimal?  @map("labor_insurance_amt")
   healthInsuranceAmt Decimal?  @map("health_insurance_amt")
+
+  // Information for M343 (Employment Permit Application)
+  employmentPermitReceiptNo String?   @map("emp_permit_receipt_no")
+  employmentPermitDate      DateTime? @map("emp_permit_receipt_date")
+  employmentPermitAmount    Int?      @default(0) @map("emp_permit_amount")
+
+  // Information for Notification of Arrival
+  visaNumber        String?   @map("visa_number") // Sticker Number (Distinct from visaLetterNo)
+  
+  // Living Care / Cost Information
+  foodStatus        String    @default("provided_free") @map("food_status") // provided_free, provided_charge, self_care
+  foodAmount        Decimal   @default(0) @map("food_amount")
 
   terminationReason String? @map("termination_reason")
 
@@ -948,8 +966,17 @@ model Dormitory {
   // New Advanced Management Fields
   primaryManager    String?   @map("primary_manager") // "我司", "他仲", "雇主"
   totalArea         Decimal?  @map("total_area") // Total area in m²
-  buildingUseType   String?   @map("building_use_type") // Building permit classification
+  buildingUseType   String?   @map("building_use_type") // Building permit classification e.g. "H-1", "H-2", "Factory"
   fireSafetyExpiry  DateTime? @map("fire_safety_expiry") // Fire safety certification expiry
+
+  // Compliance Fields for Living Care Plan
+  bathroomCount     Int       @default(0) @map("bathroom_count")
+  waterHeaterCount  Int       @default(0) @map("water_heater_count")
+  isFactorySeparated Boolean  @default(true) @map("is_factory_separated")
+
+  // Safety Equipment
+  hasFireExtinguisher Boolean @default(true) @map("has_fire_extinguisher")
+  hasFireAlarm        Boolean @default(true) @map("has_fire_alarm")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -1274,4 +1301,52 @@ model MaintenanceLog {
   equipment DormEquipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
   
   @@map("maintenance_logs")
+}
+
+model Lead {
+  id                  String   @id @default(uuid())
+  companyName         String?  @map("company_name")
+  contactPerson       String?  @map("contact_person")
+  jobTitle            String?  @map("job_title")
+  phone               String?
+  mobile              String?
+  email               String?
+  lineId              String?  @map("line_id")
+  address             String?
+
+  // Business Info
+  status              String   @default("NEW") // NEW, CONTACTED, MEETING, NEGOTIATING, WON, LOST
+  source              String?
+  estimatedWorkerCount Int?    @map("estimated_worker_count")
+  industry            String?
+  
+  assignedTo          String?  @map("assigned_to")
+  assignedUser        InternalUser? @relation("LeadAssigned", fields: [assignedTo], references: [id])
+
+  lastContactDate     DateTime? @map("last_contact_date")
+  nextFollowUpDate    DateTime? @map("next_follow_up_date")
+
+  interactions        LeadInteraction[]
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("leads")
+}
+
+model LeadInteraction {
+  id           String   @id @default(uuid())
+  leadId       String   @map("lead_id") // One-to-Many
+  type         String   // Call, Visit, Line, Email
+  summary      String
+  detailedNotes String? @map("detailed_notes")
+  outcome      String?
+  date         DateTime @default(now())
+
+  lead         Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("lead_interactions")
 }

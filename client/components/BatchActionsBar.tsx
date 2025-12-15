@@ -6,6 +6,7 @@ interface BatchActionsBarProps {
     onClearSelection: () => void;
     onGenerateDocuments: () => void;
     onExportCsv: () => void;
+    onExportMol: () => void;
     onUpdateStatus: () => void;
 }
 
@@ -14,6 +15,7 @@ export default function BatchActionsBar({
     onClearSelection,
     onGenerateDocuments,
     onExportCsv,
+    onExportMol,
     onUpdateStatus
 }: BatchActionsBarProps) {
     if (selectedCount === 0) return null;
@@ -53,6 +55,15 @@ export default function BatchActionsBar({
                 >
                     <Briefcase size={18} />
                     <span className="text-sm font-medium">Update Status</span>
+                </button>
+
+                <button
+                    onClick={onExportMol}
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-800 rounded-lg transition"
+                    title="Export for Ministry of Labor"
+                >
+                    <Download size={18} />
+                    <span className="text-sm font-medium">MOL Export</span>
                 </button>
             </div>
         </div>

@@ -310,4 +310,184 @@ router.post('/generate', async (req, res) => {
     }
 });
 
+// POST /api/documents/batch-generate
+// Advanced generation with Context Overrides (Dates, Address, Hospital)
+// Returns: ZIP file URL (or triggers download in current arch) and File List
+router.post('/batch-generate', async (req, res) => {
+    try {
+        const { workerId, templateIds, globalParams } = req.body;
+
+        if (!workerId || !templateIds || !Array.isArray(templateIds) || templateIds.length === 0) {
+            return res.status(400).json({ error: 'WorkerId and TemplateIds are required.' });
+        }
+
+        // 1. Fetch Templates
+        const templates = await prisma.documentTemplate.findMany({
+            where: { id: { in: templateIds }, isActive: true }
+        });
+
+        if (templates.length === 0) {
+            return res.status(404).json({ error: 'No valid templates found.' });
+        }
+
+        // 2. Resolve Address Logic
+        // globalParams: { addressOption, entryDate, medCheckDate, dispatchDate, hospitalName, agentName }
+        let resolvedAddress = '';
+        if (globalParams?.addressOption) {
+            // Fetch necessary employer info to resolve address
+            // We need to fetch the worker's employer relation properly
+            // Ideally we do this via Prisma here or let ContextBuilder handle if we passed the option?
+            // Since we promised the API handles resolution, let's fetch the info.
+
+            const worker = await prisma.worker.findUnique({
+                where: { id: workerId },
+                include: {
+                    deployments: {
+                        where: { status: 'active' },
+                        include: {
+                            employer: {
+                                include: {
+                                    factoryInfo: true,
+                                    agency: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const emp = worker?.deployments[0]?.employer;
+            if (emp) {
+                switch (globalParams.addressOption) {
+                    case 'FACTORY':
+                        resolvedAddress = emp.factoryInfo?.factoryAddress || emp.address || '';
+                        break;
+                    case 'EMPLOYER_HOME':
+                        resolvedAddress = emp.responsiblePersonAddress || '';
+                        break;
+                    case 'COMPANY':
+                        resolvedAddress = emp.address || '';
+                        break;
+                    case 'AGENCY':
+                        resolvedAddress = emp.agency?.address || '';
+                        break;
+                    default:
+                        resolvedAddress = '';
+                }
+            }
+        }
+
+        // 3. Prepare Overrides
+        const overrides: any = {};
+        if (globalParams) {
+            if (globalParams.entryDate) overrides['custom_entry_date'] = globalParams.entryDate; // YYYY/MM/DD expected from frontend? OR Date obj? context usually expects formatted strings or handles formatting.
+            if (globalParams.medCheckDate) overrides['custom_med_date'] = globalParams.medCheckDate;
+            if (globalParams.dispatchDate) overrides['custom_dispatch_date'] = globalParams.dispatchDate;
+            if (globalParams.hospitalName) overrides['check_hospital_name'] = globalParams.hospitalName;
+            if (globalParams.agentName) overrides['agent_contact_name'] = globalParams.agentName;
+
+            if (resolvedAddress) overrides['residence_addr'] = resolvedAddress;
+            if (resolvedAddress) overrides['custom_residence_addr'] = resolvedAddress; // Alias
+        }
+
+        // 4. Generate Context
+        const context = await buildWorkerDocumentContext(workerId, overrides);
+
+        // 5. Generate Files
+        const masterZip = new PizZip();
+        const fileList: { name: string, url: string }[] = [];
+
+        // Define temp dir for individual accessibility (optional, if we want to return links)
+        // For now, simpler to just return ZIP blob like the other endpoint?
+        // Requirement says: "Simultaneously provide Single File Links and ZIP"
+        // This implies we DO need to save them to disk.
+
+        const outputDir = path.join(__dirname, '../../public/downloads/temp'); // Assuming public folder or similar
+        // Let's use a safe temp dir.
+        // If we want the user to download via "Link", we need a static file server route.
+        // Assuming /api/downloads/temp is static or we create a route for it.
+        // Let's stick to generating the ZIP Buffer for this response, 
+        // AND providing a "virtual" file list or creating a wrapper endpoint for individual download?
+        // Current constraint: I cannot easily set up a static file server without modifying index.ts
+        // Compromise: This API will return the ZIP. The "Single File Download" buttons on Frontend will 
+        // call a DIFFERENT endpoint `GET /api/documents/generate-single?workerId=..&templateId=...`
+        // OR: We persist the files in a temp folder and return their paths.
+
+        // Let's try persisting to `d:\worker_control\server\temp` and standardizing a route to serve them.
+        const tempDir = path.join(__dirname, '../../temp_docs');
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+        // Clean up old files? (Skip for prototype)
+
+        for (const tmpl of templates) {
+            try {
+                const cleanPath = tmpl.filePath.startsWith('/') || tmpl.filePath.startsWith('\\') ? tmpl.filePath.slice(1) : tmpl.filePath;
+                const templateAbsPath = path.join(__dirname, '../../', cleanPath);
+
+                if (!fs.existsSync(templateAbsPath)) continue;
+
+                const content = fs.readFileSync(templateAbsPath, 'binary');
+                const zip = new PizZip(content);
+                const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+
+                doc.setData(context);
+                doc.render();
+
+                const buf = doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+                const safeTmplName = tmpl.name.replace(/[^a-z0-9\u4e00-\u9fa5]/gi, '_');
+                const filename = `${safeTmplName}_${context.worker_name_en.replace(/[^a-z0-9]/gi, '_')}.docx`;
+
+                // Save to Temp
+                const fileGuid = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+                const tempFilePath = path.join(tempDir, `${fileGuid}.docx`);
+                fs.writeFileSync(tempFilePath, buf);
+
+                // Add to ZIP
+                masterZip.file(filename, buf);
+
+                fileList.push({
+                    name: filename,
+                    url: `/api/documents/download-temp/${fileGuid}/${encodeURIComponent(filename)}` // We need this route
+                });
+
+            } catch (err) {
+                console.error(`Error generating ${tmpl.name}:`, err);
+            }
+        }
+
+        const zipBuf = masterZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+        const zipGuid = `${Date.now()}_packet.zip`;
+        fs.writeFileSync(path.join(tempDir, zipGuid), zipBuf);
+
+        res.json({
+            success: true,
+            zipUrl: `/api/documents/download-temp/${zipGuid}/Batch_Docs.zip`,
+            files: fileList
+        });
+
+    } catch (error) {
+        console.error('Batch Gen Error:', error);
+        res.status(500).json({ error: 'Batch generation failed.' });
+    }
+});
+
+// GET /api/documents/download-temp/:guid/:filename
+// Serve temp files
+router.get('/download-temp/:guid/:filename', (req, res) => {
+    const { guid, filename } = req.params;
+    // Validate guid format to prevent path traversal
+    if (!/^[a-zA-Z0-9_.]+$/.test(guid)) {
+        return res.status(400).send('Invalid file ID');
+    }
+
+    const tempDir = path.join(__dirname, '../../temp_docs');
+    const filePath = path.join(tempDir, guid);
+
+    if (fs.existsSync(filePath)) {
+        res.download(filePath, filename); // Set Content-Disposition automatically
+    } else {
+        res.status(404).send('File not found or expired');
+    }
+});
+
 export default router;

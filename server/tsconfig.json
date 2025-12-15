@@ -6,7 +6,7 @@
             "es2020"
         ],
         "outDir": "./dist",
-        "rootDir": "./src",
+        "rootDir": ".",
         "strict": true,
         "noImplicitAny": true,
         "esModuleInterop": true,
@@ -16,7 +16,8 @@
         "resolveJsonModule": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "scripts/**/*"
     ],
     "exclude": [
         "node_modules",

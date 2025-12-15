@@ -28,7 +28,9 @@ import quotaRoutes from './quota';
 import taxRoutes from './tax';
 
 import complianceRoutes from './compliance';
+import leadsRoutes from './leads';
 const router = Router();
+
 
 
 
@@ -77,5 +79,6 @@ router.use('/quota', quotaRoutes); // Assuming quota routes might be separate or
 router.use('/tax', taxRoutes);
 router.use('/search', searchRoutes);
 router.use('/compliance', complianceRoutes);
+router.use('/leads', leadsRoutes);
 
 export default router;

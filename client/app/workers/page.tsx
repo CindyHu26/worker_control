@@ -107,6 +107,42 @@ export default function WorkersPage() {
         alert('Update Status feature coming soon!');
     };
 
+    const handleBatchExportMol = async () => {
+        if (selectedIds.size === 0) return;
+        try {
+            const res = await fetch('http://localhost:3001/api/exports/mol-registration', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workerIds: Array.from(selectedIds) })
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // Filename should come from header usually, but fallback here
+                const contentDisposition = res.headers.get('Content-Disposition');
+                let fileName = `mol_labor_list.csv`;
+                if (contentDisposition) {
+                    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+                    if (match && match[1]) fileName = match[1];
+                }
+
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                alert('Export failed');
+            }
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Export error');
+        }
+    };
+
     return (
         <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500 pb-24">
             <div className="flex justify-between items-center mb-8">
@@ -316,6 +352,7 @@ export default function WorkersPage() {
                 onClearSelection={() => setSelectedIds(new Set())}
                 onGenerateDocuments={() => setShowBatchDocs(true)}
                 onExportCsv={handleBatchExportCsv}
+                onExportMol={handleBatchExportMol}
                 onUpdateStatus={handleBatchUpdateStatus}
             />
 

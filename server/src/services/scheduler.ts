@@ -4,7 +4,7 @@ import prisma from '../prisma';
 /**
  * Creates a system notification (Comment + Mention)
  */
-async function createNotification(
+export async function createNotification(
     targetUserId: string,
     content: string,
     refId: string,
@@ -119,7 +119,40 @@ export async function runDailyChecks() {
         await checkDate(tl.passportExpiry, 'Passport');
         await checkDate(tl.medCheck6moDeadline, '6-Mo Med Check');
         await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
+        await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
         await checkDate(tl.medCheck30moDeadline, '30-Mo Med Check');
+    }
+
+    // --- CRM Lead Follow-up Checks ---
+    console.log('[Scheduler] Checking Lead Follow-ups...');
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const followUpLeads = await prisma.lead.findMany({
+        where: {
+            nextFollowUpDate: {
+                lte: endOfDay, // Check for today or past due
+            },
+            status: { notIn: ['WON', 'LOST'] },
+            assignedTo: { not: null }
+        }
+    });
+
+    for (const lead of followUpLeads) {
+        if (!lead.assignedTo) continue;
+
+        // Check if we already notified today? 
+        // Ideally we shouldn't spam. But for MVP we scan.
+        // A smarter way is: check if there's a recent system comment for this?
+        // Or just notify. Simplest is notify.
+
+        await createNotification(
+            lead.assignedTo,
+            `Follow-up due for Lead: ${lead.companyName || lead.contactPerson} (Since ${lead.nextFollowUpDate?.toISOString().split('T')[0]})`,
+            lead.id,
+            'Lead'
+        );
+        console.log(`[Scheduler] Notified follow-up for Lead ${lead.id}`);
     }
 }
 

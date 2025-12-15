@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { format } from 'date-fns';
+import { generateMolRegistrationCsv } from '../services/exportService';
 
 const router = Router();
 
@@ -180,6 +181,29 @@ router.get('/bank-payroll-transfer', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to generate export' });
+    }
+});
+
+
+
+// POST /api/exports/mol-registration
+router.post('/mol-registration', async (req, res) => {
+    try {
+        const { workerIds } = req.body;
+        if (!workerIds || !Array.isArray(workerIds) || workerIds.length === 0) {
+            return res.status(400).json({ error: 'workerIds array is required' });
+        }
+
+        const csvContent = await generateMolRegistrationCsv(workerIds);
+        const fileName = `mol_labor_list_${format(new Date(), 'yyyyMMdd')}.csv`;
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(csvContent);
+
+    } catch (error) {
+        console.error('Export Error:', error);
+        res.status(500).json({ error: 'Failed to generate MOL export' });
     }
 });
 
