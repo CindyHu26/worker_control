@@ -11,7 +11,8 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
-    Grid
+    Grid,
+    Megaphone
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -27,6 +28,7 @@ export default function Sidebar() {
 
         { href: '/workers', label: '移工管理', subLabel: 'Workers', icon: Users },
         { href: '/employers', label: '雇主管理', subLabel: 'Employers', icon: Briefcase },
+        { href: '/crm/board', label: '業務開發', subLabel: 'CRM', icon: Megaphone },
         { href: '/recruitment', label: '招募進度', subLabel: 'Recruitment', icon: FileText },
     ];
 

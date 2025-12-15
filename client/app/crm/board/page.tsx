@@ -164,7 +164,7 @@ export default function CRMBoard() {
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:3001/api/leads');
+            const res = await fetch('http://localhost:3001/api/leads', { credentials: 'include' });
             if (res.ok) {
                 const data: Lead[] = await res.json();
 
@@ -229,6 +229,7 @@ export default function CRMBoard() {
             await fetch(`http://localhost:3001/api/leads/${cardId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ status: targetStage })
             });
         } catch (error) {
@@ -279,6 +280,8 @@ export default function CRMBoard() {
         }
     }
 
+    const router = useRouter(); // Hook added here for the button
+
     if (loading) return <div className="p-10 text-center text-slate-400">Loading Leads...</div>;
 
     return (
@@ -289,7 +292,7 @@ export default function CRMBoard() {
                     Sales Pipeline
                 </h1>
                 <button
-                    onClick={() => { /* Navigate to Create Page or Open Modal */ }}
+                    onClick={() => router.push('/crm/leads/new')}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     + New Lead

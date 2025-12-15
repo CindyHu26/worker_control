@@ -99,8 +99,6 @@ router.post('/:id/interactions', async (req, res) => {
             const updateData: any = {
                 lastContactDate: new Date(),
                 // If interaction happened, status might implicitly move to CONTACTED if it was NEW?
-                // Let frontend request explicit status change via PATCH if needed, 
-                // OR auto-update here.
                 // "Auto update lastContactDate" requested.
             };
 
@@ -136,9 +134,15 @@ router.post('/:id/convert', async (req, res) => {
         // Assume user ID is available in req.user or similar middleware, otherwise pass in body or hardcode for now
         // For this prototype, we'll try to get it from a header or body, else fallback.
         // Assuming no auth middleware context in this snippet provided.
-        const operatorId = req.body.operatorId || 'system';
+        const { operatorId, taxId, industryType, factoryAddress, avgDomesticWorkers } = req.body;
+        const opId = operatorId || 'system';
 
-        const employer = await convertLeadToEmployer(id, operatorId);
+        const employer = await convertLeadToEmployer(id, opId, {
+            taxId,
+            industryType,
+            factoryAddress,
+            avgDomesticWorkers: avgDomesticWorkers ? Number(avgDomesticWorkers) : undefined
+        });
         res.json({ success: true, employer });
     } catch (error: any) {
         console.error(error);

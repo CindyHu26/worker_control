@@ -4,8 +4,18 @@ import prisma from '../prisma';
  * Converts a Lead to an Employer
  * @param leadId 
  * @param operatorId Internal User ID performing the action
+ * @param options Additional conversion data
  */
-export const convertLeadToEmployer = async (leadId: string, operatorId: string) => {
+export const convertLeadToEmployer = async (
+    leadId: string,
+    operatorId: string,
+    options?: {
+        taxId?: string;
+        industryType?: string; // Enum: MANUFACTURING, etc.
+        factoryAddress?: string;
+        avgDomesticWorkers?: number;
+    }
+) => {
     return await prisma.$transaction(async (tx) => {
         // 1. Fetch Lead
         const lead = await tx.lead.findUnique({
@@ -15,40 +25,59 @@ export const convertLeadToEmployer = async (leadId: string, operatorId: string) 
         if (!lead) throw new Error("Lead not found");
         if (lead.status === 'WON') throw new Error("Lead already converted");
 
-        // 2. Create Employer
-        // Map fields: companyName -> companyName, etc.
-        // We need a unique taxId. If Lead doesn't have it (it's not in schema), we might need to generate a placeholder or ask user to fill it later.
-        // The schema for Employer REQUIRES taxId (@unique).
-        // Lead data is loose. 
-        // Strategy: Use a placeholder TAX ID (e.g. "TEMP-{timestamp}") if not provided?
-        // Wait, Lead schema does not have taxId. 
-        // We will generate a temporary Tax ID so the creation succeeds, and User must update it.
-        const tempTaxId = `T${Date.now()}`;
+        // 2. Prepare Data
+        const taxId = options?.taxId || `T${Date.now()}`;
+        const category = options?.industryType || "MANUFACTURING"; // Default to Manufacturing if not set
+        const address = options?.factoryAddress || lead.address;
 
+        // 3. Create Employer
         const employer = await tx.employer.create({
             data: {
                 companyName: lead.companyName || "Unknown Company",
-                taxId: tempTaxId,
+                taxId: taxId,
                 phoneNumber: lead.phone,
                 email: lead.email,
                 responsiblePerson: lead.contactPerson,
-                address: lead.address,
-                industryType: lead.industry,
-                // createdBy: operatorId // optional if schema supports it
-                createdBy: operatorId
+                address: address,
+                category: category,
+                industryType: category, // Saving enum value as text description too for now
+                createdBy: operatorId,
+                // Create Factory Info if address provided and is manufacturing
+                factoryInfo: (category === 'MANUFACTURING') ? {
+                    create: {
+                        factoryAddress: address
+                    }
+                } : undefined
             }
         });
 
-        // 3. Update Lead Status
+        // 4. Initialize Labor Count (Quota Basis) if provided
+        if (options?.avgDomesticWorkers && options.avgDomesticWorkers > 0) {
+            const now = new Date();
+            await tx.employerLaborCount.create({
+                data: {
+                    employerId: employer.id,
+                    year: now.getFullYear(),
+                    month: now.getMonth() + 1, // 1-indexed
+                    count: options.avgDomesticWorkers
+                }
+            });
+        }
+
+        // 5. Update Lead Status
         await tx.lead.update({
             where: { id: leadId },
             data: { status: 'WON' }
         });
 
-        // 4. (Optional) Create a System Comment on Employer linking back
+        // 6. Link Interaction History? 
+        // (Optional: Copy interactions to SystemComments on Employer or link them if schema supported it. 
+        // Currently LeadInteraction is tied to Lead. We can leave them there as trace.)
+
+        // 7. System Comment
         await tx.systemComment.create({
             data: {
-                content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})`,
+                content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId}). Initial Logic: 3K5 Quota Base = ${options?.avgDomesticWorkers || 0}`,
                 recordId: employer.id,
                 recordTableName: 'Employer',
                 createdBy: operatorId
