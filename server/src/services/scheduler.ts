@@ -1,5 +1,17 @@
 import cron from 'node-cron';
 import prisma from '../prisma';
+import type { WorkerTimeline, Deployment, Worker, Employer, Lead } from '@prisma/client';
+
+// Batch processing configuration to prevent memory overload
+const BATCH_SIZE = 100; // Process 100 records at a time
+
+// Type for WorkerTimeline with nested relations
+type TimelineWithRelations = WorkerTimeline & {
+    deployment: Deployment & {
+        worker: Worker;
+        employer: Employer;
+    };
+};
 
 /**
  * Creates a system notification (Comment + Mention)
@@ -49,111 +61,154 @@ export async function runDailyChecks() {
     // Thresholds
     const checkPoints = [30, 60, 90];
 
-    // Find active deployments with timelines
-    const timelines = await prisma.workerTimeline.findMany({
-        where: {
-            deployment: {
-                status: 'active'
-            }
-        },
-        include: {
-            deployment: {
-                include: {
-                    worker: true,
-                    employer: true,
-                    // We need to know WHO to notify. 
-                    // For now, we'll notify all admins or associated service staff.
-                    // Let's assume we notify the assigned 'service_staff' if exists, else first admin.
-                }
-            }
-        }
-    });
+    // Process WorkerTimeline in batches to prevent memory overload
+    let cursor: string | undefined = undefined;
+    let processedCount = 0;
 
-    // We need a helper to find the assigned user
-    // Since we don't have direct relation in include easily without more query complexity,
-    // we'll fetch assignments separately or optimize later.
-    // Optimization: filtering in DB is better, but date math in Prisma/SQL directly can be tricky across DB types.
-    // JS filter for MVP is acceptable for reasonable dataset.
-
-    for (const tl of timelines) {
-        const { deployment } = tl;
-        const workerName = deployment.worker.englishName;
-
-        // Find assignee (Service Staff)
-        const assignment = await prisma.serviceAssignment.findFirst({
+    while (true) {
+        // Fetch batch of timelines using cursor-based pagination
+        const batch: TimelineWithRelations[] = await prisma.workerTimeline.findMany({
+            take: BATCH_SIZE,
+            skip: cursor ? 1 : 0,
+            cursor: cursor ? { id: cursor } : undefined,
             where: {
-                workerId: deployment.workerId,
+                deployment: {
+                    status: 'active'
+                }
+            },
+            include: {
+                deployment: {
+                    include: {
+                        worker: true,
+                        employer: true,
+                    }
+                }
+            },
+            orderBy: { id: 'asc' }
+        });
+
+        if (batch.length === 0) break;
+
+        // Optimize N+1 query: Fetch all service assignments for this batch in one query
+        const workerIds = batch.map((tl: TimelineWithRelations) => tl.deployment.workerId);
+        const assignments = await prisma.serviceAssignment.findMany({
+            where: {
+                workerId: { in: workerIds },
                 role: 'service_staff',
                 endDate: null
             }
         });
 
-        // Default target: The assignee, or finding an admin
-        let targetUserId = assignment?.internalUserId;
-        if (!targetUserId) {
-            const admin = await prisma.internalUser.findFirst({ where: { role: 'admin' } });
-            targetUserId = admin?.id;
-        }
-        if (!targetUserId) continue;
+        // Create a lookup map for quick access
+        const assignmentMap = new Map(
+            assignments.map(a => [a.workerId, a.internalUserId])
+        );
 
+        // Cache admin user to avoid repeated queries
+        let adminUserId: string | undefined;
 
-        // Helper to check and notify
-        const checkDate = async (date: Date | null, label: string) => {
-            if (!date) return;
-            // Diff in days
-            const diffTime = date.getTime() - today.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        // Process each timeline in the batch
+        for (const tl of batch) {
+            const { deployment } = tl;
+            const workerName = deployment.worker.englishName;
 
-            if (checkPoints.includes(diffDays)) {
-                await createNotification(
-                    targetUserId!,
-                    `${workerName}'s ${label} expires in ${diffDays} days (${date.toISOString().split('T')[0]})`,
-                    deployment.workerId,
-                    'Worker'
-                );
-                console.log(`[Scheduler] Notified ${label} for ${workerName} (${diffDays} days)`);
+            // Find assignee from the map
+            let targetUserId = assignmentMap.get(deployment.workerId);
+
+            // Fallback to admin if no assignment
+            if (!targetUserId) {
+                if (!adminUserId) {
+                    const admin = await prisma.internalUser.findFirst({ where: { role: 'admin' } });
+                    adminUserId = admin?.id;
+                }
+                targetUserId = adminUserId;
             }
-        };
 
-        await checkDate(tl.residencePermitExpiry, 'ARC');
-        await checkDate(tl.passportExpiry, 'Passport');
-        await checkDate(tl.medCheck6moDeadline, '6-Mo Med Check');
-        await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
-        await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
-        await checkDate(tl.medCheck30moDeadline, '30-Mo Med Check');
+            if (!targetUserId) continue;
+
+            // Helper to check and notify
+            const checkDate = async (date: Date | null, label: string) => {
+                if (!date) return;
+                // Diff in days
+                const diffTime = date.getTime() - today.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (checkPoints.includes(diffDays)) {
+                    await createNotification(
+                        targetUserId!,
+                        `${workerName}'s ${label} expires in ${diffDays} days (${date.toISOString().split('T')[0]})`,
+                        deployment.workerId,
+                        'Worker'
+                    );
+                    console.log(`[Scheduler] Notified ${label} for ${workerName} (${diffDays} days)`);
+                }
+            };
+
+            await checkDate(tl.residencePermitExpiry, 'ARC');
+            await checkDate(tl.passportExpiry, 'Passport');
+            await checkDate(tl.medCheck6moDeadline, '6-Mo Med Check');
+            await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
+            await checkDate(tl.medCheck30moDeadline, '30-Mo Med Check');
+        }
+
+        processedCount += batch.length;
+        cursor = batch[batch.length - 1].id;
+
+        console.log(`[Scheduler] Processed ${processedCount} worker timelines...`);
     }
+
+    console.log(`[Scheduler] Completed processing ${processedCount} total worker timelines.`);
 
     // --- CRM Lead Follow-up Checks ---
     console.log('[Scheduler] Checking Lead Follow-ups...');
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
-    const followUpLeads = await prisma.lead.findMany({
-        where: {
-            nextFollowUpDate: {
-                lte: endOfDay, // Check for today or past due
+    // Process Leads in batches to prevent memory overload
+    let leadCursor: string | undefined = undefined;
+    let processedLeads = 0;
+
+    while (true) {
+        const leadBatch: Lead[] = await prisma.lead.findMany({
+            take: BATCH_SIZE,
+            skip: leadCursor ? 1 : 0,
+            cursor: leadCursor ? { id: leadCursor } : undefined,
+            where: {
+                nextFollowUpDate: {
+                    lte: endOfDay, // Check for today or past due
+                },
+                status: { notIn: ['WON', 'LOST'] },
+                assignedTo: { not: null }
             },
-            status: { notIn: ['WON', 'LOST'] },
-            assignedTo: { not: null }
+            orderBy: { id: 'asc' }
+        });
+
+        if (leadBatch.length === 0) break;
+
+        for (const lead of leadBatch) {
+            if (!lead.assignedTo) continue;
+
+            // Check if we already notified today? 
+            // Ideally we shouldn't spam. But for MVP we scan.
+            // A smarter way is: check if there's a recent system comment for this?
+            // Or just notify. Simplest is notify.
+
+            await createNotification(
+                lead.assignedTo,
+                `Follow-up due for Lead: ${lead.companyName || lead.contactPerson} (Since ${lead.nextFollowUpDate?.toISOString().split('T')[0]})`,
+                lead.id,
+                'Lead'
+            );
+            console.log(`[Scheduler] Notified follow-up for Lead ${lead.id}`);
         }
-    });
 
-    for (const lead of followUpLeads) {
-        if (!lead.assignedTo) continue;
+        processedLeads += leadBatch.length;
+        leadCursor = leadBatch[leadBatch.length - 1].id;
 
-        // Check if we already notified today? 
-        // Ideally we shouldn't spam. But for MVP we scan.
-        // A smarter way is: check if there's a recent system comment for this?
-        // Or just notify. Simplest is notify.
-
-        await createNotification(
-            lead.assignedTo,
-            `Follow-up due for Lead: ${lead.companyName || lead.contactPerson} (Since ${lead.nextFollowUpDate?.toISOString().split('T')[0]})`,
-            lead.id,
-            'Lead'
-        );
-        console.log(`[Scheduler] Notified follow-up for Lead ${lead.id}`);
+        console.log(`[Scheduler] Processed ${processedLeads} leads...`);
     }
+
+    console.log(`[Scheduler] Completed processing ${processedLeads} total leads.`);
 }
 
 // Initialize Cron

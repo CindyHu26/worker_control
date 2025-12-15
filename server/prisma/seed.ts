@@ -153,7 +153,60 @@ async function main() {
         }
     }
 
-    // 6. System Settings
+    // 6. Seed Tax Configurations
+    console.log('Seeding tax configurations...');
+    const taxConfigs = [
+        {
+            year: 2023,
+            minWage: 26400,
+            minWageThresholdMultiplier: 1.5,
+            standardDeduction: 124000,
+            salaryDeduction: 207000,
+            personalExemption: 92000,
+            taxRateResident: 0.05,
+            nonResidentLowRate: 0.06,
+            nonResidentHighRate: 0.18,
+            effectiveDate: new Date('2023-01-01'),
+            notes: '2023 tax parameters'
+        },
+        {
+            year: 2024,
+            minWage: 27470,
+            minWageThresholdMultiplier: 1.5,
+            standardDeduction: 124000,
+            salaryDeduction: 207000,
+            personalExemption: 92000,
+            taxRateResident: 0.05,
+            nonResidentLowRate: 0.06,
+            nonResidentHighRate: 0.18,
+            effectiveDate: new Date('2024-01-01'),
+            notes: '2024 minimum wage increased to 27,470'
+        },
+        {
+            year: 2025,
+            minWage: 28590,
+            minWageThresholdMultiplier: 1.5,
+            standardDeduction: 124000,
+            salaryDeduction: 207000,
+            personalExemption: 92000,
+            taxRateResident: 0.05,
+            nonResidentLowRate: 0.06,
+            nonResidentHighRate: 0.18,
+            effectiveDate: new Date('2025-01-01'),
+            notes: '2025 projected minimum wage (update when official)'
+        }
+    ];
+
+    for (const config of taxConfigs) {
+        await prisma.taxConfig.upsert({
+            where: { year: config.year },
+            update: config,
+            create: config
+        });
+        console.log(`✅ Tax configuration for ${config.year} seeded`);
+    }
+
+    // 7. System Settings
     console.log('System initialized.');
 }
 

@@ -29,6 +29,7 @@ import taxRoutes from './tax';
 
 import complianceRoutes from './compliance';
 import leadsRoutes from './leads';
+import taxConfigRoutes from './taxConfig';
 const router = Router();
 
 
@@ -77,6 +78,7 @@ router.use('/kanban', kanbanRoutes);
 router.use('/documents', documentRoutes);
 router.use('/quota', quotaRoutes); // Assuming quota routes might be separate or handled in employers
 router.use('/tax', taxRoutes);
+router.use('/tax-config', taxConfigRoutes);
 router.use('/search', searchRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/leads', leadsRoutes);

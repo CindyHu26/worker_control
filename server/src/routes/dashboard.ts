@@ -1,13 +1,17 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { getTaiwanToday, getTaiwanMonthStart, getTaiwanNow } from '../utils/dateUtils';
+import { toZonedTime } from 'date-fns-tz';
 
 const router = Router();
 
 // GET /api/dashboard/stats
 router.get('/stats', async (req, res) => {
     try {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const now = getTaiwanToday();
+        const taiwanNow = toZonedTime(now, 'Asia/Taipei');
+        const startOfMonth = getTaiwanMonthStart(taiwanNow.getFullYear(), taiwanNow.getMonth() + 1);
+        const currentMonth = taiwanNow.getMonth() + 1; // 1-12
 
         const totalActiveWorkers = await prisma.deployment.count({
             where: {
@@ -24,9 +28,42 @@ router.get('/stats', async (req, res) => {
             }
         });
 
+        // Birthday count using SQL date functions (SQLite compatible)
+        // Count workers with birthdays this month who have active deployments
+        const birthdaysThisMonth = await prisma.$queryRaw<[{ count: number }]>`
+            SELECT COUNT(*) as count
+            FROM workers w
+            WHERE CAST(strftime('%m', w.dob) AS INTEGER) = ${currentMonth}
+            AND EXISTS (
+                SELECT 1 FROM deployments d 
+                WHERE d.worker_id = w.id 
+                AND d.status = 'active'
+            )
+        `;
+
+        // Active recruitment: RecruitmentLetters with remaining quota
+        // Use raw SQL since Prisma doesn't support field-to-field comparison
+        const activeRecruitmentResult = await prisma.$queryRaw<[{ count: number }]>`
+            SELECT COUNT(*) as count
+            FROM recruitment_letters
+            WHERE expiry_date >= ${now.toISOString()}
+            AND used_quota < approved_quota
+        `;
+
+        // Pending documents: Count active document templates
+        // (You can adjust this logic based on your actual requirements)
+        const pendingDocuments = await prisma.documentTemplate.count({
+            where: {
+                isActive: true
+            }
+        });
+
         res.json({
             totalActiveWorkers,
-            newEntriesThisMonth
+            newEntriesThisMonth,
+            birthdaysThisMonth: Number(birthdaysThisMonth[0].count),
+            activeRecruitment: Number(activeRecruitmentResult[0].count),
+            pendingDocuments
         });
     } catch (error) {
         console.error('Stats Error:', error);
@@ -34,10 +71,48 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+// GET /api/dashboard/birthdays
+router.get('/birthdays', async (req, res) => {
+    try {
+        const now = getTaiwanToday();
+        const taiwanNow = toZonedTime(now, 'Asia/Taipei');
+        const currentMonth = taiwanNow.getMonth() + 1; // 1-12
+
+        // Use raw SQL for efficient month extraction and joining
+        const birthdays = await prisma.$queryRaw<Array<{
+            id: string;
+            englishName: string;
+            chineseName: string | null;
+            dob: string;
+            companyName: string;
+        }>>`
+            SELECT 
+                w.id,
+                w.english_name as englishName,
+                w.chinese_name as chineseName,
+                w.dob,
+                e.company_name as companyName
+            FROM workers w
+            INNER JOIN deployments d ON d.worker_id = w.id
+            INNER JOIN employers e ON e.id = d.employer_id
+            WHERE CAST(strftime('%m', w.dob) AS INTEGER) = ${currentMonth}
+            AND d.status = 'active'
+            ORDER BY CAST(strftime('%d', w.dob) AS INTEGER) ASC
+            LIMIT 50
+        `;
+
+        res.json(birthdays);
+    } catch (error) {
+        console.error('Birthdays Error:', error);
+        res.status(500).json({ error: 'Failed to fetch birthdays' });
+    }
+});
+
+
 // GET /api/dashboard/alerts
 router.get('/alerts', async (req, res) => {
     try {
-        const today = new Date();
+        const today = getTaiwanToday();
         today.setHours(0, 0, 0, 0); // Start of today
 
         const thirtyDaysFromNow = new Date(today);

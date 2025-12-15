@@ -1350,3 +1350,30 @@ model LeadInteraction {
 
   @@map("lead_interactions")
 }
+
+model TaxConfig {
+  id        String   @id @default(uuid())
+  year      Int      @unique
+  
+  // Minimum Wage Parameters
+  minWage                    Int     @map("min_wage") // e.g., 27470 for 2024
+  minWageThresholdMultiplier Decimal @default(1.5) @map("min_wage_threshold_multiplier")
+  
+  // Deductions and Exemptions
+  standardDeduction  Int @map("standard_deduction")   // 標準扣除額
+  salaryDeduction    Int @map("salary_deduction")     // 薪資所得特別扣除額
+  personalExemption  Int @map("personal_exemption")   // 免稅額
+  
+  // Tax Rates
+  taxRateResident       Decimal @map("tax_rate_resident")         // 5% for residents
+  nonResidentLowRate    Decimal @map("non_resident_low_rate")     // 6% for low income
+  nonResidentHighRate   Decimal @map("non_resident_high_rate")    // 18% for high income
+  
+  // Metadata
+  effectiveDate DateTime  @map("effective_date")  // When this config becomes active
+  notes         String?                           // Admin notes about changes
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  @@map("tax_configs")
+}

@@ -13,7 +13,13 @@ async function getStats() {
         return res.json();
     } catch (e) {
         console.error(e);
-        return { totalActiveWorkers: 0, newEntriesThisMonth: 0 };
+        return {
+            totalActiveWorkers: 0,
+            newEntriesThisMonth: 0,
+            birthdaysThisMonth: 0,
+            activeRecruitment: 0,
+            pendingDocuments: 0
+        };
     }
 }
 
@@ -57,7 +63,7 @@ export default async function Dashboard() {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-sm font-medium text-gray-500">進行中招募</p>
-                            <h3 className="text-3xl font-bold text-gray-900 mt-1">-</h3>
+                            <h3 className="text-3xl font-bold text-gray-900 mt-1">{stats.activeRecruitment || 0}</h3>
                         </div>
                         <div className="p-3 bg-purple-50 rounded-full text-purple-600">
                             <UserPlus size={24} />
@@ -69,7 +75,7 @@ export default async function Dashboard() {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-sm font-medium text-gray-500">待處理文件</p>
-                            <h3 className="text-3xl font-bold text-gray-900 mt-1">-</h3>
+                            <h3 className="text-3xl font-bold text-gray-900 mt-1">{stats.pendingDocuments || 0}</h3>
                         </div>
                         <div className="p-3 bg-orange-50 rounded-full text-orange-600">
                             <FileCheck size={24} />

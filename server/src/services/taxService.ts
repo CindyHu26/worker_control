@@ -1,6 +1,7 @@
 
 import prisma from '../prisma';
 import type { Prisma } from '@prisma/client';
+import { getTaiwanYearStart, getTaiwanYearEnd, getTaiwanToday, daysBetween } from '../utils/dateUtils';
 
 export type ResidencyStatusResult = {
     year: number;
@@ -20,38 +21,42 @@ export type TaxLiabilityResult = {
     details: string[];
 };
 
-// Helper: Get Tax Parameters
-const getTaxParams = (year: number) => {
-    // Simplified for 2024-2025
-    if (year >= 2024) {
-        return {
-            minWage: 27470, // 2024
-            minWageThresholdMultipler: 1.5,
-            standardDeduction: 124000,
-            salaryDeduction: 207000,
-            personalExemption: 92000,
-            taxRateResident: 0.05,
-            nonResidentLowRate: 0.06,
-            nonResidentHighRate: 0.18
-        };
+// Helper: Get Tax Parameters from Database
+const getTaxParams = async (year: number) => {
+    // Try to get config for the specific year
+    let config = await prisma.taxConfig.findUnique({
+        where: { year }
+    });
+
+    // Fallback: Use the most recent year's config if not found
+    if (!config) {
+        config = await prisma.taxConfig.findFirst({
+            where: { year: { lte: year } },
+            orderBy: { year: 'desc' }
+        });
     }
-    // Fallback/Older
+
+    // If still no config, throw error (should never happen with proper seeding)
+    if (!config) {
+        throw new Error(`No tax configuration found for year ${year} or earlier`);
+    }
+
     return {
-        minWage: 26400,
-        minWageThresholdMultipler: 1.5,
-        standardDeduction: 124000,
-        salaryDeduction: 207000,
-        personalExemption: 92000,
-        taxRateResident: 0.05,
-        nonResidentLowRate: 0.06,
-        nonResidentHighRate: 0.18
+        minWage: config.minWage,
+        minWageThresholdMultipler: Number(config.minWageThresholdMultiplier),
+        standardDeduction: config.standardDeduction,
+        salaryDeduction: config.salaryDeduction,
+        personalExemption: config.personalExemption,
+        taxRateResident: Number(config.taxRateResident),
+        nonResidentLowRate: Number(config.nonResidentLowRate),
+        nonResidentHighRate: Number(config.nonResidentHighRate)
     };
 };
 
 export const calculateResidencyStatus = async (workerId: string, year: number): Promise<ResidencyStatusResult> => {
     // 1. Fetch Deployments active in this year
-    const startOfYear = new Date(Date.UTC(year, 0, 1));
-    const endOfYear = new Date(Date.UTC(year, 11, 31));
+    const startOfYear = getTaiwanYearStart(year);
+    const endOfYear = getTaiwanYearEnd(year);
 
     const deployments = await prisma.deployment.findMany({
         where: {
@@ -88,15 +93,14 @@ export const calculateResidencyStatus = async (workerId: string, year: number): 
             // Standard practice: Count actual days passed if current year, or projected?
             // "183 rule" is for the Whole Year.
             // If evaluating mid-year, we count "Days so far".
-            const today = new Date();
+            const today = getTaiwanToday();
             if (year === today.getFullYear()) {
                 rangeEnd = today < rangeEnd ? today : rangeEnd;
             }
         }
 
         if (rangeEnd >= rangeStart) {
-            const diffTime = Math.abs(rangeEnd.getTime() - rangeStart.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive
+            const diffDays = daysBetween(rangeStart, rangeEnd);
             totalDays += diffDays;
         }
     }
@@ -110,7 +114,7 @@ export const calculateResidencyStatus = async (workerId: string, year: number): 
 export const calculateTaxLiability = async (workerId: string, year: number): Promise<TaxLiabilityResult> => {
     // 1. Determine Residency
     const residency = await calculateResidencyStatus(workerId, year);
-    const params = getTaxParams(year);
+    const params = await getTaxParams(year);
     const minWageLimit = params.minWage * params.minWageThresholdMultipler;
 
     // 2. Fetch Payroll Records
@@ -119,8 +123,8 @@ export const calculateTaxLiability = async (workerId: string, year: number): Pro
         where: {
             workerId,
             payDate: {
-                gte: new Date(Date.UTC(year, 0, 1)),
-                lte: new Date(Date.UTC(year, 11, 31))
+                gte: getTaiwanYearStart(year),
+                lte: getTaiwanYearEnd(year)
             }
         }
     });
