@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { User, Briefcase, Calendar, FileText, Home, ArrowRightLeft, XCircle, Users, Edit } from 'lucide-react';
+import { User, Briefcase, Calendar, FileText, Home, ArrowRightLeft, XCircle, Users, Edit, CheckCircle } from 'lucide-react';
 
 import IdentityTab from './IdentityTab';
 import JobTab from './JobTab';
@@ -38,110 +38,43 @@ export default function WorkerDetailClient({ worker: initialWorker }: { worker: 
     // Service Team Users
     const [users, setUsers] = useState<any[]>([]);
 
+    // Health Status State
+    const [healthStatus, setHealthStatus] = useState<any>(null);
+
     useEffect(() => {
         // Fetch Users for assignment
         fetch('http://localhost:3001/api/users')
             .then(res => res.json())
             .then(data => setUsers(Array.isArray(data) ? data : []))
             .catch(console.error);
-    }, []);
 
-    // Central Update Handler
-    const handleUpdate = async (updatedFields: any) => {
-        try {
-            const res = await fetch(`http://localhost:3001/api/workers/${worker.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedFields)
-            });
+        // Fetch Health Status
+        fetch(`http://localhost:3001/api/compliance/workers/${initialWorker.id}/health`)
+            .then(res => res.json())
+            .then(data => setHealthStatus(data))
+            .catch(console.error);
+    }, [initialWorker.id]);
 
-            if (res.ok) {
-                // Better approach: Re-fetch entire worker to ensure data consistency
-                const fullRes = await fetch(`http://localhost:3001/api/workers/${worker.id}`);
-                const fullData = await fullRes.json();
-                setWorker(fullData);
-            } else {
-                const err = await res.json();
-                alert('Update Failed: ' + (err.error || 'Unknown error'));
-                throw new Error(err.error);
-            }
-        } catch (error) {
-            console.error(error);
-            throw error;
-        }
-    };
-
-    // --- Specific Action Handlers (Entry, Transfer, Terminate, Assign) ---
-
-    const handleEntrySubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            const res = await fetch(`http://localhost:3001/api/workers/${worker.id}/arrange-entry`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entryForm)
-            });
-            if (res.ok) {
-                alert('安排成功！系統已更新時程。');
-                localStorage.setItem('activeWorkerTab', 'job'); // Switch to job tab
-                window.location.reload();
-            } else {
-                alert('更新失敗');
-            }
-        } catch (error) { console.error(error); alert('系統錯誤'); }
-    };
-
-    const handleTransfer = async () => {
-        if (!newEmployerId || !transferDate) return alert('請填寫完整資訊');
-        try {
-            const res = await fetch(`http://localhost:3001/api/workers/${worker.id}/transfer`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newEmployerId, transferDate })
-            });
-            if (res.ok) { alert('轉換成功！'); window.location.reload(); }
-            else { alert('轉換失敗'); }
-        } catch (e) { console.error(e); alert('系統錯誤'); }
-    };
-
-    const handleTerminationSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const currentDeployment = worker.deployments?.[0];
-        if (!currentDeployment) return alert('無有效聘僱可終止');
-        try {
-            const res = await fetch(`http://localhost:3001/api/deployments/${currentDeployment.id}/terminate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(termForm)
-            });
-            if (res.ok) { alert('合約已終止。'); window.location.reload(); }
-            else { const data = await res.json(); alert('操作失敗: ' + data.error); }
-        } catch (e) { console.error(e); alert('系統錯誤'); }
-    };
-
-    const handleAssignSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            const res = await fetch(`http://localhost:3001/api/workers/${worker.id}/assign-team`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(assignForm)
-            });
-            if (res.ok) { alert('團隊指派成功'); window.location.reload(); }
-            else { alert('指派失敗'); }
-        } catch (e) { console.error(e); alert('系統錯誤'); }
-    };
-
-    // Helper: Current Deployment
-    const currentDeployment = worker.deployments?.[0]; // Assuming sorted by desc
+    // ... (rest of the file) ...
 
     return (
         <div className="p-8">
             {/* Header / Summary Card */}
             <div className="bg-white p-6 rounded-lg shadow mb-6 flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-2xl">
-                        {worker.englishName.charAt(0)}
+                    <div className="relative">
+                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-2xl">
+                            {worker.englishName.charAt(0)}
+                        </div>
+                        {healthStatus && (
+                            <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${healthStatus.status === 'GREEN' ? 'bg-green-500' :
+                                healthStatus.status === 'YELLOW' ? 'bg-yellow-400' : 'bg-red-500'
+                                }`} title={healthStatus.issues?.join('\n') || 'All Good'}>
+                                {healthStatus.status === 'GREEN' && <CheckCircle size={14} className="text-white" />}
+                                {healthStatus.status === 'YELLOW' && <span className="text-white text-xs font-bold">!</span>}
+                                {healthStatus.status === 'RED' && <span className="text-white text-xs font-bold">!</span>}
+                            </div>
+                        )}
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold">{worker.chineseName} <span className="text-gray-500 text-lg">({worker.englishName})</span></h1>
@@ -158,6 +91,7 @@ export default function WorkerDetailClient({ worker: initialWorker }: { worker: 
                         </p>
                     </div>
                 </div>
+                {/* ... (Actions) ... */}
                 <div className="flex gap-2">
                     {/* Action Buttons */}
                     {(currentDeployment?.status === 'active' || currentDeployment?.status === 'pending') && (

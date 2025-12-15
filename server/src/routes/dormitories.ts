@@ -427,6 +427,121 @@ router.post('/calculate-cost-split', async (req, res) => {
     }
 });
 
+// ============================================
+// New Advanced Management Endpoints
+// ============================================
+
+// POST /api/dormitories/:id/equipment/batch
+// Batch create equipment
+router.post('/:id/equipment/batch', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { prefix, startNum, endNum, category, brandModel, location, maintenanceIntervalMonths } = req.body;
+
+        const { batchCreateEquipment } = await import('../services/dormService');
+        const result = await batchCreateEquipment(id, prefix, startNum, endNum, {
+            category,
+            brandModel,
+            location,
+            maintenanceIntervalMonths
+        });
+
+        res.json(result);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /api/dormitories/maintenance/:id/complete
+// Complete maintenance and trigger auto-scheduling
+router.post('/maintenance/:id/complete', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { completionDate } = req.body;
+
+        const maintenance = await prisma.maintenanceLog.findUnique({ where: { id } });
+        if (!maintenance) {
+            return res.status(404).json({ error: 'Maintenance log not found' });
+        }
+
+        await prisma.maintenanceLog.update({
+            where: { id },
+            data: {
+                status: 'COMPLETED',
+                completionDate: completionDate ? new Date(completionDate) : new Date()
+            }
+        });
+
+        // Trigger auto-scheduling if equipment is linked
+        if (maintenance.equipmentId) {
+            const { scheduleNextMaintenance } = await import('../services/dormService');
+            const nextDate = await scheduleNextMaintenance(
+                maintenance.equipmentId,
+                completionDate ? new Date(completionDate) : new Date()
+            );
+
+            return res.json({ success: true, nextMaintenanceDate: nextDate });
+        }
+
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /api/dormitories/maintenance/:id/archive-expense
+// Convert maintenance to annual expense
+router.post('/maintenance/:id/archive-expense', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { amortizationMonths } = req.body;
+
+        const { convertMaintenanceToExpense } = await import('../services/dormService');
+        const result = await convertMaintenanceToExpense(id, amortizationMonths || 12);
+
+        res.json({ success: true, result });
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/dormitories/:id/analytics/utility-anomalies
+// Run utility anomaly detection
+router.get('/:id/analytics/utility-anomalies', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { meterId } = req.query;
+
+        const { detectUtilityAnomalies } = await import('../services/analyticsService');
+        const result = await detectUtilityAnomalies(id, meterId as string | undefined);
+
+        res.json(result);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/dormitories/:id/compliance/area
+// Check area compliance
+router.get('/:id/compliance/area', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const standard = Number(req.query.standard) || 3.6;
+
+        const { checkAreaCompliance } = await import('../services/analyticsService');
+        const result = await checkAreaCompliance(id, standard);
+
+        res.json(result);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
 
 

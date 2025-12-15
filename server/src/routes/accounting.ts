@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { validateFeeCharge } from '../services/complianceService';
 
 const router = Router();
 
@@ -202,7 +203,7 @@ async function getFeeAmount(name: string, nationality: string | null): Promise<n
  * No pro-rata calculation. Uses exact amount provided OR looks up standard fee.
  */
 router.post('/bills/create-fixed', async (req, res) => {
-    const { workerId, feeType, name, amount, description, billDate } = req.body;
+    const { workerId, feeType, name, amount, description, billDate, overrideReason } = req.body;
 
     if (!workerId || (!amount && !name)) {
         return res.status(400).json({ error: 'Missing required fields: workerId. Either "amount" or "name" (for lookup) must be provided.' });
@@ -218,15 +219,58 @@ router.post('/bills/create-fixed', async (req, res) => {
 
         let finalAmount = amount ? Number(amount) : 0;
         let finalDesc = description;
+        let feeItemIdToValidate = null;
 
         // Auto-populate amount if missing
         if (!amount && name) {
-            const lookUpAmount = await getFeeAmount(name, worker.nationality);
-            if (lookUpAmount !== null) {
-                finalAmount = lookUpAmount;
+            // Need fee item ID for validation, let's fetch full item
+            let feeItem = null;
+            if (worker.nationality) {
+                feeItem = await prisma.feeItem.findFirst({ where: { name, nationality: worker.nationality } });
+            }
+            if (!feeItem) {
+                feeItem = await prisma.feeItem.findFirst({ where: { name, nationality: null } });
+            }
+
+            if (feeItem) {
+                finalAmount = Number(feeItem.defaultAmount);
                 if (!finalDesc) finalDesc = `${name} (${worker.nationality || 'General'})`;
+                feeItemIdToValidate = feeItem.id;
             } else {
                 return res.status(400).json({ error: `Fee standard not found for item: ${name} (Nationality: ${worker.nationality})` });
+            }
+        }
+
+        // If feeType is provided but not name lookup, we might not have feeItemId.
+        // Compliance check relies on feeItemId or we need a way to check purely by type/name.
+        // Current service requires feeItemId. If manually entering amount, we might not use FeeItem logic or we must lookup?
+        // Prompt implies "FeeItem" model has the flag.
+        // If user creates ad-hoc item not linked to FeeItem, we can't check 'isZeroFeeSubject'.
+        // Assumption: UI uses known fee items or backend maps 'feeType' to checks? 
+        // Let's assume for now validation only runs if we matched a FeeItem.
+
+        const billingDate = billDate ? new Date(billDate) : new Date();
+
+        const activeDeployment = worker.deployments[0]; // Can be null if no active deployment
+        // Need employerId for validation
+        if (activeDeployment && feeItemIdToValidate) {
+            const check = await validateFeeCharge(
+                workerId,
+                activeDeployment.employerId,
+                feeItemIdToValidate,
+                finalAmount,
+                billingDate
+            );
+
+            if (check.isViolation) {
+                if (!overrideReason) {
+                    return res.status(200).json({ // Return 200 with soft warning to trigger Frontend Modal
+                        requiresConfirmation: true,
+                        warningMessage: check.message,
+                        blockLevel: check.blockLevel
+                    });
+                }
+                // If overridden, we proceed but log
             }
         }
 
@@ -234,8 +278,6 @@ router.post('/bills/create-fixed', async (req, res) => {
         if (!finalDesc) return res.status(400).json({ error: 'Description is required if not auto-generated.' });
 
 
-        const activeDeployment = worker.deployments[0]; // Can be null if no active deployment
-        const billingDate = billDate ? new Date(billDate) : new Date();
         const year = billingDate.getFullYear();
         const month = billingDate.getMonth() + 1;
 
@@ -255,7 +297,10 @@ router.post('/bills/create-fixed', async (req, res) => {
                     create: {
                         description: finalDesc,
                         amount: finalAmount,
-                        feeCategory: feeType || 'other_fee'
+                        feeCategory: feeType || 'other_fee',
+                        // Store compliance info
+                        complianceOverrideReason: overrideReason || null,
+                        isOverridden: !!overrideReason
                     }
                 }
             }

@@ -6,12 +6,13 @@ import {
     Home, BedDouble, Plus, User,
     Droplet, Zap, FileText, CheckCircle, XCircle
 } from 'lucide-react';
+import DormComplianceTab from '@/components/dormitories/DormComplianceTab';
 
 export default function DormitoryDetailPage() {
     const { id } = useParams();
     const [dorm, setDorm] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'rooms' | 'meters'>('rooms');
+    const [activeTab, setActiveTab] = useState<'info' | 'compliance' | 'rooms' | 'meters'>('info');
 
     // Modal States
     const [selectedBed, setSelectedBed] = useState<any>(null); // For assignment
@@ -117,22 +118,44 @@ export default function DormitoryDetailPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 mb-6">
+            <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
+                <button
+                    onClick={() => setActiveTab('info')}
+                    className={`px-6 py-3 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Home size={18} /> 基本資料 (Info)
+                </button>
+                <button
+                    onClick={() => setActiveTab('compliance')}
+                    className={`px-6 py-3 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'compliance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                >
+                    <CheckCircle size={18} /> 合規與安檢 (Compliance)
+                </button>
                 <button
                     onClick={() => setActiveTab('rooms')}
-                    className={`px-6 py-3 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'rooms' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                    className={`px-6 py-3 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'rooms' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 >
-                    <BedDouble size={18} /> 房間與床位 (Rooms & Beds)
+                    <BedDouble size={18} /> 房間與床位 (Rooms)
                 </button>
                 <button
                     onClick={() => setActiveTab('meters')}
-                    className={`px-6 py-3 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'meters' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                    className={`px-6 py-3 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'meters' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 >
                     <Zap size={18} /> 水電抄表 (Meters)
                 </button>
             </div>
 
             {/* Tab Content */}
+            {activeTab === 'info' && (
+                <div className="bg-white p-8 rounded-xl border border-dashed border-slate-300 text-center text-slate-500">
+                    <Home size={48} className="mx-auto mb-4 opacity-20" />
+                    <h3 className="text-lg font-bold">基本資料 (Basic Info)</h3>
+                    <p className="mt-2 text-sm">此處可編輯地址、房東、租約等詳細資訊。</p>
+                </div>
+            )}
+
+            {activeTab === 'compliance' && <DormComplianceTab dormId={id as string} onRefresh={fetchDormData} />}
+
             {activeTab === 'rooms' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg border border-slate-200">

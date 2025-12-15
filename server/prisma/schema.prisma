@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 // Enums (SQLite treats validation as app-level)
@@ -99,9 +99,20 @@ model Employer {
   // Polymorphic Relation Fields
   category        String @default("MANUFACTURING") // MANUFACTURING, HOME_CARE, INSTITUTION
 
+  allocationRate  Decimal? @map("allocation_rate") // 0.10, 0.15, 0.20, 0.25, 0.35
+  totalQuota      Int?     @map("total_quota")
+  
+  complianceStandard   String?   @map("compliance_standard") // RBA, IWAY, NONE
+  zeroFeeEffectiveDate DateTime? @map("zero_fee_effective_date")
+  
+  houseTaxId      String?  @map("house_tax_id") // For non-resident tax filing
+
   factoryInfo     FactoryInfo?
   homeCareInfo    HomeCareInfo?
   institutionInfo InstitutionInfo?
+
+  laborCounts     EmployerLaborCount[]
+  payrollRecords  PayrollRecord[]
 
   @@map("employers")
 }
@@ -113,8 +124,50 @@ model FactoryInfo {
 
   factoryRegistrationNo String? @map("factory_registration_no")
   industryType          String? @map("industry_type")
+  factoryAddress        String? @map("factory_address")
   
   @@map("employer_factory_infos")
+}
+
+model EmployerLaborCount {
+  id         String   @id @default(uuid())
+  employerId String   @map("employer_id")
+  year       Int
+  month      Int
+  count      Int      @default(0)
+
+  employer   Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([employerId, year, month])
+  @@map("employer_labor_counts")
+}
+
+model PayrollRecord {
+  id              String   @id @default(uuid())
+  workerId        String   @map("worker_id")
+  employerId      String   @map("employer_id")
+
+  workPeriodStart DateTime @map("work_period_start")
+  workPeriodEnd   DateTime @map("work_period_end")
+  payDate         DateTime @map("pay_date") // Critical for tax year attribution
+
+  salaryAmount    Decimal  @default(0) @map("salary_amount")
+  bonusAmount     Decimal  @default(0) @map("bonus_amount")
+  
+  taxWithheld     Decimal  @default(0) @map("tax_withheld")
+  taxRateUsed     Decimal  @default(0) @map("tax_rate_used") // e.g. 0.06, 0.18
+
+  filingStatus    String   @default("PENDING") @map("filing_status") // PENDING, FILED_MONTHLY, FILED_ANNUALLY
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  worker          Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  employer        Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  @@map("payroll_records")
 }
 
 model HomeCareInfo {
@@ -230,8 +283,62 @@ model Worker {
   bills               Bill[]
   transfers           TransferRecord[]
   advancePayments     AdvancePayment[]
+  studentEvaluation   StudentEvaluation?
+  payrollRecords      PayrollRecord[]
 
   @@map("workers")
+}
+
+model StudentEvaluation {
+  id           String   @id @default(uuid())
+  workerId     String   @unique @map("worker_id")
+  deploymentId String?  @map("deployment_id")
+  
+  // 1. Education
+  educationDegree String? @map("education_degree") // PhD, Master, Bachelor, Associate
+  educationScore  Int     @default(0) @map("education_score")
+
+  // 2. Salary
+  avgMonthlySalary Decimal? @map("avg_monthly_salary")
+  salaryScore      Int      @default(0) @map("salary_score")
+
+  // 3. Experience
+  experienceYears Decimal? @map("experience_years") // Use decimal to support partial years or store as Int
+  experienceScore Int      @default(0) @map("experience_score")
+
+  // 4. Qualifications
+  qualificationDetails String? @map("qualification_details") // Special skills/licenses
+  qualificationScore   Int     @default(0) @map("qualification_score")
+
+  // 5. Chinese Capability
+  chineseLevel String? @map("chinese_level") // Fluent, High, Advanced
+  chineseScore Int     @default(0) @map("chinese_score")
+
+  // 6. Other Languages
+  otherLanguageDetails String? @map("other_language_details")
+  otherLanguageScore   Int     @default(0) @map("other_language_score")
+
+  // 7. Overseas Growth
+  overseasGrowthDetails String? @map("overseas_growth_details")
+  overseasGrowthScore   Int     @default(0) @map("overseas_growth_score")
+
+  // 8. Policy
+  policyDetails String? @map("policy_details") // 5+2 industries, New Southbound Policy
+  policyScore   Int     @default(0) @map("policy_score")
+
+  totalScore  Int     @default(0) @map("total_score")
+  isQualified Boolean @default(false) @map("is_qualified")
+
+  status      String  @default("Draft") // Draft, Submitted
+  reviewNotes String? @map("review_notes")
+
+  worker     Worker      @relation(fields: [workerId], references: [id])
+  deployment Deployment? @relation(fields: [deploymentId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("student_evaluations")
 }
 
 model RecruitmentLetter {
@@ -287,6 +394,7 @@ model WorkerPassport {
   expiryDate     DateTime @map("expiry_date")
   issuePlace     String?  @map("issue_place")
   isCurrent      Boolean  @default(false) @map("is_current")
+  isVerified     Boolean  @default(false) @map("is_verified")
 
   worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
@@ -303,6 +411,7 @@ model WorkerArc {
   issueDate  DateTime @map("issue_date")
   expiryDate DateTime @map("expiry_date")
   isCurrent  Boolean  @default(false) @map("is_current")
+  isVerified Boolean  @default(false) @map("is_verified")
 
   worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
@@ -377,6 +486,7 @@ model Deployment {
   monthlyFee    MonthlyServiceFee?
   feeSchedules  FeeSchedule[]
   transfers     TransferRecord[]
+  studentEvaluations StudentEvaluation[]
 
   @@map("deployments")
 }
@@ -688,6 +798,7 @@ model FeeItem {
   category      String // Enum: service_fee, placement_fee, official_fee, other
   nationality   String? // Optional: VN, ID, PH, TH
   description   String?
+  isZeroFeeSubject Boolean @default(false) @map("is_zero_fee_subject")
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -769,6 +880,9 @@ model BillItem {
   description String
   amount      Decimal
   feeCategory String  @map("fee_category") // Enum
+  
+  complianceOverrideReason String? @map("compliance_override_reason")
+  isOverridden             Boolean @default(false) @map("is_overridden")
 
   bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
   advancePayment AdvancePayment?
@@ -830,13 +944,22 @@ model Dormitory {
   landlordPhone        String?   @map("landlord_phone")
   accommodationType    String?   @map("accommodation_type") // e.g. Factory Dorm, Rental
   safetyInspectionDate DateTime? @map("safety_inspection_date")
+  
+  // New Advanced Management Fields
+  primaryManager    String?   @map("primary_manager") // "我司", "他仲", "雇主"
+  totalArea         Decimal?  @map("total_area") // Total area in m²
+  buildingUseType   String?   @map("building_use_type") // Building permit classification
+  fireSafetyExpiry  DateTime? @map("fire_safety_expiry") // Fire safety certification expiry
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  rooms   DormRoom[]
-  workers Worker[]
+  rooms       DormRoom[]
+  workers     Worker[]
+  leases      Lease[]
+  equipment   DormEquipment[]
+  maintenance MaintenanceLog[]
 
   @@map("dormitories")
 }
@@ -849,6 +972,10 @@ model DormRoom {
   currentHeadCount Int     @default(0) @map("current_head_count")
   gender           String? // Enum: male, female, mixed
   floor            Int?
+  
+  // New Advanced Management Fields
+  area                Decimal? // Room area in m² (critical for compliance)
+  accommodationType   String?  @map("accommodation_type") // "套房", "雅房"
 
   dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
 
@@ -1065,3 +1192,86 @@ model Invoice {
   @@map("invoices")
 }
 
+model Lease {
+  id                  String    @id @default(uuid())
+  dormId              String    @map("dorm_id")
+  vendorId            String?   @map("vendor_id") // Landlord/Vendor ID
+  
+  contractItem        String    @map("contract_item") // Contract description
+  payer               String    // Who pays: "我司", "雇主", etc.
+  
+  startDate           DateTime  @map("start_date")
+  endDate             DateTime? @map("end_date")
+  
+  monthlyRent         Decimal   @map("monthly_rent")
+  deposit             Decimal?  @default(0)
+  isUtilitiesIncluded Boolean   @default(false) @map("is_utilities_included")
+  
+  notes               String?
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  dormitory Dormitory @relation(fields: [dormId], references: [id], onDelete: Cascade)
+  
+  @@map("leases")
+}
+
+model DormEquipment {
+  id          String   @id @default(uuid())
+  dormId      String   @map("dorm_id")
+  
+  name        String
+  category    String   // "冷氣", "飲水機", "洗衣機", etc.
+  brandModel  String?  @map("brand_model")
+  location    String?  // "201房", "公共區域"
+  status      String   @default("active") // active, maintenance, retired
+  
+  // Automated Scheduling Fields
+  maintenanceIntervalMonths  Int?      @map("maintenance_interval_months") // e.g., 6 months
+  complianceIntervalMonths   Int?      @map("compliance_interval_months") // e.g., 3 months for water quality
+  lastMaintenanceDate        DateTime? @map("last_maintenance_date")
+  nextMaintenanceDate        DateTime? @map("next_maintenance_date") // Auto-calculated
+  
+  purchaseDate   DateTime? @map("purchase_date")
+  warrantyExpiry DateTime? @map("warranty_expiry")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  dormitory       Dormitory        @relation(fields: [dormId], references: [id], onDelete: Cascade)
+  maintenanceLogs MaintenanceLog[]
+  
+  @@map("dorm_equipment")
+}
+
+model MaintenanceLog {
+  id          String   @id @default(uuid())
+  equipmentId String?  @map("equipment_id") // Optional - can be general dorm maintenance
+  dormId      String   @map("dorm_id")
+  
+  itemType    String   @map("item_type") // "維修", "保養", "更換耗材"
+  description String
+  
+  reportedBy       String?   @map("reported_by") // Who reported the issue
+  notificationDate DateTime? @map("notification_date") // When was it reported
+  completionDate   DateTime? @map("completion_date") // When was it completed
+  
+  cost        Decimal?  @default(0)
+  payer       String?   // "我司", "雇主", "廠商"
+  status      String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  
+  invoiceInfo String?   @map("invoice_info") // Invoice number or reference
+  photoPaths  String?   @map("photo_paths") // JSON array of photo URLs
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  dormitory Dormitory      @relation(fields: [dormId], references: [id], onDelete: Cascade)
+  equipment DormEquipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  
+  @@map("maintenance_logs")
+}

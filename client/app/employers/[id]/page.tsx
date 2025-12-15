@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Building2, User, Phone, MapPin } from 'lucide-react';
 import RecruitmentLetterManager from '@/components/employers/RecruitmentLetterManager';
+import EmployerReadinessDashboard from '@/components/employers/EmployerReadinessDashboard';
 
 interface Employer {
     id: string;
@@ -48,6 +49,9 @@ export default function EmployerDetailPage() {
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
             <div className="max-w-6xl mx-auto">
+                {/* Readiness Dashboard */}
+                <EmployerReadinessDashboard employerId={id} />
+
                 {/* Header Section */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <div className="md:flex justify-between items-start">

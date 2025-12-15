@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Home, Plus, MapPin, User, BedDouble, AlertCircle } from 'lucide-react';
+import DormEvaluationCard from '@/components/dormitories/DormEvaluationCard';
+import BatchFixModal from '@/components/dormitories/BatchFixModal';
 
 interface Dormitory {
     id: string;
@@ -18,6 +20,7 @@ export default function DormitoryListPage() {
     const [dorms, setDorms] = useState<Dormitory[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedDormForFix, setSelectedDormForFix] = useState<string | null>(null);
 
     // New Dorm Form State
     const [newDorm, setNewDorm] = useState({
@@ -97,47 +100,11 @@ export default function DormitoryListPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {dorms.map(dorm => (
-                        <Link key={dorm.id} href={`/dormitories/${dorm.id}`}>
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition duration-200 group hover:-translate-y-1">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-100 transition-colors">
-                                        <Home size={24} />
-                                    </div>
-                                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${(dorm.currentOccupancy / (dorm.capacity || 1)) > 0.9
-                                            ? 'bg-red-100 text-red-700'
-                                            : 'bg-green-100 text-green-700'
-                                        }`}>
-                                        {dorm.capacity > 0 ? `${Math.round((dorm.currentOccupancy / dorm.capacity) * 100)}% 滿` : 'N/A'}
-                                    </div>
-                                </div>
-
-                                <h3 className="text-xl font-bold text-slate-900 mb-2 truncate">{dorm.name}</h3>
-
-                                <div className="space-y-2 text-sm text-slate-500 mb-6">
-                                    <div className="flex items-start gap-2">
-                                        <MapPin size={16} className="mt-0.5 shrink-0" />
-                                        <span className="line-clamp-2">{dorm.address}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <User size={16} />
-                                        <span>{dorm.landlordName} ({dorm.landlordPhone})</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Occupancy</span>
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-2xl font-bold text-slate-900">{dorm.currentOccupancy}</span>
-                                            <span className="text-sm text-slate-400">/ {dorm.capacity} 床</span>
-                                        </div>
-                                    </div>
-                                    <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                        <BedDouble size={20} />
-                                    </div>
-                                </div>
-                            </div>
-                        </Link>
+                        <DormEvaluationCard
+                            key={dorm.id}
+                            dorm={dorm}
+                            onQuickFix={() => setSelectedDormForFix(dorm.id)}
+                        />
                     ))}
                 </div>
             )}
@@ -201,6 +168,19 @@ export default function DormitoryListPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Batch Fix Modal */}
+            {selectedDormForFix && (
+                <BatchFixModal
+                    dormId={selectedDormForFix}
+                    onClose={() => setSelectedDormForFix(null)}
+                    onSuccess={() => {
+                        setSelectedDormForFix(null);
+                        alert('Batch update complete!');
+                        fetchDorms();
+                    }}
+                />
             )}
         </div>
     );
