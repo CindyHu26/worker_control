@@ -103,13 +103,13 @@ router.post('/', async (req, res) => {
         const newEmployer = await prisma.$transaction(async (tx) => {
             const emp = await tx.employer.create({
                 data: {
-                    companyName,
-                    taxId,
-                    responsiblePerson,
-                    phoneNumber,
-                    address,
-                    faxNumber,
-                    category: category || 'MANUFACTURING'
+                    companyName: String(companyName),
+                    taxId: String(taxId),
+                    responsiblePerson: responsiblePerson ? String(responsiblePerson) : undefined,
+                    phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
+                    address: address ? String(address) : undefined,
+                    faxNumber: faxNumber ? String(faxNumber) : undefined,
+                    category: (category && typeof category === 'string') ? category : 'MANUFACTURING'
                 }
             });
 
@@ -117,8 +117,8 @@ router.post('/', async (req, res) => {
                 await tx.factoryInfo.create({
                     data: {
                         employerId: emp.id,
-                        factoryRegistrationNo,
-                        industryType
+                        factoryRegistrationNo: factoryRegistrationNo ? String(factoryRegistrationNo) : undefined,
+                        industryType: industryType ? String(industryType) : undefined
                     }
                 });
             } else if (category === 'HOME_CARE') {
@@ -164,7 +164,7 @@ router.post('/:id/recruitment-letters', async (req, res) => {
         const { id } = req.params; // Employer ID
         const { letterNumber, issueDate, expiryDate, approvedQuota } = req.body;
 
-        const newLetter = await prisma.employerRecruitmentLetter.create({
+        const newLetter = await prisma.recruitmentLetter.create({
             data: {
                 employerId: id,
                 letterNumber,
@@ -186,13 +186,73 @@ router.post('/:id/recruitment-letters', async (req, res) => {
 router.delete('/:id/recruitment-letters/:letterId', async (req, res) => {
     try {
         const { letterId } = req.params;
-        await prisma.employerRecruitmentLetter.delete({
+        await prisma.recruitmentLetter.delete({
             where: { id: letterId }
         });
         res.json({ success: true });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to delete recruitment letter' });
+    }
+});
+
+// GET /api/employers/:id
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const employer = await prisma.employer.findUnique({
+            where: { id },
+            include: {
+                factoryInfo: true,
+                homeCareInfo: { include: { patients: true } },
+                institutionInfo: true,
+                recruitmentLetters: {
+                    orderBy: { issueDate: 'desc' },
+                    include: {
+                        entryPermits: true // if needed for usedQuota calc
+                    }
+                },
+                _count: {
+                    select: {
+                        deployments: { where: { status: 'active' } }
+                    }
+                }
+            }
+        });
+
+        if (!employer) {
+            return res.status(404).json({ error: 'Employer not found' });
+        }
+
+        res.json(employer);
+    } catch (error) {
+        console.error('Get Employer Error:', error);
+        res.status(500).json({ error: 'Failed to fetch employer' });
+    }
+});
+
+// PUT /api/employers/:id (Update Employer)
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = { ...req.body };
+
+        // Handle Decimal conversion for allocationRate
+        if (updateData.allocationRate) {
+            updateData.allocationRate = Number(updateData.allocationRate);
+        }
+
+        // Handle specific nested updates if necessary (e.g. factory info) - for now simplified
+
+        const updated = await prisma.employer.update({
+            where: { id },
+            data: updateData
+        });
+
+        res.json(updated);
+    } catch (error) {
+        console.error('Update Employer Error:', error);
+        res.status(500).json({ error: 'Failed to update employer' });
     }
 });
 

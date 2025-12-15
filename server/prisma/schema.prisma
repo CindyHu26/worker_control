@@ -606,6 +606,7 @@ model Incident {
   employerId    String?  @map("employer_id")
   description   String
   severityLevel String   @map("severity_level") // Enum
+  type          String   @default("general") // general, DATA_MISSING
   status        String   @default("open") // Enum
   incidentDate  DateTime @default(now()) @map("incident_date")
 

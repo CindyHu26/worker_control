@@ -45,6 +45,30 @@ router.post('/:id/labor-counts', async (req, res) => {
     }
 });
 
+// GET /api/employers/:id/labor-counts (Handled via quota router mounted at /employers or /quota)
+// If mounted at /employers, then /api/employers/:id/labor-counts matches here if route is /:id/labor-counts
+router.get('/:id/labor-counts', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { year } = req.query;
+
+        const whereClause: any = { employerId: id };
+        if (year) {
+            whereClause.year = Number(year);
+        }
+
+        const counts = await prisma.employerLaborCount.findMany({
+            where: whereClause,
+            orderBy: [{ year: 'desc' }, { month: 'desc' }]
+        });
+
+        res.json(counts);
+    } catch (error) {
+        console.error('Fetch Labor Counts Error:', error);
+        res.status(500).json({ error: 'Failed to fetch labor counts' });
+    }
+});
+
 // GET /api/employers/:id/quota-calculation
 router.get('/:id/quota-calculation', async (req, res) => {
     const { id } = req.params;

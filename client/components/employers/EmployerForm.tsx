@@ -42,6 +42,10 @@ const employerSchema = z.object({
 
     // Future expansion
     agencyCompanyId: z.string().optional(),
+
+    // New validation fields
+    allocationRate: z.string().optional(), // 0.10, 0.15 etc.
+    complianceStandard: z.string().optional(), // RBA, IWAY, NONE
 });
 
 type EmployerFormData = z.infer<typeof employerSchema>;
@@ -84,7 +88,9 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
             careAddress: '',
             relationship: '',
             institutionCode: '',
-            bedCount: ''
+            bedCount: '',
+            allocationRate: '',
+            complianceStandard: ''
         }
     });
 
@@ -303,6 +309,26 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
                                     <div className="space-y-1">
                                         <label className="block text-sm font-medium text-slate-700">行業類別 (Industry Type)</label>
                                         <input {...register('industryType')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-slate-700">核配比率 (Allocation Rate)</label>
+                                        <select {...register('allocationRate')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                            <option value="">請選擇 (Select)</option>
+                                            <option value="0.10">10%</option>
+                                            <option value="0.15">15%</option>
+                                            <option value="0.20">20%</option>
+                                            <option value="0.25">25% (3K5)</option>
+                                            <option value="0.35">35%</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-slate-700">合規標準 (Compliance)</label>
+                                        <select {...register('complianceStandard')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                            <option value="">請選擇 (Select)</option>
+                                            <option value="RBA">RBA</option>
+                                            <option value="IWAY">IWAY</option>
+                                            <option value="NONE">None</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

@@ -48,18 +48,8 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/workers', evaluationRoutes);
 router.use('/workers', workerRoutes);
 router.use('/recruitment', recruitmentRoutes);
-router.use('/employers', employerRoutes);
-// Mount under employers for correct pathing: /api/employers/:id/labor-counts -> quotaRoutes relative path handling needed?
-// quotaRoutes is defined as router.post('/:id/labor-counts').
-// If we mount at /employers, then /api/employers/:id/labor-counts works if quotaRoutes handles just the subpath.
-// But wait, quotaRoutes uses `router.post('/:id/labor-counts')`.
-// If I mount `router.use('/employers', quotaRoutes)`, then request to `/api/employers/:id/labor-counts` matches.
-// However, `employerRoutes` handles `/employers` too. Express matches in order.
-// `employerRoutes` likely handles `/:id` etc.
-// Better to mount quotaRoutes BEFORE employerRoutes if there are potential conflicts, or mount it as a separate path or merge them.
-// Let's check `employerRoutes`. If it has `/:id`, it might catch generic requests.
-// Best approach: Add quotaRoutes specifically.
-router.use('/employers', quotaRoutes);
+// Quota routes must come before general employer routes if they share the /employers prefix
+router.use('/employers', quotaRoutes); // Handles /:id/labor-counts etc.
 router.use('/employers', employerRoutes);
 router.use('/attachments', attachmentRoutes);
 router.use('/comments', commentRoutes);

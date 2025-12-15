@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Building2, User, Phone, MapPin } from 'lucide-react';
 import RecruitmentLetterManager from '@/components/employers/RecruitmentLetterManager';
+import LaborCountManager from '@/components/employers/LaborCountManager';
 import EmployerReadinessDashboard from '@/components/employers/EmployerReadinessDashboard';
 
 interface Employer {
@@ -94,6 +95,9 @@ export default function EmployerDetailPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Labor Insurance Count Management */}
+                <LaborCountManager employerId={id} />
 
                 {/* Recruitment Letter Management Section */}
                 <RecruitmentLetterManager employerId={id} />

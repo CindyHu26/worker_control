@@ -19,8 +19,24 @@ export default function NewEmployerPage() {
             throw new Error(error.error || '系統錯誤');
         }
 
-        alert('新增成功');
-        router.push('/employers');
+        const newEmp = await res.json();
+
+        // Analyze Data Health
+        try {
+            const healthRes = await fetch(`http://localhost:3001/api/compliance/employers/${newEmp.id}/analyze`, { method: 'POST' });
+            const health = await healthRes.json();
+
+            if (!health.isReady) {
+                alert(`系統成功儲存！但請注意以下缺漏 (System Saved with Warnings):\n\n${health.alerts.join('\n')}`);
+            } else {
+                alert('新增成功 (Saved Successfully)');
+            }
+        } catch (e) {
+            console.error('Analysis failed', e);
+            alert('新增成功 (Saved Successfully)');
+        }
+
+        router.push(`/employers/${newEmp.id}`);
         router.refresh();
     };
 

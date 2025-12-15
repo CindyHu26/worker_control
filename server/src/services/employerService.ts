@@ -1,7 +1,7 @@
 
 import prisma from '../prisma';
 
-export const checkRecruitmentReadiness = async (employerId: string) => {
+export const analyzeDataHealth = async (employerId: string) => {
     const employer = await prisma.employer.findUnique({
         where: { id: employerId },
         include: {
@@ -13,40 +13,111 @@ export const checkRecruitmentReadiness = async (employerId: string) => {
     if (!employer) throw new Error('Employer not found');
 
     const missingFields: string[] = [];
+    const alertsToCreate: string[] = [];
 
-    // 1. Basic Info
-    if (!employer.taxId || employer.taxId.length !== 8) missingFields.push('Invalid or Missing Tax ID');
-    if (!employer.responsiblePerson) missingFields.push('Missing Responsible Person Name');
-
-    // Responsible Person ID Check (Basic Taiwan ID format: Need 1 letter + 9 digits)
-    const idRegex = /^[A-Z][0-9]{9}$/;
-    if (!employer.responsiblePersonIdNo || !idRegex.test(employer.responsiblePersonIdNo)) {
-        missingFields.push('Missing or Invalid Responsible Person ID');
+    // --- 1. Tax ID (Unified Business No) ---
+    // Rule: Corporate=8 digits, Individual=1 letter+9 digits
+    const taxId = employer.taxId || '';
+    if (!taxId) {
+        missingFields.push('Missing Tax ID');
+        alertsToCreate.push('缺統編：無法進行任何政府申辦');
+    } else {
+        if (employer.type === 'individual') {
+            if (!/^[A-Z][0-9]{9}$/.test(taxId)) {
+                missingFields.push('Invalid Tax ID Format (Individual)');
+                alertsToCreate.push('統編格式錯誤 (自然人需為身分證字號)');
+            }
+        } else {
+            // Default corporate
+            if (!/^\d{8}$/.test(taxId)) {
+                missingFields.push('Invalid Tax ID Format (Corporate)');
+                alertsToCreate.push('統編格式錯誤 (法人需為 8 碼數字)');
+            }
+        }
     }
 
-    // 2. Insurance Info
-    if (!employer.laborInsuranceNo) missingFields.push('Missing Labor Insurance No');
-    if (!employer.industryCode) missingFields.push('Missing Industry Code');
+    // --- 2. Responsible Person ID ---
+    const repId = employer.responsiblePersonIdNo || '';
+    if (!repId || !/^[A-Z][0-9]{9}$/.test(repId)) {
+        missingFields.push('Missing/Invalid Responsible Person ID');
+        alertsToCreate.push('缺負責人身分證號：無法進行 e 化服務授權與招募許可');
+    }
 
-    // 3. Factory Specific
+    // --- 3. Labor Insurance No ---
+    // Rule: 8 digits + 1 check digit (Total 9 chars usually, or 8+1 format)
+    // Simplified regex: /^\d{8,9}$/ or specific check digit logic?
+    // User requirement: "8碼數字+1碼檢查碼". We will check if it matches roughly 9 digits/chars.
+    // Let's assume standard format is 9 digits (or 8+1).
+    const laborNo = employer.laborInsuranceNo || '';
+    if (!laborNo || !/^\d{8,9}$/.test(laborNo.replace(/-/g, ''))) {
+        missingFields.push('Missing/Invalid Labor Insurance No');
+        alertsToCreate.push('缺勞保證號：無法產出招募許可與加保表');
+    }
+
+    // --- 4. Manufacturing Specifics ---
     const isManufacturing = employer.category === 'MANUFACTURING' || employer.industryType?.includes('製造');
     if (isManufacturing) {
-        if (!employer.factoryInfo?.factoryRegistrationNo && !employer.factoryRegistrationNo) {
-            missingFields.push('Missing Factory Registration No');
-        }
-        // Check address (Factory Address or Company Address)
+        // Factory Address
         const hasAddress = employer.address || employer.factoryInfo?.factoryAddress;
-        if (!hasAddress) missingFields.push('Missing Factory Address');
+        if (!hasAddress) {
+            missingFields.push('Missing Factory Address');
+            alertsToCreate.push('缺工廠地址：無法產出求才登記、入國通報與生活計畫書');
+        }
+
+        // Allocation Rate (3K5)
+        const validRates = [0.10, 0.15, 0.20, 0.25, 0.35];
+        const rate = Number(employer.allocationRate);
+        if (!employer.allocationRate || !validRates.includes(rate)) {
+            missingFields.push('Missing/Invalid Allocation Rate');
+            alertsToCreate.push('缺核配比率：無法計算 3K5 級可招募名額');
+        }
     }
 
-    // 4. Quota / Labor Count
-    // Check if any labor count record exists
-    const hasLaborCount = await prisma.employerLaborCount.findFirst({
-        where: { employerId }
+    // --- 5. Compliance Standard ---
+    if (!employer.complianceStandard) {
+        missingFields.push('Missing Compliance Standard');
+        alertsToCreate.push('缺合規標準 (RBA/IWAY)：無法自動判斷零付費規則');
+    }
+
+    // --- Alert Management ---
+    // 1. Fetch existing DATA_MISSING alerts for this employer
+    const existingAlerts = await prisma.incident.findMany({
+        where: {
+            employerId,
+            type: 'DATA_MISSING',
+            status: 'open'
+        }
     });
 
-    if (!hasLaborCount) {
-        missingFields.push('Missing 3K5 Labor Count History');
+    // 2. Identify alerts to create (deduplicate)
+    for (const msg of alertsToCreate) {
+        const exists = existingAlerts.find(a => a.description === msg);
+        if (!exists) {
+            await prisma.incident.create({
+                data: {
+                    employerId,
+                    type: 'DATA_MISSING',
+                    severityLevel: 'LOW',
+                    description: msg,
+                    status: 'open',
+                    isAutoGenerated: true
+                }
+            });
+        }
+    }
+
+    // 3. Identify alerts to resolve (if issue is fixed)
+    for (const alert of existingAlerts) {
+        // If the alert description is NOT in the current list of issues, it means it's fixed
+        // However, descriptions might vary slightly if we change code. 
+        // Ideally we use codes, but descriptions are okay for prototype.
+        // We check if 'alertsToCreate' includes this description.
+        if (!alertsToCreate.includes(alert.description)) {
+            await prisma.incident.update({
+                where: { id: alert.id },
+                data: { status: 'resolved' }
+            });
+        }
     }
 
     const isReady = missingFields.length === 0;
@@ -55,6 +126,9 @@ export const checkRecruitmentReadiness = async (employerId: string) => {
         isReady,
         status: isReady ? 'READY_TO_RECRUIT' : 'MISSING_INFO',
         missingFields,
+        alerts: alertsToCreate,
         employerName: employer.companyName
     };
 };
+
+export const checkRecruitmentReadiness = analyzeDataHealth;

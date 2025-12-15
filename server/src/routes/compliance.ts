@@ -73,6 +73,18 @@ router.get('/employers/:id/readiness', async (req, res) => {
     }
 });
 
+// POST /api/compliance/employers/:id/analyze
+router.post('/employers/:id/analyze', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await checkRecruitmentReadiness(id);
+        res.json(result);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 
 // Dormitory Health
 router.get('/dormitories/:id/health', async (req, res) => {

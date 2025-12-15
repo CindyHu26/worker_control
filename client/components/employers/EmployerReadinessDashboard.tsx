@@ -45,6 +45,8 @@ export default function EmployerReadinessDashboard({ employerId }: EmployerReadi
         else if (fixField.includes('Industry Code')) dbField = 'industryCode';
         else if (fixField.includes('Factory Registration')) dbField = 'factoryRegistrationNo';
         else if (fixField.includes('Factory Address')) dbField = 'address'; // Updating main address for now
+        else if (fixField.includes('Allocation Rate') || fixField.includes('核配比率')) dbField = 'allocationRate';
+        else if (fixField.includes('Compliance Standard') || fixField.includes('合規標準')) dbField = 'complianceStandard';
 
         if (!dbField) {
             alert('Unknown field mapping');
