@@ -162,7 +162,7 @@ export const convertLeadToEmployer = async (
 
         await tx.systemComment.create({
             data: {
-                content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})${quotaInfo}`,
+                content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})${lead.lineId ? ` | Line ID: ${lead.lineId}` : ''}${quotaInfo}`,
                 recordId: employer.id,
                 recordTableName: 'Employer',
                 createdBy: operatorId

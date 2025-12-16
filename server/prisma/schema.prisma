@@ -218,7 +218,6 @@ model Worker {
   category    String   @default("general") // Enum as string
   gender      String? // Enum as string
 
-  oldPassportNumber String? @map("old_passport_number")
   homeCountryId     String? @map("home_country_id")
   taxId             String? @map("tax_id")
   bloodType         String? @map("blood_type")
