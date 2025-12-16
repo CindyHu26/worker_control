@@ -38,3 +38,23 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Build and compilation logs
+*.log
+build_log.txt
+tsc_output.txt
+test_output.txt
+
+# Database files (SQLite)
+*.db
+*.db-journal
+
+# Test results
+test-results/
+playwright-report/
+
+# Temporary text files (exclude documentation)
+*.txt
+!README.txt
+!CHANGELOG.txt
+!LICENSE.txt

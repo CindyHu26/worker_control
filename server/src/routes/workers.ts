@@ -252,7 +252,11 @@ router.get('/:id', async (req, res) => {
                 deployments: {
                     include: {
                         employer: true,
-                        recruitmentLetter: true,
+                        entryPermit: {
+                            include: {
+                                recruitmentLetter: true
+                            }
+                        },
                         timelines: true, // WorkerTimeline
                         permitDetails: {
                             include: {

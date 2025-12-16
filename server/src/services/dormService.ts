@@ -87,17 +87,20 @@ export const updateRoomAssignment = async (
 ) => {
     const worker = await prisma.worker.findUnique({ where: { id: workerId } });
 
+    // TODO: Add dataSource field to Worker model to enable this protection
     // Protection: Don't overwrite MANUAL_LOCKED data with system imports
+    /*
     if (worker?.dataSource === 'MANUAL_LOCKED' && source === 'SYSTEM_IMPORT') {
         throw new Error('Cannot overwrite manually locked worker data with system import');
     }
+    */
 
     // Update worker
     await prisma.worker.update({
         where: { id: workerId },
         data: {
             dormitoryBedId: bedId,
-            dataSource: source
+            // dataSource: source // TODO: Add this field to Worker model
         }
     });
 
@@ -121,7 +124,7 @@ export const convertMaintenanceToExpense = async (
         where: { id: maintenanceId }
     });
 
-    if (!maintenance || !maintenance.cost || maintenance.cost <= 0) {
+    if (!maintenance || !maintenance.cost || Number(maintenance.cost) <= 0) {
         throw new Error('Invalid maintenance record for expense conversion');
     }
 
