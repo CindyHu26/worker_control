@@ -42,6 +42,14 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     const [simAllocationRate, setSimAllocationRate] = useState<number>(0.15);
     const [simQuota, setSimQuota] = useState<number>(0);
 
+    // Helper: Calculate 3K5 Quota (matching backend logic)
+    const calculate3K5Quota = (laborCount: number, rate: number): number => {
+        const raw = laborCount * rate;
+        if (raw === Math.floor(raw)) return raw;
+        const firstDecimal = Math.floor((raw * 10) % 10);
+        return firstDecimal > 0 ? Math.ceil(raw) : Math.floor(raw);
+    };
+
     // Interaction Form State
     const [newType, setNewType] = useState('Call');
     const [newSummary, setNewSummary] = useState('');
@@ -53,19 +61,20 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
     const [convertData, setConvertData] = useState({
         taxId: '',
-        industryType: 'MANUFACTURING',
-        factoryAddress: ''
+        industryCode: '01',
+        invoiceAddress: '',
+        factoryAddress: '',
+        allocationRate: 0.15,
+        avgDomesticWorkers: 0
     });
 
     useEffect(() => {
         fetchLead();
     }, [id]);
 
-    // Recalculate Quota
+    // Recalculate Quota (using proper 3K5 formula)
     useEffect(() => {
-        // Formula: Floor(Domestic * Rate)
-        // Note: Real logic might include complex tiers (A, B, C), here we simulate basic rate.
-        setSimQuota(Math.floor(simDomesticWorkers * simAllocationRate));
+        setSimQuota(calculate3K5Quota(simDomesticWorkers, simAllocationRate));
     }, [simDomesticWorkers, simAllocationRate]);
 
     const fetchLead = async () => {
@@ -74,8 +83,14 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             if (res.ok) {
                 const data = await res.json();
                 setLead(data);
-                // Pre-fill conversion address if available
-                setConvertData(prev => ({ ...prev, factoryAddress: data.address || '' }));
+                // Pre-fill conversion data
+                setConvertData(prev => ({
+                    ...prev,
+                    invoiceAddress: data.address || '',
+                    factoryAddress: data.address || '',
+                    avgDomesticWorkers: simDomesticWorkers,
+                    allocationRate: simAllocationRate
+                }));
             } else {
                 alert('Failed to load lead');
             }
@@ -118,10 +133,22 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     const handleConvertSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Basic Validation
+        // Validation
         if (convertData.taxId.length !== 8) {
             alert("Tax ID must be exactly 8 digits.");
             return;
+        }
+
+        // Manufacturing-specific validation
+        if (convertData.industryCode === '01') {
+            if (!convertData.factoryAddress) {
+                alert("Factory address is required for manufacturing employers.");
+                return;
+            }
+            if (!convertData.avgDomesticWorkers || convertData.avgDomesticWorkers <= 0) {
+                alert("Average domestic worker count is required for manufacturing employers.");
+                return;
+            }
         }
 
         try {
@@ -129,9 +156,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    operatorId: 'CURRENT_USER_ID', // Should be from context
-                    ...convertData,
-                    avgDomesticWorkers: simDomesticWorkers // Pass this to initialize labor count
+                    operatorId: 'CURRENT_USER_ID',
+                    taxId: convertData.taxId,
+                    industryCode: convertData.industryCode,
+                    invoiceAddress: convertData.invoiceAddress,
+                    factoryAddress: convertData.factoryAddress,
+                    avgDomesticWorkers: convertData.avgDomesticWorkers,
+                    allocationRate: convertData.allocationRate
                 })
             });
 
@@ -172,9 +203,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         }
     };
 
-    // Zero Fee Check
+    // Zero Fee Check (based on industry code)
     const showZeroFeeWarning = (newNotes.toLowerCase().includes('indonesia') || newNotes.toLowerCase().includes('印尼')) &&
-        (lead?.industry?.toLowerCase().includes('manufacturing') || lead?.industry?.toLowerCase().includes('製造') || convertData.industryType === 'MANUFACTURING');
+        (convertData.industryCode === '01');
 
 
     if (loading) return <div className="p-10">Loading...</div>;
@@ -433,37 +464,87 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Industry Type</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry Code) *</label>
                                 <select
                                     className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={convertData.industryType}
-                                    onChange={e => setConvertData({ ...convertData, industryType: e.target.value })}
+                                    value={convertData.industryCode}
+                                    onChange={e => setConvertData({ ...convertData, industryCode: e.target.value })}
+                                    required
                                 >
-                                    <option value="MANUFACTURING">Manufacturing (製造業)</option>
-                                    <option value="CONSTRUCTION">Construction (營造業)</option>
-                                    <option value="INSTITUTION">Institution (機構看護)</option>
-                                    <option value="HOME_CARE">Home Care (家庭看護)</option>
+                                    <option value="01">01 製造業 (Manufacturing)</option>
+                                    <option value="02">02 營造業 (Construction)</option>
+                                    <option value="06">06 家庭看護 (Home Care)</option>
+                                    <option value="08">08 機構看護 (Institution)</option>
                                 </select>
+                                <p className="text-xs text-slate-500 mt-1">Standard industry classification code</p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Factory / Site Address</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">公司登記地址 (Invoice Address) *</label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="Enter full address"
+                                    placeholder="Enter company registration address"
                                     className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={convertData.factoryAddress}
-                                    onChange={e => setConvertData({ ...convertData, factoryAddress: e.target.value })}
+                                    value={convertData.invoiceAddress}
+                                    onChange={e => setConvertData({ ...convertData, invoiceAddress: e.target.value })}
                                 />
                             </div>
 
-                            {simDomesticWorkers > 0 && (
+                            {convertData.industryCode === '01' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">工廠地址 (Factory Address) *</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="Enter factory address"
+                                            className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={convertData.factoryAddress}
+                                            onChange={e => setConvertData({ ...convertData, factoryAddress: e.target.value })}
+                                        />
+                                        <p className="text-xs text-slate-500 mt-1">Required for dormitory application</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">勞保平均人數 (Avg Labor Count) *</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="1"
+                                            placeholder="e.g. 125"
+                                            className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={convertData.avgDomesticWorkers || simDomesticWorkers}
+                                            onChange={e => setConvertData({ ...convertData, avgDomesticWorkers: Number(e.target.value) })}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">核配比率 (Allocation Rate) *</label>
+                                        <select
+                                            className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={convertData.allocationRate}
+                                            onChange={e => setConvertData({ ...convertData, allocationRate: Number(e.target.value) })}
+                                            required
+                                        >
+                                            <option value={0.10}>10% (C級)</option>
+                                            <option value={0.15}>15% (B級)</option>
+                                            <option value={0.20}>20% (A級)</option>
+                                            <option value={0.25}>25% (A+級)</option>
+                                            <option value={0.35}>35% (最高)</option>
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+
+                            {convertData.industryCode === '01' && convertData.avgDomesticWorkers > 0 && convertData.allocationRate > 0 && (
                                 <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 flex items-start gap-2">
                                     <Calculator size={16} className="mt-0.5" />
                                     <div>
-                                        <strong>Labor Count Initialization:</strong>
-                                        <div className="text-xs opacity-80">Initial domestic worker count will be set to <b>{simDomesticWorkers}</b>.</div>
+                                        <strong>3K5 Quota Calculation:</strong>
+                                        <div className="text-xs opacity-80">
+                                            {convertData.avgDomesticWorkers} × {convertData.allocationRate * 100}% = <b>{calculate3K5Quota(convertData.avgDomesticWorkers, convertData.allocationRate)}</b> people
+                                        </div>
                                     </div>
                                 </div>
                             )}

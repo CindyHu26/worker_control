@@ -38,7 +38,10 @@ async function main() {
 
     // Use valid user ID
     const employer = await convertLeadToEmployer(lead.id, user.id, {
-        industryType: 'MANUFACTURING',
+        taxId: '12345678',
+        industryCode: '01',
+        invoiceAddress: 'Test Address 123',
+        factoryAddress: 'Factory Address 456',
         avgDomesticWorkers: laborCount,
         allocationRate: allocationRate
     });

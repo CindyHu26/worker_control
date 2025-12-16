@@ -39,7 +39,7 @@ export default function CreateLeadPage() {
     } = useForm<LeadFormData>({
         defaultValues: {
             status: 'NEW', // Default Status
-            industry: 'MANUFACTURING', // Default Industry
+            industry: '01 製造業', // Default Industry
             estimatedWorkerCount: 0
         }
     });
@@ -118,19 +118,18 @@ export default function CreateLeadPage() {
 
                         {/* Industry */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry)</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry Code)</label>
                             <div className="relative">
                                 <Building size={16} className="absolute left-3 top-3 text-slate-400" />
                                 <select
                                     {...register('industry')}
                                     className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                                 >
-                                    <option value="MANUFACTURING">製造業 (Manufacturing)</option>
-                                    <option value="CONSTRUCTION">營造業 (Construction)</option>
-                                    <option value="HOME_CARE">家庭看護 (Home Care)</option>
-                                    <option value="INSTITUTION">機構看護 (Institution)</option>
-                                    <option value="AGRICULTURE">農業 (Agriculture)</option>
-                                    <option value="OTHER">其他 (Other)</option>
+                                    <option value="01 製造業">01 製造業 (Manufacturing)</option>
+                                    <option value="02 營造業">02 營造業 (Construction)</option>
+                                    <option value="06 家庭看護">06 家庭看護 (Home Care)</option>
+                                    <option value="08 機構看護">08 機構看護 (Institution)</option>
+                                    <option value="其他">其他 (Other)</option>
                                 </select>
                             </div>
                         </div>
