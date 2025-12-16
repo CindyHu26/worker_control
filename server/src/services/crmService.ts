@@ -14,6 +14,9 @@ export const convertLeadToEmployer = async (
         industryType?: string; // Enum: MANUFACTURING, etc.
         factoryAddress?: string;
         avgDomesticWorkers?: number;
+        allocationRate?: number;
+        complianceStandard?: string; // NONE, RBA_7_0, RBA_8_0, IWAY_6_0, SA8000
+        zeroFeeEffectiveDate?: Date; // When zero-fee rules take effect
     }
 ) => {
     return await prisma.$transaction(async (tx) => {
@@ -42,6 +45,9 @@ export const convertLeadToEmployer = async (
                 category: category,
                 industryType: category, // Saving enum value as text description too for now
                 createdBy: operatorId,
+                allocationRate: options?.allocationRate ? options.allocationRate : undefined, // Save Allocation Rate
+                complianceStandard: options?.complianceStandard || 'NONE', // Save Compliance Standard
+                zeroFeeEffectiveDate: options?.zeroFeeEffectiveDate || null, // Save Zero-Fee Effective Date
                 // Create Factory Info if address provided and is manufacturing
                 factoryInfo: (category === 'MANUFACTURING') ? {
                     create: {

@@ -55,7 +55,81 @@ export default function WorkerDetailClient({ worker: initialWorker }: { worker: 
             .catch(console.error);
     }, [initialWorker.id]);
 
-    // ... (rest of the file) ...
+    // Derived State
+    const currentDeployment = worker.deployments?.[0] || null;
+
+    // Handlers
+    const handleUpdate = async () => {
+        // Re-fetch worker data
+        try {
+            const res = await fetch(`http://localhost:3001/api/workers/${worker.id}`);
+            if (res.ok) {
+                const updated = await res.json();
+                setWorker(updated);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleEntrySubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await fetch(`http://localhost:3001/api/deployments/${currentDeployment?.id}/entry`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entryForm)
+            });
+            setShowEntryModal(false);
+            handleUpdate();
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleTransfer = async () => {
+        try {
+            await fetch(`http://localhost:3001/api/workers/${worker.id}/transfer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newEmployerId, transferDate })
+            });
+            setShowTransferModal(false);
+            handleUpdate();
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleTerminationSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await fetch(`http://localhost:3001/api/deployments/${currentDeployment?.id}/terminate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(termForm)
+            });
+            setShowTermModal(false);
+            handleUpdate();
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleAssignSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await fetch(`http://localhost:3001/api/workers/${worker.id}/assign-team`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(assignForm)
+            });
+            setShowAssignModal(false);
+            handleUpdate();
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
     return (
         <div className="p-8">

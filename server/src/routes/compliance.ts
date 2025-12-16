@@ -96,4 +96,46 @@ router.get('/dormitories/:id/health', async (req, res) => {
     }
 });
 
+// ==========================================
+// Fee Compliance Validation (RBA/IWAY)
+// ==========================================
+
+import { validateFeeCompliance, getEmployerComplianceRules } from '../services/feeValidationService';
+
+// POST /api/compliance/validate-fee
+router.post('/validate-fee', async (req, res) => {
+    try {
+        const { employerId, feeItemId, payerType, amount, billingDate } = req.body;
+
+        if (!employerId || !feeItemId || !payerType) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const result = await validateFeeCompliance(
+            employerId,
+            feeItemId,
+            payerType,
+            amount || 0,
+            billingDate ? new Date(billingDate) : undefined
+        );
+
+        res.json(result);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/compliance/employers/:id/rules
+router.get('/employers/:id/rules', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await getEmployerComplianceRules(id);
+        res.json(result);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

@@ -6,11 +6,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Save, Copy, Building, User, FileText, Settings, X, Building2 } from 'lucide-react';
+import ComplianceSelector from '@/components/employers/ComplianceSelector';
+import { isValidGUINumber, isValidNationalID } from '@/utils/validation';
 
 // --- Validation Schema ---
 const employerSchema = z.object({
-    companyName: z.string().min(1, '公司名稱為必填'),
-    taxId: z.string().regex(/^\d{8}$/, '統一編號格式錯誤 (需為8碼數字)'),
+    companyName: z.string().min(1, '雇主/公司名稱為必填'),
+    // 先定義為字串，稍後在 superRefine 進行邏輯檢查
+    taxId: z.string().min(1, '此欄位為必填'),
     phoneNumber: z.string().optional(),
     faxNumber: z.string().optional(),
     industryType: z.string().optional(),
@@ -24,7 +27,6 @@ const employerSchema = z.object({
 
     // Manufacturing
     factoryRegistrationNo: z.string().optional(),
-    industryType: z.string().optional(),
     laborInsuranceNo: z.string().optional(),
 
     // Home Care
@@ -46,6 +48,27 @@ const employerSchema = z.object({
     // New validation fields
     allocationRate: z.string().optional(), // 0.10, 0.15 etc.
     complianceStandard: z.string().optional(), // RBA, IWAY, NONE
+    zeroFeeEffectiveDate: z.string().optional() // YYYY-MM-DD
+}).superRefine((data, ctx) => {
+    // 邏輯分流：家庭看護 (Home Care) 驗證身分證，其他 (製造業/機構) 驗證統編
+    if (data.category === 'HOME_CARE') {
+        if (!isValidNationalID(data.taxId)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "身分證字號格式錯誤 (需為1碼英文+9碼數字，並符合邏輯)",
+                path: ["taxId"]
+            });
+        }
+    } else {
+        // 製造業、機構 -> 驗證統編
+        if (!isValidGUINumber(data.taxId)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "統一編號格式錯誤 (需為8碼數字，並符合邏輯運算)",
+                path: ["taxId"]
+            });
+        }
+    }
 });
 
 type EmployerFormData = z.infer<typeof employerSchema>;
@@ -63,12 +86,7 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
     const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<EmployerFormData>({
         resolver: zodResolver(employerSchema),
         defaultValues: initialData || {
-            companyName: '',
-            taxId: '',
-            address: '',
-            billAddress: '',
-            phoneNumber: '',
-            faxNumber: '',
+            category: 'MANUFACTURING', // Default
             companyName: '',
             taxId: '',
             address: '',
@@ -82,7 +100,6 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
             responsiblePersonAddress: '',
             factoryRegistrationNo: '',
             laborInsuranceNo: '',
-            category: 'MANUFACTURING', // Default
             patientName: '',
             patientIdNo: '',
             careAddress: '',
@@ -90,7 +107,8 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
             institutionCode: '',
             bedCount: '',
             allocationRate: '',
-            complianceStandard: ''
+            complianceStandard: 'NONE',
+            zeroFeeEffectiveDate: ''
         }
     });
 
@@ -250,12 +268,16 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
                                         {errors.companyName && <p className="text-red-500 text-xs">{errors.companyName.message}</p>}
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">統一編號 (Tax ID) <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-medium text-slate-700">
+                                            {selectedCategory === 'HOME_CARE'
+                                                ? '雇主身分證字號 (National ID) *'
+                                                : '統一編號 (GUI Number) *'}
+                                        </label>
                                         <input
                                             {...register('taxId')}
-                                            maxLength={8}
+                                            maxLength={selectedCategory === 'HOME_CARE' ? 10 : 8}
                                             className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                                            placeholder="12345678"
+                                            placeholder={selectedCategory === 'HOME_CARE' ? 'A123456789' : '12345678'}
                                         />
                                         {errors.taxId && <p className="text-red-500 text-xs">{errors.taxId.message}</p>}
                                     </div>
@@ -321,14 +343,13 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
                                             <option value="0.35">35%</option>
                                         </select>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">合規標準 (Compliance)</label>
-                                        <select {...register('complianceStandard')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                                            <option value="">請選擇 (Select)</option>
-                                            <option value="RBA">RBA</option>
-                                            <option value="IWAY">IWAY</option>
-                                            <option value="NONE">None</option>
-                                        </select>
+                                    <div className="col-span-2 mt-6 border-t border-slate-200 pt-6">
+                                        <ComplianceSelector
+                                            value={watch('complianceStandard') || 'NONE'}
+                                            onChange={(val) => setValue('complianceStandard', val)}
+                                            effectiveDate={watch('zeroFeeEffectiveDate') || ''}
+                                            onEffectiveDateChange={(date) => setValue('zeroFeeEffectiveDate', date)}
+                                        />
                                     </div>
                                 </div>
                             </div>

@@ -11,6 +11,16 @@ interface Employer {
     taxId: string;
     responsiblePerson: string;
     phoneNumber?: string;
+    homeCareInfo?: {
+        patients: Array<{
+            name: string;
+            careAddress: string;
+        }>;
+    };
+    institutionInfo?: {
+        institutionCode: string;
+        bedCount: number;
+    };
     _count?: {
         deployments: number;
     };
@@ -188,8 +198,8 @@ export default function EmployersPage() {
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeCategory === cat
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                             }`}
                     >
                         {cat === 'ALL' ? '全部 (All)' :

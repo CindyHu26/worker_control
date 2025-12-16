@@ -87,8 +87,8 @@ export default function CreateLeadPage() {
                         <ArrowLeft size={24} />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">Create New Lead</h1>
-                        <p className="text-sm text-slate-500">Enter potential client details to start tracking.</p>
+                        <h1 className="text-2xl font-bold text-slate-800">新增潛在客戶</h1>
+                        <p className="text-sm text-slate-500">輸入潛在客戶資料以開始追蹤。</p>
                     </div>
                 </div>
             </div>
@@ -125,12 +125,12 @@ export default function CreateLeadPage() {
                                     {...register('industry')}
                                     className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                                 >
-                                    <option value="MANUFACTURING">Manufacturing (製造業)</option>
-                                    <option value="CONSTRUCTION">Construction (營造業)</option>
-                                    <option value="INSTITUTION">Institution (機構看護)</option>
-                                    <option value="HOME_CARE">Home Care (家庭看護)</option>
-                                    <option value="AGRICULTURE">Agriculture (農業)</option>
-                                    <option value="OTHER">Other (其他)</option>
+                                    <option value="MANUFACTURING">01 製造業 (Manufacturing)</option>
+                                    <option value="CONSTRUCTION">02 營造業 (Construction)</option>
+                                    <option value="HOME_CARE">06 家庭看護 (Home Care)</option>
+                                    <option value="INSTITUTION">08 機構看護 (Institution)</option>
+                                    <option value="AGRICULTURE">農業 (Agriculture)</option>
+                                    <option value="OTHER">其他 (Other)</option>
                                 </select>
                             </div>
                         </div>
@@ -147,7 +147,7 @@ export default function CreateLeadPage() {
 
                         {/* Source */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Lead Source</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">客源 (Lead Source)</label>
                             <div className="relative">
                                 <Globe size={16} className="absolute left-3 top-3 text-slate-400" />
                                 <select
@@ -258,7 +258,7 @@ export default function CreateLeadPage() {
                         className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         <Save size={18} />
-                        {isSubmitting ? 'Creating...' : 'Create Lead'}
+                        {isSubmitting ? '建立中...' : '建立客戶'}
                     </button>
                 </div>
             </form>
