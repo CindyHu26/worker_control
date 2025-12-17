@@ -2,10 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
-import { PrismaClient } from '@prisma/client';
-import { getDocumentContext } from '../utils/documentContext'; // 假設您已有這個工具
-
-const prisma = new PrismaClient();
+import prisma from '../prisma'; // [修正]
+import { getDocumentContext } from '../utils/documentContext';
 
 // 設定模板儲存目錄
 const TEMPLATE_DIR = path.join(__dirname, '../../storage/templates');
@@ -31,7 +29,6 @@ export const templateService = {
             data: {
                 name: meta.name,
                 category: meta.category,
-                code: meta.code,
                 filePath: filename, // 只存檔名，路徑動態組
             }
         });

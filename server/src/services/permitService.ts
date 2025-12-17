@@ -1,6 +1,5 @@
-import { PrismaClient, Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Prisma } from '@prisma/client';
+import prisma from '../prisma'; // [修正] 使用專案統一的實體
 
 export type PermitType = 'INITIAL' | 'EXTENSION' | 'REISSUE';
 
@@ -9,8 +8,7 @@ interface CreatePermitInput {
     permitNumber: string;
     issueDate: Date | string;
     expiryDate: Date | string;
-    type: PermitType;
-    // 申請相關資訊 (M343)
+    type: string; // 接收前端字串 (Initial/Extension)，內部再轉型
     receiptNumber?: string;
     applicationDate?: Date | string;
     feeAmount?: number;
@@ -22,7 +20,7 @@ export const permitService = {
      * 會自動處理舊許可的狀態與法規檢核
      */
     async createPermit(data: CreatePermitInput) {
-        return await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             const { deploymentId, type, issueDate, expiryDate, permitNumber } = data;
 
             // 1. 取得派遣與相關文件資訊
@@ -40,8 +38,11 @@ export const permitService = {
 
             if (!deployment) throw new Error("Deployment not found");
 
+            // [修正] 型別斷言，確保字串比對正確
+            const pType = type as PermitType;
+
             // 2. 依照類型進行法規邏輯檢查
-            if (type === 'INITIAL') {
+            if (pType === 'INITIAL') {
                 // [法規檢查] 初次聘僱許可，通常需對應有效的「入國引進許可」
                 // 若是國內承接 (Transfer)，則可能沒有 EntryPermit，這邊做彈性檢查
                 if (deployment.sourceType !== 'transfer' && !deployment.entryPermit) {
@@ -52,14 +53,14 @@ export const permitService = {
                 if (deployment.employmentPermits.length > 0) {
                     throw new Error("此案件已有生效中的聘僱許可，無法重複建立初次許可。若為續聘請選擇「展延」。");
                 }
-            } else if (type === 'EXTENSION') {
+            } else if (pType === 'EXTENSION') {
                 // [法規檢查] 展延必須基於上一張許可
                 const activePermit = deployment.employmentPermits[0];
                 if (!activePermit) {
-                    throw new Error("找不到上一張有效許可，無法辦理「展延」。請確認是否有初次許可資料。");
+                    throw new Error("無有效許可，無法展延。");
                 }
 
-                // 將舊許可標示為過期 (EXPIRED) 或 歸檔 (ARCHIVED)
+                // 將舊許可標示為過期 (EXPIRED)
                 await tx.employmentPermit.update({
                     where: { id: activePermit.id },
                     data: { status: 'EXPIRED' }
@@ -67,24 +68,19 @@ export const permitService = {
             }
 
             // 3. 建立新許可
-            const newPermit = await tx.employmentPermit.create({
+            return await tx.employmentPermit.create({
                 data: {
                     deploymentId,
                     permitNumber,
                     issueDate: new Date(issueDate),
                     expiryDate: new Date(expiryDate),
-                    type,
+                    type: pType,
                     status: 'ACTIVE',
                     receiptNumber: data.receiptNumber,
-                    applicationDate: data.applicationDate ? new Date(data.applicationDate) : undefined,
+                    applicationDate: data.applicationDate ? new Date(data.applicationDate) : null,
                     feeAmount: data.feeAmount || 0
                 }
             });
-
-            // 4. (選用) 若是初次許可，可回寫 permitNumber 到 Deployment 的快取欄位 (若您有保留該欄位)
-            // 或是更新 Deployment 狀態為 'authorized'
-
-            return newPermit;
         });
     },
 

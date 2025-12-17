@@ -28,6 +28,10 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
                         include: {
                             recruitmentLetter: true
                         }
+                    },
+                    employmentPermits: {
+                        orderBy: { issueDate: 'desc' },
+                        take: 1
                     }
                 }
             },
@@ -129,9 +133,10 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
     // Retrieve Recruitment Letter info if available
     const entryPermit = deployment?.entryPermit;
     const recruitmentLetter = entryPermit?.recruitmentLetter;
+    const activeEmploymentPermit = deployment?.employmentPermits?.[0];
 
     const isRecruitPermit = !!recruitmentLetter; // Simplify: If we have linked recruitment letter info
-    const isEmployPermit = !!deployment?.employmentPermitReceiptNo || !!deployment?.employmentPermitDate;
+    const isEmployPermit = !!activeEmploymentPermit;
 
     const context: Record<string, any> = {
         // --- Worker (Basic) ---
@@ -209,9 +214,9 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
         chk_employ_permit: isEmployPermit ? '☑' : '☐',
 
         // Review Fee
-        receipt_no: isEmployPermit ? deployment?.employmentPermitReceiptNo : recruitmentLetter?.reviewFeeReceiptNo || '',
-        pay_date: formatDate(isEmployPermit ? deployment?.employmentPermitDate : recruitmentLetter?.reviewFeeDate),
-        amount: isEmployPermit ? deployment?.employmentPermitAmount : recruitmentLetter?.reviewFeeAmount || 0,
+        receipt_no: isEmployPermit ? activeEmploymentPermit?.receiptNumber : recruitmentLetter?.reviewFeeReceiptNo || '',
+        pay_date: formatDate(isEmployPermit ? activeEmploymentPermit?.applicationDate : recruitmentLetter?.reviewFeeDate),
+        amount: isEmployPermit ? activeEmploymentPermit?.feeAmount : recruitmentLetter?.reviewFeeAmount || 0,
 
         // --- Dormitory ---
         dorm_name: dormitory?.name || '',
@@ -360,4 +365,46 @@ export async function buildBatchDocumentContext(workerIds: string[]) {
     baseContext.total_workers = contexts.length;
 
     return baseContext;
+}
+
+// [新增] 支援招募函/求才相關變數
+export async function getDocumentContext(type: string, id: string) {
+    switch (type) {
+        case 'worker':
+            return await buildWorkerDocumentContext(id);
+        case 'deployment':
+            // If ID is deploymentId, find the worker.
+            // However, buildWorkerDocumentContext takes workerId.
+            // We need to fetch deployment first to get workerId.
+            const deploy = await prisma.deployment.findUnique({ where: { id }, select: { workerId: true } });
+            if (!deploy) throw new Error("Deployment not found");
+            return await buildWorkerDocumentContext(deploy.workerId);
+
+        case 'job_order':
+            const job = await prisma.jobOrder.findUnique({
+                where: { id },
+                include: { employer: true }
+            });
+            if (!job) throw new Error("Job Order not found");
+            return {
+                employer_name: job.employer.companyName,
+                employer_tax_id: job.employer.taxId,
+                job_vacancy: job.vacancyCount,
+                job_center: job.centerName,
+                job_registry_date: job.registryDate.toISOString().split('T')[0], // YYYY-MM-DD
+            };
+
+        case 'recruitment':
+            const letter = await prisma.recruitmentLetter.findUnique({
+                where: { id },
+                include: { employer: true }
+            });
+            return {
+                permit_no: letter?.letterNumber,
+                issue_date: letter?.issueDate.toISOString().split('T')[0],
+            };
+
+        default:
+            return {};
+    }
 }

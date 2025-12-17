@@ -1,22 +1,38 @@
-import React, { useState } from 'react';
-import { Card, Button, Badge } from "@/components/ui/card"; // 假設你有這些 UI 元件
+import React from 'react';
+import { Card, Badge } from "@/components/ui/card"; // 假設路徑
 
-export function JobOrderSelector({ employerId, onSelectOrder }) {
+// [新增] 定義資料型別
+interface JobOrder {
+    id: string;
+    registryDate: string | Date; // 根據 API 回傳調整
+    centerName?: string;
+    vacancyCount: number;
+    certificateNo?: string;
+    status: string;
+}
+
+// [新增] 定義 Props 介面
+interface Props {
+    employerId: string;
+    onSelectOrder: (order: JobOrder) => void;
+}
+
+export function JobOrderSelector({ employerId, onSelectOrder }: Props) {
     // 假資料 mockup (實際應從 API 讀取)
-    const jobOrders = [
+    const jobOrders: JobOrder[] = [
         {
             id: 'JO-001',
-            date: '2024-11-01',
-            center: '台中就業中心',
-            vacancy: 5,
+            registryDate: '2024-11-01',
+            centerName: '台中就業中心',
+            vacancyCount: 5,
             status: 'certificate_received', // 已拿到求才證明
-            certNo: '中就字第113000123號'
+            certificateNo: '中就字第113000123號'
         },
         {
             id: 'JO-002',
-            date: '2024-12-15',
-            center: '彰化就業中心',
-            vacancy: 2,
+            registryDate: '2024-12-15',
+            centerName: '彰化就業中心',
+            vacancyCount: 2,
             status: 'processing' // 公告中
         }
     ];
@@ -34,17 +50,17 @@ export function JobOrderSelector({ employerId, onSelectOrder }) {
                     >
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="font-bold text-gray-800">{order.center}</p>
-                                <p className="text-sm text-gray-500">登記日: {order.date}</p>
-                                <p className="text-sm mt-2">需求人數: <span className="font-bold text-blue-600">{order.vacancy} 人</span></p>
+                                <p className="font-bold text-gray-800">{order.centerName}</p>
+                                <p className="text-sm text-gray-500">登記日: {order.registryDate as string}</p>
+                                <p className="text-sm mt-2">需求人數: <span className="font-bold text-blue-600">{order.vacancyCount} 人</span></p>
                             </div>
                             <Badge variant={order.status === 'certificate_received' ? 'success' : 'warning'}>
                                 {order.status === 'certificate_received' ? '已有證明' : '公告中'}
                             </Badge>
                         </div>
-                        {order.certNo && (
+                        {order.certificateNo && (
                             <div className="mt-3 pt-3 border-t border-blue-200 text-sm text-blue-800">
-                                求才證明：{order.certNo}
+                                求才證明：{order.certificateNo}
                             </div>
                         )}
                     </div>

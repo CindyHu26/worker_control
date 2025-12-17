@@ -1,14 +1,34 @@
 import React, { useState } from 'react';
 
-export function RecruitmentLetterForm({ jobOrder, onSubmit, onCancel }) {
-    const [formData, setFormData] = useState({
+// [新增] 定義 Props
+interface JobOrderInput {
+    id: string;
+    certificateNo?: string;
+    vacancyCount: number;
+}
+
+interface FormData {
+    permitNo: string;
+    issueDate: string;
+    validUntil: string;
+    approvedQuota: number;
+}
+
+interface Props {
+    jobOrder?: JobOrderInput | null; // 允許 null
+    onSubmit: (data: FormData) => void;
+    onCancel: () => void;
+}
+
+export function RecruitmentLetterForm({ jobOrder, onSubmit, onCancel }: Props) {
+    const [formData, setFormData] = useState<FormData>({
         permitNo: '',
         issueDate: '',
         validUntil: '',
-        approvedQuota: jobOrder ? jobOrder.vacancy : 0, // 預設帶入求才人數
+        approvedQuota: jobOrder ? jobOrder.vacancyCount : 0, // [修正] 使用 vacancyCount
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent) => { // [修正] 事件型別
         e.preventDefault();
         onSubmit(formData);
     };
@@ -17,7 +37,7 @@ export function RecruitmentLetterForm({ jobOrder, onSubmit, onCancel }) {
         <div className="bg-white p-6 border rounded-lg shadow-sm mt-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">
                 2. 登錄勞動部招募函
-                {jobOrder && <span className="text-sm text-gray-500 ml-2">(依據：{jobOrder.certNo})</span>}
+                {jobOrder && <span className="text-sm text-gray-500 ml-2">(依據：{jobOrder.certificateNo})</span>}
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">

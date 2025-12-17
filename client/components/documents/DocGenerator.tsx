@@ -10,8 +10,15 @@ interface DocGeneratorProps {
     label?: string;        // 按鈕文字
 }
 
+// [新增] 模板介面
+interface Template {
+    id: string;
+    name: string;
+    description?: string;
+}
+
 export function DocGenerator({ category, contextId, contextType, label = "產生文件" }: DocGeneratorProps) {
-    const [templates, setTemplates] = useState<any[]>([]);
+    const [templates, setTemplates] = useState<Template[]>([]); // [修正] 指定陣列型別
     const [loading, setLoading] = useState(false);
     const [generatingId, setGeneratingId] = useState<string | null>(null);
 
@@ -28,7 +35,7 @@ export function DocGenerator({ category, contextId, contextType, label = "產生
     };
 
     // 觸發下載
-    const handleGenerate = async (template: any) => {
+    const handleGenerate = async (template: Template) => {
         setGeneratingId(template.id);
         try {
             const res = await fetch(`/api/templates/${template.id}/generate`, {
