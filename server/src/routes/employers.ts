@@ -71,11 +71,16 @@ router.post('/', async (req, res) => {
             phoneNumber,
             address,
             faxNumber,
+            // Bilingual
+            companyNameEn,
+            addressEn,
+            responsiblePersonEn,
             // Polymorphic fields
             category,
             // Manufacturing
             factoryRegistrationNo,
             industryType,
+            factoryAddressEn,
             // Home Care
             patientName,
             patientIdNo,
@@ -109,6 +114,10 @@ router.post('/', async (req, res) => {
                     phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
                     address: address ? String(address) : undefined,
                     faxNumber: faxNumber ? String(faxNumber) : undefined,
+                    // Bilingual
+                    companyNameEn,
+                    addressEn,
+                    responsiblePersonEn,
                     category: (category && typeof category === 'string') ? category : 'MANUFACTURING'
                 }
             });
@@ -118,7 +127,8 @@ router.post('/', async (req, res) => {
                     data: {
                         employerId: emp.id,
                         factoryRegistrationNo: factoryRegistrationNo ? String(factoryRegistrationNo) : undefined,
-                        industryType: industryType ? String(industryType) : undefined
+                        industryType: industryType ? String(industryType) : undefined,
+                        factoryAddressEn: factoryAddressEn ? String(factoryAddressEn) : undefined
                     }
                 });
             } else if (category === 'HOME_CARE') {

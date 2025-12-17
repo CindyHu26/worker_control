@@ -50,6 +50,11 @@ model Employer {
   invoiceAddress   String? @map("invoice_address")
 
   responsiblePerson       String?   @map("responsible_person")
+  
+  // Bilingual Info
+  companyNameEn           String?  @map("company_name_en")
+  addressEn               String?  @map("address_en")
+  responsiblePersonEn     String?  @map("responsible_person_en")
   responsiblePersonDob    DateTime? @map("responsible_person_dob")
   responsiblePersonIdNo   String?   @map("responsible_person_id_no")
   responsiblePersonFather String?   @map("responsible_person_father_name")
@@ -125,8 +130,11 @@ model FactoryInfo {
 
   factoryRegistrationNo String? @map("factory_registration_no")
   industryType          String? @map("industry_type")
+
+  // Bilingual Info
+  factoryAddressEn      String? @map("factory_address_en")
   factoryAddress        String? @map("factory_address")
-  
+
   @@map("employer_factory_infos")
 }
 
@@ -151,7 +159,6 @@ model PayrollRecord {
   employerId      String   @map("employer_id")
 
   workPeriodStart DateTime @map("work_period_start")
-  workPeriodEnd   DateTime @map("work_period_end")
   payDate         DateTime @map("pay_date") // Critical for tax year attribution
 
   salaryAmount    Decimal  @default(0) @map("salary_amount")
@@ -215,6 +222,13 @@ model Worker {
   chineseName String?  @map("chinese_name")
   dob         DateTime
   nationality String // Enum as string
+
+  // Bilingual Info
+  fatherNameEn    String?  @map("father_name_en")
+  motherNameEn    String?  @map("mother_name_en")
+  homeAddressEn   String?  @map("home_address_en")
+  birthPlaceEn    String?  @map("birth_place_en")
+  spouseNameEn    String?  @map("spouse_name_en")
   category    String   @default("general") // Enum as string
   gender      String? // Enum as string
 
@@ -868,7 +882,7 @@ model Bill {
   employer   Employer?   @relation(fields: [employerId], references: [id])
   deployment Deployment? @relation(fields: [deploymentId], references: [id])
   items        BillItem[]
-  feeSchedules FeeSchedule[]
+  feeSchedules BillItem[]
   invoice      Invoice?
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1064,12 +1078,34 @@ model AgencyCompany {
   licenseNo         String   @map("license_no")
   taxId             String   @map("tax_id")
   responsiblePerson String   @map("responsible_person")
+
+  // Bilingual Info
+  nameEn            String?  @map("name_en")
+  addressEn         String?  @map("address_en")
+  representativeEn  String?  @map("representative_en")
   address           String?
   phone             String?
   fax               String?
   email             String?
-  isDefault         Boolean  @default(false) @map("is_default")
+  
+  // Banking Info
+  bankName          String?  @map("bank_name")
+  bankCode          String?  @map("bank_code")
+  bankBranch        String?  @map("bank_branch")
+  bankAccountNo     String?  @map("bank_account_no")
+  bankAccountName   String?  @map("bank_account_name")
 
+  // Document Assets
+  sealLargeUrl      String?  @map("seal_large_url")
+  sealSmallUrl      String?  @map("seal_small_url")
+  logoUrl           String?  @map("logo_url")
+
+  // Compliance
+  agencyCode        String?  @map("agency_code")
+  licenseExpiryDate DateTime? @map("license_expiry_date")
+
+  isDefault         Boolean  @default(false) @map("is_default")
+  
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -1314,7 +1350,7 @@ model Lead {
   lineId              String?  @map("line_id")
   address             String?
   taxId               String?  @map("tax_id")
-
+  arcId               String?  @map("arc_id") // Alien Resident Certificate ID
   // Business Info
   status              String   @default("NEW") // NEW, CONTACTED, MEETING, NEGOTIATING, WON, LOST
   source              String?
@@ -1377,4 +1413,22 @@ model TaxConfig {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   
   @@map("tax_configs")
+}
+
+model Attachment {
+  id          String   @id @default(uuid())
+  fileName    String   @map("file_name")
+  fileType    String   @map("file_type") // MIME type
+  storageKey  String   @map("storage_key") // MinIO object path
+  bucketName  String   @map("bucket_name")
+  size        Int      // Bytes
+  
+  // Relations (Optional, for linking to entities)
+  workerId    String?  @map("worker_id")
+  worker      Worker?  @relation(fields: [workerId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("attachments")
 }

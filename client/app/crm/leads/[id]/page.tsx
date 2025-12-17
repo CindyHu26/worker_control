@@ -80,15 +80,39 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         setSimQuota(calculate3K5Quota(simDomesticWorkers, simAllocationRate));
     }, [simDomesticWorkers, simAllocationRate]);
 
+    // Helper: Map category enum to industry code (reverse mapping)
+    const mapCategoryToIndustryCode = (category: string | null): string => {
+        if (!category) return '01';
+
+        const reverseMapping: Record<string, string> = {
+            'MANUFACTURING': '01',
+            'CONSTRUCTION': '02',
+            'FISHERY': '03',
+            'AGRICULTURE': '04',
+            'SLAUGHTER': '05',
+            'HOME_CARE': '06',
+            'HOME_HELPER': '07',
+            'INSTITUTION': '08',
+            'OUTREACH_AGRICULTURE': '09',
+            'HOSPITALITY': '10',
+            'OTHER': '99'
+        };
+
+        return reverseMapping[category] || '01';
+    };
+
     const fetchLead = async () => {
         try {
             const res = await fetch(`${apiUrl}/leads/${id}`);
             if (res.ok) {
                 const data = await res.json();
                 setLead(data);
-                // Pre-fill conversion data
+
+                // Pre-fill conversion data with lead information
                 setConvertData(prev => ({
                     ...prev,
+                    taxId: data.taxId || '',
+                    industryCode: mapCategoryToIndustryCode(data.industry),
                     invoiceAddress: data.address || '',
                     factoryAddress: data.address || '',
                     avgDomesticWorkers: simDomesticWorkers,
@@ -473,19 +497,26 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry Code) *</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry) *</label>
                                 <select
                                     className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={convertData.industryCode}
                                     onChange={e => setConvertData({ ...convertData, industryCode: e.target.value })}
                                     required
                                 >
-                                    <option value="01">01 製造業 (Manufacturing)</option>
-                                    <option value="02">02 營造業 (Construction)</option>
-                                    <option value="06">06 家庭看護 (Home Care)</option>
-                                    <option value="08">08 機構看護 (Institution)</option>
+                                    <option value="01">製造業</option>
+                                    <option value="02">營造業</option>
+                                    <option value="03">海洋漁撈</option>
+                                    <option value="04">農業</option>
+                                    <option value="05">屠宰業</option>
+                                    <option value="06">家庭看護</option>
+                                    <option value="07">家庭幫傭</option>
+                                    <option value="08">機構看護</option>
+                                    <option value="09">外展農務</option>
+                                    <option value="10">旅宿業</option>
+                                    <option value="99">其他</option>
                                 </select>
-                                <p className="text-xs text-slate-500 mt-1">標準行業代碼</p>
+                                <p className="text-xs text-slate-500 mt-1">選擇雇主所屬產業類別</p>
                             </div>
 
                             <div>

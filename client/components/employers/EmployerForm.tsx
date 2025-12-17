@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Save, Copy, Building, User, FileText, Settings, X, Building2 } from 'lucide-react';
+import { Save, Copy, Building, User, FileText, Settings, X, Building2, Globe } from 'lucide-react';
 import ComplianceSelector from '@/components/employers/ComplianceSelector';
 import { isValidGUINumber, isValidNationalID } from '@/utils/validation';
 
@@ -48,7 +48,12 @@ const employerSchema = z.object({
     // New validation fields
     allocationRate: z.string().optional(), // 0.10, 0.15 etc.
     complianceStandard: z.string().optional(), // RBA, IWAY, NONE
-    zeroFeeEffectiveDate: z.string().optional() // YYYY-MM-DD
+    zeroFeeEffectiveDate: z.string().optional(), // YYYY-MM-DD
+
+    // Bilingual Info
+    companyNameEn: z.string().optional(),
+    addressEn: z.string().optional(),
+    responsiblePersonEn: z.string().optional(),
 }).superRefine((data, ctx) => {
     // 邏輯分流：家庭看護 (Home Care) 驗證身分證，其他 (製造業/機構) 驗證統編
     if (data.category === 'HOME_CARE') {
@@ -192,6 +197,7 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
         ...(selectedCategory === 'MANUFACTURING' ? [{ label: '工廠資料 (Factory)', icon: Settings }] : []),
         ...(selectedCategory === 'HOME_CARE' ? [{ label: '被看護人 (Patient)', icon: User }] : []),
         ...(selectedCategory === 'INSTITUTION' ? [{ label: '機構資料 (Institution)', icon: Building2 }] : []),
+        { label: '雙語資料 (Bilingual)', icon: Globe },
         { label: '帳務與聯絡 (Billing)', icon: FileText },
         { label: '設定 (Settings)', icon: Settings },
     ];
@@ -400,6 +406,27 @@ export default function EmployerForm({ initialData, onSubmit, isEdit = false }: 
                                     <div className="space-y-1">
                                         <label className="block text-sm font-medium text-slate-700">床位數 (Bed Count)</label>
                                         <input type="number" {...register('bedCount')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tab: Bilingual Info */}
+                        {tabs.find(t => t.label.includes('Bilingual')) && activeTab === tabs.findIndex(t => t.label.includes('Bilingual')) && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <h2 className="text-lg font-bold text-slate-900 pb-2 border-b border-slate-100 mb-6">雙語資料 (Bilingual Info)</h2>
+                                <div className="space-y-4">
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-slate-700">English Company Name</label>
+                                        <input {...register('companyNameEn')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. ABC Manufacturing Co., Ltd." />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-slate-700">English Address</label>
+                                        <input {...register('addressEn')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. No. 123, Sec. 1..." />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-sm font-medium text-slate-700">Responsible Person (EN)</label>
+                                        <input {...register('responsiblePersonEn')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Wang, Da-Ming" />
                                     </div>
                                 </div>
                             </div>

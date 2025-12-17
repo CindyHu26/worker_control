@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import {
     Building2, Globe2, Plus, Phone, Mail, MapPin,
-    FileText, CheckCircle2, Star, Trash2, Edit2, X
+    FileText, CheckCircle2, Star, Trash2, Edit2, X,
+    CreditCard, Image as ImageIcon, ShieldCheck
 } from 'lucide-react';
 
 // Types
@@ -18,6 +19,21 @@ interface AgencyCompany {
     fax?: string;
     email?: string;
     isDefault: boolean;
+    // New Fields
+    agencyCode?: string;
+    licenseExpiryDate?: string;
+    // Bilingual
+    nameEn?: string;
+    addressEn?: string;
+    representativeEn?: string;
+    bankName?: string;
+    bankCode?: string;
+    bankBranch?: string;
+    bankAccountNo?: string;
+    bankAccountName?: string;
+    sealLargeUrl?: string;
+    sealSmallUrl?: string;
+    logoUrl?: string;
 }
 
 interface ForeignAgency {
@@ -40,6 +56,7 @@ export default function AgencySettingsPage() {
     // Modal States
     const [showInternalModal, setShowInternalModal] = useState(false);
     const [showForeignModal, setShowForeignModal] = useState(false);
+    const [internalModalTab, setInternalModalTab] = useState<'basic' | 'banking' | 'assets'>('basic');
 
     // Form States
     const [internalForm, setInternalForm] = useState<Partial<AgencyCompany>>({ isDefault: false });
@@ -52,9 +69,10 @@ export default function AgencySettingsPage() {
     const fetchData = async () => {
         try {
             setLoading(true);
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
             const [internalRes, foreignRes] = await Promise.all([
-                fetch('http://localhost:3001/api/settings/agency-companies'),
-                fetch('http://localhost:3001/api/settings/foreign-agencies')
+                fetch(`${apiUrl}/settings/agency-companies`),
+                fetch(`${apiUrl}/settings/foreign-agencies`)
             ]);
 
             if (internalRes.ok) setInternalAgencies(await internalRes.json());
@@ -69,7 +87,8 @@ export default function AgencySettingsPage() {
     const handleCreateInternal = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch('http://localhost:3001/api/settings/agency-companies', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+            const res = await fetch(`${apiUrl}/settings/agency-companies`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(internalForm)
@@ -77,6 +96,7 @@ export default function AgencySettingsPage() {
             if (res.ok) {
                 setShowInternalModal(false);
                 setInternalForm({ isDefault: false });
+                setInternalModalTab('basic'); // Reset tab
                 fetchData();
             }
         } catch (error) {
@@ -87,7 +107,8 @@ export default function AgencySettingsPage() {
     const handleCreateForeign = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch('http://localhost:3001/api/settings/foreign-agencies', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+            const res = await fetch(`${apiUrl}/settings/foreign-agencies`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(foreignForm)
@@ -104,7 +125,8 @@ export default function AgencySettingsPage() {
 
     const handleSetDefault = async (id: string) => {
         try {
-            await fetch(`http://localhost:3001/api/settings/agency-companies/${id}`, {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+            await fetch(`${apiUrl}/settings/agency-companies/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ isDefault: true })
@@ -132,13 +154,13 @@ export default function AgencySettingsPage() {
                 <p className="text-gray-500 mt-2">設定我方公司資料與國外合作仲介</p>
             </header>
 
-            {/* Tabs */}
+            {/* Main Tabs */}
             <div className="flex space-x-4 mb-6 border-b border-gray-200">
                 <button
                     onClick={() => setActiveTab('internal')}
                     className={`pb-3 px-4 flex items-center gap-2 font-medium border-b-2 transition-colors ${activeTab === 'internal'
-                            ? 'border-blue-500 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     <Building2 size={18} />
@@ -147,8 +169,8 @@ export default function AgencySettingsPage() {
                 <button
                     onClick={() => setActiveTab('foreign')}
                     className={`pb-3 px-4 flex items-center gap-2 font-medium border-b-2 transition-colors ${activeTab === 'foreign'
-                            ? 'border-blue-500 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     <Globe2 size={18} />
@@ -191,15 +213,16 @@ export default function AgencySettingsPage() {
                                 </div>
 
                                 <h3 className="text-xl font-bold text-gray-900 mb-1">{agency.name}</h3>
-                                <div className="text-sm text-gray-500 mb-4 flex gap-2">
+                                <div className="text-sm text-gray-500 mb-4 flex flex-wrap gap-2">
                                     <span className="bg-gray-100 px-2 py-0.5 rounded text-xs text-gray-600 font-mono">Tax: {agency.taxId}</span>
                                     <span className="bg-gray-100 px-2 py-0.5 rounded text-xs text-gray-600 font-mono">Lic: {agency.licenseNo}</span>
+                                    {agency.agencyCode && <span className="bg-blue-50 px-2 py-0.5 rounded text-xs text-blue-600 font-mono">Code: {agency.agencyCode}</span>}
                                 </div>
 
                                 <div className="space-y-2 text-sm text-gray-600 border-t pt-4">
                                     <div className="flex items-center gap-2">
                                         <MapPin size={14} className="text-gray-400" />
-                                        <span>{agency.address || 'No Address'}</span>
+                                        <span className="line-clamp-1">{agency.address || 'No Address'}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Phone size={14} className="text-gray-400" />
@@ -207,12 +230,18 @@ export default function AgencySettingsPage() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Mail size={14} className="text-gray-400" />
-                                        <span>{agency.email || 'No Email'}</span>
+                                        <span className="line-clamp-1">{agency.email || 'No Email'}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <FileText size={14} className="text-gray-400" />
                                         <span>Rep: {agency.responsiblePerson}</span>
                                     </div>
+                                    {agency.bankName && (
+                                        <div className="flex items-center gap-2 text-blue-600 mt-2 pt-2 border-t border-dashed">
+                                            <CreditCard size={14} />
+                                            <span>{agency.bankName} ({agency.bankCode})</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -294,76 +323,204 @@ export default function AgencySettingsPage() {
                 </div>
             )}
 
-            {/* Internal Modal */}
+            {/* Internal Modal (Tabbed) */}
             {showInternalModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
                             <h2 className="text-xl font-bold text-gray-900">新增我方公司</h2>
                             <button onClick={() => setShowInternalModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <X size={24} />
                             </button>
                         </div>
-                        <form onSubmit={handleCreateInternal} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-gray-700">公司名稱 *</label>
-                                    <input required className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 大安人力"
-                                        value={internalForm.name || ''} onChange={e => setInternalForm({ ...internalForm, name: e.target.value })} />
+
+                        {/* Modal Tabs */}
+                        <div className="flex border-b border-gray-100 px-6 flex-shrink-0">
+                            <button
+                                onClick={() => setInternalModalTab('basic')}
+                                className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${internalModalTab === 'basic' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}
+                            >
+                                <Building2 size={16} /> 基本資料
+                            </button>
+                            <button
+                                onClick={() => setInternalModalTab('banking')}
+                                className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${internalModalTab === 'banking' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}
+                            >
+                                <CreditCard size={16} /> 銀行帳戶
+                            </button>
+                            <button
+                                onClick={() => setInternalModalTab('assets')}
+                                className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${internalModalTab === 'assets' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}
+                            >
+                                <ImageIcon size={16} /> 圖檔資源
+                            </button>
+                        </div>
+
+                        {/* Form Content (Scrollable) */}
+                        <form onSubmit={handleCreateInternal} className="flex-1 overflow-y-auto p-6 space-y-6">
+
+                            {/* BASIC TAB */}
+                            {internalModalTab === 'basic' && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">公司名稱 *</label>
+                                            <input required className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 大安人力"
+                                                value={internalForm.name || ''} onChange={e => setInternalForm({ ...internalForm, name: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">負責人 *</label>
+                                            <input required className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 王大明"
+                                                value={internalForm.responsiblePerson || ''} onChange={e => setInternalForm({ ...internalForm, responsiblePerson: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">統一編號</label>
+                                            <input className="w-full border rounded-lg px-3 py-2" placeholder="8碼統編"
+                                                value={internalForm.taxId || ''} onChange={e => setInternalForm({ ...internalForm, taxId: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">許可證號</label>
+                                            <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 1234"
+                                                value={internalForm.licenseNo || ''} onChange={e => setInternalForm({ ...internalForm, licenseNo: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">機構代碼 (Agency Code)</label>
+                                            <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. A001"
+                                                value={internalForm.agencyCode || ''} onChange={e => setInternalForm({ ...internalForm, agencyCode: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">許可證到期日</label>
+                                            <input type="date" className="w-full border rounded-lg px-3 py-2"
+                                                value={internalForm.licenseExpiryDate?.split('T')[0] || ''} onChange={e => setInternalForm({ ...internalForm, licenseExpiryDate: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-gray-700">地址</label>
+                                        <input className="w-full border rounded-lg px-3 py-2"
+                                            value={internalForm.address || ''} onChange={e => setInternalForm({ ...internalForm, address: e.target.value })} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">電話</label>
+                                            <input className="w-full border rounded-lg px-3 py-2"
+                                                value={internalForm.phone || ''} onChange={e => setInternalForm({ ...internalForm, phone: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">電子郵件</label>
+                                            <input type="email" className="w-full border rounded-lg px-3 py-2"
+                                                value={internalForm.email || ''} onChange={e => setInternalForm({ ...internalForm, email: e.target.value })} />
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-gray-100">
+                                        <h3 className="text-sm font-bold text-gray-900 mb-3">英文資料 (Bilingual Info)</h3>
+                                        <div className="space-y-3">
+                                            <div className="space-y-1">
+                                                <label className="text-sm font-medium text-gray-700">English Name</label>
+                                                <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. Da An Manpower Co., Ltd."
+                                                    value={internalForm.nameEn || ''} onChange={e => setInternalForm({ ...internalForm, nameEn: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-sm font-medium text-gray-700">English Address</label>
+                                                <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. No. 123, Sec. 1..."
+                                                    value={internalForm.addressEn || ''} onChange={e => setInternalForm({ ...internalForm, addressEn: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-sm font-medium text-gray-700">Representative (EN)</label>
+                                                <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. Wang, Da-Ming"
+                                                    value={internalForm.representativeEn || ''} onChange={e => setInternalForm({ ...internalForm, representativeEn: e.target.value })} />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-gray-700">負責人 *</label>
-                                    <input required className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 王大明"
-                                        value={internalForm.responsiblePerson || ''} onChange={e => setInternalForm({ ...internalForm, responsiblePerson: e.target.value })} />
+                            )}
+
+                            {/* BANKING TAB */}
+                            {internalModalTab === 'banking' && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">銀行名稱 (Bank Name)</label>
+                                            <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 中國信託"
+                                                value={internalForm.bankName || ''} onChange={e => setInternalForm({ ...internalForm, bankName: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">銀行代碼 (Bank Code)</label>
+                                            <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 822"
+                                                value={internalForm.bankCode || ''} onChange={e => setInternalForm({ ...internalForm, bankCode: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-gray-700">分行名稱 (Branch)</label>
+                                        <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 營業部"
+                                            value={internalForm.bankBranch || ''} onChange={e => setInternalForm({ ...internalForm, bankBranch: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-gray-700">銀行帳號 (Account No.)</label>
+                                        <input className="w-full border rounded-lg px-3 py-2 font-mono" placeholder="1234-5678-9012"
+                                            value={internalForm.bankAccountNo || ''} onChange={e => setInternalForm({ ...internalForm, bankAccountNo: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-gray-700">戶名 (Account Name)</label>
+                                        <input className="w-full border rounded-lg px-3 py-2"
+                                            value={internalForm.bankAccountName || ''} onChange={e => setInternalForm({ ...internalForm, bankAccountName: e.target.value })} />
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-gray-700">統一編號</label>
-                                    <input className="w-full border rounded-lg px-3 py-2" placeholder="8碼統編"
-                                        value={internalForm.taxId || ''} onChange={e => setInternalForm({ ...internalForm, taxId: e.target.value })} />
+                            )}
+
+                            {/* ASSETS TAB */}
+                            {internalModalTab === 'assets' && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-gray-700">公司大章 URL (Large Seal)</label>
+                                        <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="https://..."
+                                            value={internalForm.sealLargeUrl || ''} onChange={e => setInternalForm({ ...internalForm, sealLargeUrl: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-gray-700">負責人小章 URL (Small Seal)</label>
+                                        <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="https://..."
+                                            value={internalForm.sealSmallUrl || ''} onChange={e => setInternalForm({ ...internalForm, sealSmallUrl: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-gray-700">公司 Logo URL</label>
+                                        <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="https://..."
+                                            value={internalForm.logoUrl || ''} onChange={e => setInternalForm({ ...internalForm, logoUrl: e.target.value })} />
+                                    </div>
+
+                                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-dashed text-center">
+                                        <p className="text-sm text-gray-500">
+                                            (註：即將支援檔案上傳功能，目前僅支援圖片連結)
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-gray-700">許可證號</label>
-                                    <input className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 1234"
-                                        value={internalForm.licenseNo || ''} onChange={e => setInternalForm({ ...internalForm, licenseNo: e.target.value })} />
+                            )}
+
+                            {/* Footer Actions (Visible on all tabs) */}
+                            <div className="pt-4 flex justify-between items-center border-t mt-4">
+                                <div className="flex items-center gap-2">
+                                    <input type="checkbox" id="isDefault"
+                                        checked={internalForm.isDefault}
+                                        onChange={e => setInternalForm({ ...internalForm, isDefault: e.target.checked })}
+                                        className="w-4 h-4 text-blue-600 rounded"
+                                    />
+                                    <label htmlFor="isDefault" className="text-sm text-gray-700">設為預設公司</label>
                                 </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium text-gray-700">地址</label>
-                                <input className="w-full border rounded-lg px-3 py-2"
-                                    value={internalForm.address || ''} onChange={e => setInternalForm({ ...internalForm, address: e.target.value })} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-gray-700">電話</label>
-                                    <input className="w-full border rounded-lg px-3 py-2"
-                                        value={internalForm.phone || ''} onChange={e => setInternalForm({ ...internalForm, phone: e.target.value })} />
+                                <div className="flex gap-2">
+                                    <button type="button" onClick={() => setShowInternalModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">取消</button>
+                                    <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">新增</button>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-gray-700">電子郵件</label>
-                                    <input type="email" className="w-full border rounded-lg px-3 py-2"
-                                        value={internalForm.email || ''} onChange={e => setInternalForm({ ...internalForm, email: e.target.value })} />
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2 pt-2">
-                                <input type="checkbox" id="isDefault"
-                                    checked={internalForm.isDefault}
-                                    onChange={e => setInternalForm({ ...internalForm, isDefault: e.target.checked })}
-                                    className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <label htmlFor="isDefault" className="text-sm text-gray-700">設為預設公司 (Default)</label>
-                            </div>
-                            <div className="pt-4 flex justify-end gap-2">
-                                <button type="button" onClick={() => setShowInternalModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">取消</button>
-                                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">新增</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* Foreign Modal */}
+            {/* Foreign Modal (Unchanged) */}
             {showForeignModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">

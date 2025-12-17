@@ -60,7 +60,20 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: '公司名稱為必填欄位' });
         }
 
-        // 2. 統編衝突檢查 (Conflict Check)
+        // 2. 產業別驗證 (Industry Enum Validation)
+        const VALID_INDUSTRIES = [
+            'MANUFACTURING', 'CONSTRUCTION', 'FISHERY', 'HOME_CARE',
+            'HOME_HELPER', 'INSTITUTION', 'AGRICULTURE', 'SLAUGHTER',
+            'OUTREACH_AGRICULTURE', 'HOSPITALITY', 'OTHER'
+        ];
+
+        if (industry && !VALID_INDUSTRIES.includes(industry)) {
+            return res.status(400).json({
+                error: `無效的產業別: ${industry}. 請使用標準產業代碼。`
+            });
+        }
+
+        // 3. 統編衝突檢查 (Conflict Check)
         if (taxId) {
             const existingLead = await prisma.lead.findFirst({
                 where: {

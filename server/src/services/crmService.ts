@@ -30,18 +30,54 @@ export const calculate3K5Quota = (laborCount: number, allocationRate: number): n
 };
 
 /**
- * Map industry code to category enum
- * @param industryCode Standard industry code (01, 02, 06, 08)
+ * Map industry code to category enum (strict validation)
+ * @param industryCode Standard industry code (01, 02, 06, 08, etc.)
  * @returns Category string
+ * @throws Error if industry code is not recognized
  */
 export const mapIndustryCodeToCategory = (industryCode: string): string => {
     const mapping: Record<string, string> = {
         '01': 'MANUFACTURING',
         '02': 'CONSTRUCTION',
+        '03': 'FISHERY',
+        '04': 'AGRICULTURE',
+        '05': 'SLAUGHTER',
         '06': 'HOME_CARE',
-        '08': 'INSTITUTION'
+        '07': 'HOME_HELPER',
+        '08': 'INSTITUTION',
+        '09': 'OUTREACH_AGRICULTURE',
+        '10': 'HOSPITALITY',
+        '99': 'OTHER'
     };
-    return mapping[industryCode] || 'MANUFACTURING';
+
+    if (!mapping[industryCode]) {
+        throw new Error(`Invalid industry code: ${industryCode}. Expected: 01-10, 99.`);
+    }
+
+    return mapping[industryCode];
+};
+
+/**
+ * Map category enum to industry code (reverse mapping for frontend)
+ * @param category Industry category enum (MANUFACTURING, CONSTRUCTION, etc.)
+ * @returns Industry code string
+ */
+export const mapCategoryToIndustryCode = (category: string): string => {
+    const reverseMapping: Record<string, string> = {
+        'MANUFACTURING': '01',
+        'CONSTRUCTION': '02',
+        'FISHERY': '03',
+        'AGRICULTURE': '04',
+        'SLAUGHTER': '05',
+        'HOME_CARE': '06',
+        'HOME_HELPER': '07',
+        'INSTITUTION': '08',
+        'OUTREACH_AGRICULTURE': '09',
+        'HOSPITALITY': '10',
+        'OTHER': '99'
+    };
+
+    return reverseMapping[category] || '01'; // Safe fallback for display
 };
 
 /**

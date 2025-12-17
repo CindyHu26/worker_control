@@ -24,7 +24,15 @@ router.get('/agency-companies', async (req, res) => {
 // Create Agency Company
 router.post('/agency-companies', async (req, res) => {
     try {
-        const { name, licenseNo, taxId, responsiblePerson, address, phone, fax, email, isDefault } = req.body;
+        const {
+            name, licenseNo, taxId, responsiblePerson, address, phone, fax, email, isDefault,
+            // New Fields
+            bankName, bankCode, bankBranch, bankAccountNo, bankAccountName,
+            sealLargeUrl, sealSmallUrl, logoUrl,
+            agencyCode, licenseExpiryDate,
+            // Bilingual
+            nameEn, addressEn, representativeEn
+        } = req.body;
 
         if (isDefault) {
             // Unset other defaults if this one is set to default
@@ -44,6 +52,13 @@ router.post('/agency-companies', async (req, res) => {
                 phone,
                 fax,
                 email,
+                // New Fields
+                bankName, bankCode, bankBranch, bankAccountNo, bankAccountName,
+                sealLargeUrl, sealSmallUrl, logoUrl,
+                agencyCode,
+                licenseExpiryDate: licenseExpiryDate ? new Date(licenseExpiryDate) : null,
+                // Bilingual
+                nameEn, addressEn, representativeEn,
                 isDefault: !!isDefault
             }
         });
@@ -59,7 +74,7 @@ router.post('/agency-companies', async (req, res) => {
 router.put('/agency-companies/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { isDefault, ...otherData } = req.body;
+        const { isDefault, licenseExpiryDate, ...otherData } = req.body;
 
         if (isDefault) {
             // Unset other defaults
@@ -73,7 +88,12 @@ router.put('/agency-companies/:id', async (req, res) => {
             where: { id },
             data: {
                 ...otherData,
-                isDefault
+                licenseExpiryDate: licenseExpiryDate ? new Date(licenseExpiryDate) : null,
+                isDefault,
+                // Bilingual
+                nameEn: otherData.nameEn,
+                addressEn: otherData.addressEn,
+                representativeEn: otherData.representativeEn
             }
         });
 
