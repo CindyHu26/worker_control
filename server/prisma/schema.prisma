@@ -237,7 +237,6 @@ model Worker {
   taxId             String? @map("tax_id")
   bloodType         String? @map("blood_type")
   religion          String? @map("religion")
-  isTaxResident     Boolean @default(false) @map("is_tax_resident")
 
   mobilePhone    String?   @map("mobile_phone")
   foreignAddress String?   @map("foreign_address")
@@ -303,8 +302,35 @@ model Worker {
   studentEvaluation   StudentEvaluation?
   payrollRecords      PayrollRecord[]
   attachments         Attachment[]
+  taxStatuses WorkerTaxStatus[]
 
   @@map("workers")
+}
+
+// [新增] 移工稅務身分紀錄 (依年度判定)
+// 用於解決 "183天" 居住者/非居住者判定問題
+model WorkerTaxStatus {
+  id        String   @id @default(uuid())
+  workerId  String   @map("worker_id")
+  worker    Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  year      Int      @map("year")           // 稅務年度 (e.g. 2024)
+  
+  // 判定結果
+  status    String   @default("NON_RESIDENT") // Enum: RESIDENT (居住者), NON_RESIDENT (非居住者)
+  
+  // 判定依據
+  daysStayed Int     @default(0) @map("days_stayed") // 當年度在台天數 (由入出境紀錄計算)
+  
+  // 鎖定狀態 (報稅後通常鎖定)
+  isFinalized Boolean @default(false) @map("is_finalized")
+  
+  notes     String?
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([workerId, year]) // 每個移工每年只有一個稅務身分
+  @@map("worker_tax_statuses")
 }
 
 model StudentEvaluation {
@@ -448,82 +474,116 @@ model Deployment {
   id                  String  @id @default(uuid())
   workerId            String  @map("worker_id")
   employerId          String  @map("employer_id")
-  entryPermitId       String? @map("entry_permit_id")
+  entryPermitId       String? @map("entry_permit_id") // 關聯到入國引進許可 (EntryPermit)
 
+  // --- 狀態與階段 ---
   startDate     DateTime  @map("start_date")
   endDate       DateTime? @map("end_date")
-  status        String    @default("active") // Enum as string
-  serviceStatus String    @default("active_service") @map("service_status") // Enum as string
-  sourceType    String    @default("direct_hiring") @map("source_type") // Enum as string
-  processStage  String    @default("recruitment") @map("process_stage") // recruitment, visa_processing, flight_booking, arrival, medical_check
+  status        String    @default("active")        // Enum: active, inactive, transferred, escaped, repatriated
+  serviceStatus String    @default("active_service") @map("service_status") 
+  sourceType    String    @default("direct_hiring") @map("source_type") 
+  processStage  String    @default("recruitment")   @map("process_stage") 
 
+  // --- 工作內容與薪資 ---
   jobDescription     String?   @map("job_description")
-  entryDate          DateTime? @map("entry_date")
-  entryReportSerial  String?   @map("entry_report_serial")
-  entryReportDocNo   String?   @map("entry_report_doc_no")
-  flightNumber       String?   @map("flight_number")
-  flightArrivalDate  DateTime? @map("flight_arrival_date")
-  visaLetterNo       String?   @map("visa_letter_no")
   jobType            String?   @map("job_type")
   shift              String?   @map("shift")
+  laborContractType  String?   @map("labor_contract_type")
+  
   basicSalary        Decimal?  @map("basic_salary")
   laborInsuranceAmt  Decimal?  @map("labor_insurance_amt")
   healthInsuranceAmt Decimal?  @map("health_insurance_amt")
 
-  // Information for M343 (Employment Permit Application)
-  employmentPermitReceiptNo String?   @map("emp_permit_receipt_no")
-  employmentPermitDate      DateTime? @map("emp_permit_receipt_date")
-  employmentPermitAmount    Int?      @default(0) @map("emp_permit_amount")
-
-  // Information for Notification of Arrival
-  visaNumber        String?   @map("visa_number") // Sticker Number (Distinct from visaLetterNo)
+  // --- 入境與接機資訊 ---
+  entryDate          DateTime? @map("entry_date")
+  entryReportSerial  String?   @map("entry_report_serial") // 入國通報序號
+  entryReportDocNo   String?   @map("entry_report_doc_no") // 入國通報文號
+  entryReportDate    DateTime? @map("entry_report_date")
   
-  // Living Care / Cost Information
-  foodStatus        String    @default("provided_free") @map("food_status") // provided_free, provided_charge, self_care
+  flightNumber       String?   @map("flight_number")
+  flightArrivalDate  DateTime? @map("flight_arrival_date")
+  
+  // --- 簽證資訊 (Visa) ---
+  // 注意：簽證函 (Visa Letter) 與聘僱許可 (Employment Permit) 不同，保留在此
+  visaLetterNo       String?   @map("visa_letter_no") 
+  visaLetterDate     DateTime? @map("visa_letter_date")
+  visaNumber         String?   @map("visa_number") // 簽證貼紙號碼
+
+  // --- [關鍵修改] 聘僱許可 ---
+  // 舊的扁平欄位已移除 (employmentPermitReceiptNo, employmentPermitDate...)
+  // 改用下方的 employmentPermits 關聯
+
+  // --- 生活照顧 / 膳宿費 ---
+  foodStatus        String    @default("provided_free") @map("food_status") 
   foodAmount        Decimal   @default(0) @map("food_amount")
 
-  terminationReason String? @map("termination_reason")
-
-  terminationNotes String? @map("termination_notes")
-
+  // --- 異常與結案資訊 (離境/逃跑/轉出) ---
+  terminationReason     String?   @map("termination_reason")
+  terminationNotes      String?   @map("termination_notes")
+  
   runawayReportDate     DateTime? @map("runaway_report_date")
-  runawayReportDocNo    String?   @map("runaway_report_doc_no")
-  terminationPermitDate DateTime? @map("termination_permit_date")
-  terminationPermitNo   String?   @map("termination_permit_no")
-  transferPermitDate    DateTime? @map("transfer_permit_date")
-
-  transferPermitNo String? @map("transfer_permit_no")
-
-  runawayReportNo   String? @map("runaway_report_no")
-  entryReportNo     String? @map("entry_report_no")
-  laborContractType String? @map("labor_contract_type")
-
-  // Permit/Visa Details
-  visaLetterDate          DateTime? @map("visa_letter_date")
-  entryReportDate         DateTime? @map("entry_report_date")
+  runawayReportDocNo    String?   @map("runaway_report_doc_no") // 逃跑通報文號
+  runawayReportNo       String?   @map("runaway_report_no")     // 逃跑通報序號
+  
+  terminationPermitDate DateTime? @map("termination_permit_date") // 離境備查日
+  terminationPermitNo   String?   @map("termination_permit_no")   // 離境備查文號
+  
+  transferPermitDate    DateTime? @map("transfer_permit_date")    // 轉出核准日
+  transferPermitNo      String?   @map("transfer_permit_no")      // 轉出核准文號
+  
   fingerprintDate         DateTime? @map("fingerprint_date")
-  replacementLetterNumber String?   @map("replacement_letter_number")
+  replacementLetterNumber String?   @map("replacement_letter_number") 
   replacementLetterDate   DateTime? @map("replacement_letter_date")
 
+  // --- 系統欄位 ---
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // --- 關聯設定 ---
   worker            Worker                     @relation(fields: [workerId], references: [id])
   employer          Employer                   @relation(fields: [employerId], references: [id])
   entryPermit       EntryPermit?               @relation(fields: [entryPermitId], references: [id])
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  // [新增] 一對多關聯：支援初次申請、展延、補發等多張許可
+  employmentPermits EmploymentPermit[]
 
-  // Relations
-  timelines     WorkerTimeline?
-  healthChecks  HealthCheck[]
-  permitDetails WorkerPermitDetail[]
-  insurances    WorkerInsurance[]
-  bills         Bill[]
-  monthlyFee    MonthlyServiceFee?
-  feeSchedules  FeeSchedule[]
-  transfers     TransferRecord[]
+  // 其他既有關聯
+  timelines         WorkerTimeline?
+  healthChecks      HealthCheck[]
+  permitDetails     WorkerPermitDetail[]
+  insurances        WorkerInsurance[]
+  bills             Bill[]
+  monthlyFee        MonthlyServiceFee?
+  feeSchedules      FeeSchedule[]
+  transfers         TransferRecord[]
   studentEvaluations StudentEvaluation[]
 
   @@map("deployments")
+}
+
+// 聘僱許可 (Employment Permit)
+// 支援：初次申請、展延 (Extension)、補發
+model EmploymentPermit {
+  id           String     @id @default(uuid())
+  deploymentId String     @map("deployment_id")
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  permitNumber String     @unique @map("permit_number") // 勞動發事字第...號
+  issueDate    DateTime   @map("issue_date")          // 發文日
+  expiryDate   DateTime   @map("expiry_date")         // 許可屆滿日 (算展延提醒用)
+
+  type         String     @default("INITIAL")         // Enum: INITIAL(初次), EXTENSION(展延), REISSUE(補發)
+  status       String     @default("ACTIVE")          // Enum: ACTIVE, EXPIRED, REVOKED
+
+  // 申請流程追蹤 (M343)
+  receiptNumber   String?   @map("receipt_number")     // 收文號 (原 emp_permit_receipt_no)
+  applicationDate DateTime? @map("application_date")   // 申請日 (原 emp_permit_receipt_date)
+  feeAmount       Int       @default(0) @map("fee_amount") // 審查費
+
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at")
+
+  @@map("employment_permits")
 }
 
 model PermitDocument {
