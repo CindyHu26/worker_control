@@ -37,13 +37,15 @@ type Lead = {
 type BoardData = Record<string, Lead[]>;
 
 const STAGES: any = {
-    NEW: { title: 'New Leads', color: 'bg-slate-100 border-slate-200' },
-    CONTACTED: { title: 'Contacted', color: 'bg-blue-50 border-blue-200' },
-    MEETING: { title: 'Meeting Scheduled', color: 'bg-purple-50 border-purple-200' },
-    NEGOTIATING: { title: 'Negotiating', color: 'bg-yellow-50 border-yellow-200' },
-    WON: { title: 'Won', color: 'bg-green-50 border-green-200' },
-    LOST: { title: 'Lost', color: 'bg-red-50 border-red-200' },
+    NEW: { title: '新進客戶 (New)', color: 'bg-slate-100 border-slate-200' },
+    CONTACTED: { title: '已聯繫 (Contacted)', color: 'bg-blue-50 border-blue-200' },
+    MEETING: { title: '安排訪談 (Meeting)', color: 'bg-purple-50 border-purple-200' },
+    NEGOTIATING: { title: '報價協商 (Negotiating)', color: 'bg-yellow-50 border-yellow-200' },
+    WON: { title: '成功簽約 (Won)', color: 'bg-green-50 border-green-200' },
+    LOST: { title: '結案/流失 (Lost)', color: 'bg-red-50 border-red-200' },
 };
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 // --- Components ---
 
@@ -164,7 +166,7 @@ export default function CRMBoard() {
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:3001/api/leads', { credentials: 'include' });
+            const res = await fetch(`${apiUrl}/leads`, { credentials: 'include' });
             if (res.ok) {
                 const data: Lead[] = await res.json();
 
@@ -226,7 +228,7 @@ export default function CRMBoard() {
 
         // API Call
         try {
-            await fetch(`http://localhost:3001/api/leads/${cardId}`, {
+            await fetch(`${apiUrl}/leads/${cardId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

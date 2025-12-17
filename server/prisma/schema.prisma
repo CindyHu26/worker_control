@@ -1313,6 +1313,7 @@ model Lead {
   email               String?
   lineId              String?  @map("line_id")
   address             String?
+  taxId               String?  @map("tax_id")
 
   // Business Info
   status              String   @default("NEW") // NEW, CONTACTED, MEETING, NEGOTIATING, WON, LOST

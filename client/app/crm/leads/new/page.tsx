@@ -17,6 +17,7 @@ import {
 type LeadFormData = {
     companyName: string;
     contactPerson: string;
+    taxId: string;
     status: string;
     phone: string;
     mobile: string;
@@ -38,11 +39,12 @@ export default function CreateLeadPage() {
         formState: { errors }
     } = useForm<LeadFormData>({
         defaultValues: {
-            status: 'NEW', // Default Status
-            industry: '01 製造業', // Default Industry
-            estimatedWorkerCount: 0
+            industry: 'MANUFACTURING', // [Critical Fix] Standardized Default
+            status: 'NEW'
         }
     });
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
     const onSubmit = async (data: LeadFormData) => {
         setIsSubmitting(true);
@@ -50,10 +52,10 @@ export default function CreateLeadPage() {
             // Ensure numbers are numbers
             const payload = {
                 ...data,
-                estimatedWorkerCount: Number(data.estimatedWorkerCount) || 0
+                estimatedWorkerCount: Number(data.estimatedWorkerCount) || 0 // Keep this if estimatedWorkerCount is still part of the schema
             };
 
-            const res = await fetch('http://localhost:3001/api/leads', {
+            const res = await fetch(`${apiUrl}/leads`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include', // Important for cookies/auth
@@ -79,170 +81,122 @@ export default function CreateLeadPage() {
     };
 
     return (
-        <div className="p-6 h-[calc(100vh-64px)] overflow-y-auto max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => router.back()}
-                        className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
-                    >
-                        <ArrowLeft size={24} />
-                    </button>
+        <div className="p-6 max-w-2xl mx-auto bg-white rounded-xl shadow-md border border-slate-100">
+            <h1 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                新增潛在客戶
+            </h1>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Company Name */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        公司名稱 (Company Name) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        {...register('companyName', { required: true })}
+                        placeholder="例如：宏華精密工業"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    {errors.companyName && <span className="text-red-500 text-xs">此欄位必填</span>}
+                </div>
+
+                {/* Tax ID */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        統一編號 (Tax ID)
+                    </label>
+                    <input
+                        {...register('taxId')}
+                        placeholder="例如：12345678"
+                        maxLength={8}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                </div>
+
+                {/* Contact Person */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        聯絡人 (Contact Person)
+                    </label>
+                    <input
+                        {...register('contactPerson')}
+                        placeholder="例如：陳經理"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Mobile */}
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">新增潛在客戶</h1>
-                        <p className="text-sm text-slate-500">輸入潛在客戶資料以開始追蹤。</p>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            手機 (Mobile)
+                        </label>
+                        <input
+                            {...register('mobile')}
+                            placeholder="0912-345-678"
+                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
                     </div>
-                </div>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-
-                {/* Basic Info Section */}
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2 pb-2 border-b border-slate-100">
-                        <Briefcase size={20} className="text-blue-600" />
-                        公司詳細資訊 (Company Details)
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Company Name (Required) */}
-                        <div className="col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">公司名稱 (Company Name) <span className="text-red-500">*</span></label>
-                            <input
-                                {...register('companyName', { required: '公司名稱為必填' })}
-                                type="text"
-                                placeholder="例如：宏華精密工業"
-                                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all ${errors.companyName ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-300'}`}
-                            />
-                            {errors.companyName && <p className="text-red-500 text-xs mt-1">{errors.companyName.message}</p>}
-                        </div>
-
-                        {/* Industry */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry Code)</label>
-                            <div className="relative">
-                                <Building size={16} className="absolute left-3 top-3 text-slate-400" />
-                                <select
-                                    {...register('industry')}
-                                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                >
-                                    <option value="01 製造業">01 製造業 (Manufacturing)</option>
-                                    <option value="02 營造業">02 營造業 (Construction)</option>
-                                    <option value="06 家庭看護">06 家庭看護 (Home Care)</option>
-                                    <option value="08 機構看護">08 機構看護 (Institution)</option>
-                                    <option value="其他">其他 (Other)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Estimated Workers */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">預計聘僱人數 (Estimated Workers)</label>
-                            <input
-                                {...register('estimatedWorkerCount', { min: 0 })}
-                                type="number"
-                                placeholder="0"
-                                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                        </div>
-
-                        {/* Source */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">來源 (Source)</label>
-                            <div className="relative">
-                                <Globe size={16} className="absolute left-3 top-3 text-slate-400" />
-                                <select
-                                    {...register('source')}
-                                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                >
-                                    <option value="">選擇來源...</option>
-                                    <option value="Cold Call">陌生開發 (Cold Call)</option>
-                                    <option value="Referral">轉介紹 (Referral)</option>
-                                    <option value="Website">網站 (Website)</option>
-                                    <option value="Event">活動 (Event)</option>
-                                    <option value="Partner">合作夥伴 (Partner)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Address */}
-                        <div className="col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">地址 (Address)</label>
-                            <div className="relative">
-                                <MapPin size={16} className="absolute left-3 top-3 text-slate-400" />
-                                <input
-                                    {...register('address')}
-                                    type="text"
-                                    placeholder="完整公司地址"
-                                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                        </div>
+                    {/* Phone */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            電話 (Phone)
+                        </label>
+                        <input
+                            {...register('phone')}
+                            placeholder="02-2345-6789"
+                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
                     </div>
                 </div>
 
-                {/* Contact Info Section */}
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2 pb-2 border-b border-slate-100">
-                        <User size={20} className="text-blue-600" />
-                        聯絡資訊 (Contact Info)
-                    </h3>
+                {/* Email */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        電子郵件 (Email)
+                    </label>
+                    <input
+                        {...register('email')}
+                        type="email"
+                        placeholder="john@example.com"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Contact Person */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">聯絡人 (Contact Person)</label>
-                            <div className="relative">
-                                <User size={16} className="absolute left-3 top-3 text-slate-400" />
-                                <input
-                                    {...register('contactPerson')}
-                                    type="text"
-                                    placeholder="例如：陳經理"
-                                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                        </div>
+                {/* Address */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        地址 (Address)
+                    </label>
+                    <input
+                        {...register('address')}
+                        placeholder="完整公司地址"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                </div>
 
-                        {/* Email */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">電子郵件 (Email)</label>
-                            <input
-                                {...register('email')}
-                                type="email"
-                                placeholder="john@example.com"
-                                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                        </div>
-
-                        {/* Mobile */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">手機 (Mobile)</label>
-                            <div className="relative">
-                                <Phone size={16} className="absolute left-3 top-3 text-slate-400" />
-                                <input
-                                    {...register('mobile')}
-                                    type="text"
-                                    placeholder="0912-345-678"
-                                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Phone */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">電話 (Phone)</label>
-                            <div className="relative">
-                                <Phone size={16} className="absolute left-3 top-3 text-slate-400" />
-                                <input
-                                    {...register('phone')}
-                                    type="text"
-                                    placeholder="02-1234-5678"
-                                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                        </div>
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Industry */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            產業別 (Industry Code)
+                        </label>
+                        <select
+                            {...register('industry')}
+                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                        >
+                            <option value="MANUFACTURING">製造業 (Manufacturing)</option>
+                            <option value="CONSTRUCTION">營造業 (Construction)</option>
+                            <option value="FISHERY">海洋漁撈 (Fishery)</option>
+                            <option value="HOME_CARE">家庭看護 (Home Care)</option>
+                            <option value="HOME_HELPER">家庭幫傭 (Home Helper)</option>
+                            <option value="INSTITUTION">機構看護 (Institution)</option>
+                            <option value="AGRICULTURE">農業 (Agriculture)</option>
+                            <option value="SLAUGHTER">屠宰業 (Slaughter)</option>
+                            <option value="OUTREACH_AGRICULTURE">外展農務 (Outreach Agriculture)</option>
+                            <option value="HOSPITALITY">旅宿業 (Hospitality)</option>
+                            <option value="OTHER">其他 (Other)</option>
+                        </select>
                     </div>
                 </div>
 

@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Phone, Mail, MapPin, User, ArrowLeft, Send, CheckCircle, XCircle, Calculator, AlertTriangle, Building, FileText } from 'lucide-react';
+import { Phone, Mail, MapPin, User, ArrowLeft, Send, CheckCircle, XCircle, Calculator, AlertTriangle, Building, FileText, BadgeInfo } from 'lucide-react';
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 type Lead = {
     id: string;
@@ -13,6 +15,7 @@ type Lead = {
     mobile: string | null;
     email: string | null;
     address: string | null;
+    taxId: string | null;
     industry: string | null;
     status: string;
     source: string | null;
@@ -79,7 +82,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
     const fetchLead = async () => {
         try {
-            const res = await fetch(`http://localhost:3001/api/leads/${id}`);
+            const res = await fetch(`${apiUrl}/leads/${id}`);
             if (res.ok) {
                 const data = await res.json();
                 setLead(data);
@@ -105,7 +108,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const res = await fetch(`http://localhost:3001/api/leads/${id}/interactions`, {
+            const res = await fetch(`${apiUrl}/leads/${id}/interactions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -152,7 +155,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         }
 
         try {
-            const res = await fetch(`http://localhost:3001/api/leads/${id}/convert`, {
+            const res = await fetch(`${apiUrl}/leads/${id}/convert`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -183,12 +186,12 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         if (!reason) return;
 
         try {
-            await fetch(`http://localhost:3001/api/leads/${id}`, {
+            await fetch(`${apiUrl}/leads/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'LOST' })
             });
-            await fetch(`http://localhost:3001/api/leads/${id}/interactions`, {
+            await fetch(`${apiUrl}/leads/${id}/interactions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -259,6 +262,12 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                         </h3>
 
                         <div className="space-y-4">
+                            {lead.taxId && (
+                                <div>
+                                    <label className="text-xs text-slate-400 uppercase font-bold">統一編號 (Tax ID)</label>
+                                    <div className="text-slate-800 font-medium font-mono text-lg">{lead.taxId}</div>
+                                </div>
+                            )}
                             <div>
                                 <label className="text-xs text-slate-400 uppercase font-bold">聯絡人 (Contact Person)</label>
                                 <div className="text-slate-800 font-medium">{lead.contactPerson || '-'}</div>
