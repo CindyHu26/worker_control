@@ -385,33 +385,7 @@ model StudentEvaluation {
   @@map("student_evaluations")
 }
 
-model RecruitmentLetter {
-  id            String   @id @default(uuid())
-  employerId    String   @map("employer_id")
-  letterNumber  String   @unique @map("letter_number")
-  issueDate     DateTime @map("issue_date")
-  expiryDate    DateTime @map("expiry_date")
-  approvedQuota Int      @default(0) @map("approved_quota")
-  // usedQuota is now calculated from EntryPermits or we keep it as a cached field?
-  // Request says: "RecruitmentLetter.usedQuota should be the sum of quotas of all its EntryPermits."
-  // So we can keep it for easy access or remove it. Let's keep it but manage it via logic.
-  usedQuota     Int      @default(0) @map("used_quota")
 
-  // Information for M343 (Recruitment Application)
-  reviewFeeReceiptNo  String?   @map("review_fee_receipt_no")
-  reviewFeeDate       DateTime? @map("review_fee_date")
-  reviewFeeAmount     Int?      @default(0) @map("review_fee_amount")
-
-  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  entryPermits EntryPermit[]
-
-  @@map("recruitment_letters")
-}
 
 model WorkerPassport {
   id             String   @id @default(uuid())
@@ -763,6 +737,15 @@ model JobOrder {
 
   // 關聯：一張求才證明可以申請一張招募函
   recruitmentLetter RecruitmentLetter?
+  
+  domesticRecruitment DomesticRecruitment?
+
+  interviews Interview[]
+
+  createdBy     String?       @map("created_by")
+  updatedBy     String?       @map("updated_by")
+  createdByUser InternalUser? @relation("JobOrderCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser InternalUser? @relation("JobOrderUpdatedBy", fields: [updatedBy], references: [id])
 
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
@@ -788,14 +771,19 @@ model RecruitmentLetter {
   receiptNo       String?  @map("receipt_no")    // 收文號 (勞動部收文)
   
   // --- B. 核准階段 (Approval Phase) ---
-  permitNo        String   @unique @map("permit_no") // 招募函文號 (勞動發事字第...)
+  letterNumber    String   @unique @map("letter_number") // 招募函文號 (勞動發事字第...)
   issueDate       DateTime @map("issue_date")    // 發文日
-  validUntil      DateTime @map("valid_until")   // 函文有效期限 (通常為發文日+1年 or 6個月)
+  expiryDate      DateTime @map("expiry_date")   // 函文有效期限 (通常為發文日+1年 or 6個月)
   
   // --- C. 額度控管 (Quota Management) ---
   approvedQuota   Int      @default(0) @map("approved_quota") // 核准名額
   usedQuota       Int      @default(0) @map("used_quota")     // 已使用名額 (已申請入國引進)
   revokedQuota    Int      @default(0) @map("revoked_quota")  // 放棄/被廢止名額
+
+  // Information for M343 (Recruitment Application)
+  reviewFeeReceiptNo  String?   @map("review_fee_receipt_no")
+  reviewFeeDate       DateTime? @map("review_fee_date")
+  reviewFeeAmount     Int?      @default(0) @map("review_fee_amount")
 
   // --- D. 備註與附件 ---
   notes           String?
@@ -824,6 +812,13 @@ model EntryPermit {
   expiryDate          DateTime @map("expiry_date") // 簽證要在這之前辦
 
   workerCount         Int      @default(1) @map("worker_count") // 這張函核准幾人 (通常是一批)
+
+  // 申請流程追蹤
+  receiptNo           String?   @map("receipt_no")        // 收文號
+  applicationDate     DateTime? @map("application_date")  // 送件日/申請日
+  feeAmount           Int       @default(0) @map("fee_amount") // 審查費金額
+  trNumber            String?   @map("tr_number")         // 收據單號
+  attachmentPath      String?   @map("attachment_path")   // 檔案路徑
 
   // 關聯：這張函用在哪些移工身上
   deployments         Deployment[]

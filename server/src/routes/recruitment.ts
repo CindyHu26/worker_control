@@ -8,11 +8,17 @@ const router = Router();
 router.get('/letters', async (req, res) => {
     try {
         const { employerId } = req.query;
-        if (!employerId) return res.status(400).json({ error: 'Employer ID required' });
+        // if (!employerId) return res.status(400).json({ error: 'Employer ID required' }); // Allow all
+
+        const where: any = {};
+        if (employerId) {
+            where.employerId = String(employerId);
+        }
 
         const letters = await prisma.recruitmentLetter.findMany({
-            where: { employerId: String(employerId) },
+            where,
             include: {
+                employer: { select: { companyName: true, companyNameEn: true } }, // Include employer info
                 entryPermits: {
                     include: {
                         _count: { select: { deployments: true } }
@@ -29,7 +35,7 @@ router.get('/letters', async (req, res) => {
         // Let's rely on summing permits for "total allocated" and deployments for "total used".
 
         const result = letters.map(l => {
-            const totalPermitQuota = l.entryPermits.reduce((sum, p) => sum + p.quota, 0);
+            const totalPermitQuota = l.entryPermits.reduce((sum, p) => sum + p.workerCount, 0);
             return {
                 ...l,
                 calculatedUsedQuota: totalPermitQuota // This is how much of the LETTER is used by Permits
@@ -65,10 +71,26 @@ router.post('/letters', async (req, res) => {
 });
 
 // POST /api/recruitment/letters/:id/permits
+// POST /api/recruitment/letters/:id/permits
 router.post('/letters/:id/permits', async (req, res) => {
     const { id } = req.params;
-    const { permitNumber, issueDate, expiryDate, quota } = req.body;
-    const quotaNum = Number(quota);
+    const {
+        permitNumber,
+        issueDate,
+        expiryDate,
+        workerCount,
+        receiptNo,
+        applicationDate,
+        feeAmount,
+        trNumber,
+        attachmentPath
+    } = req.body;
+
+    // Default to 1 if not provided or invalid
+    const countNum = workerCount ? Number(workerCount) : 1;
+    if (isNaN(countNum) || countNum <= 0) {
+        throw new Error('Invalid worker count');
+    }
 
     try {
         await prisma.$transaction(async (tx) => {
@@ -79,8 +101,9 @@ router.post('/letters/:id/permits', async (req, res) => {
             if (!letter) throw new Error('Letter not found');
 
             // Check Quota
-            const currentUsed = letter.entryPermits.reduce((sum, p) => sum + p.quota, 0);
-            if (currentUsed + quotaNum > letter.approvedQuota) {
+            const currentUsed = letter.entryPermits.reduce((sum, p) => sum + p.workerCount, 0); // usage should be sum of workerCount
+
+            if (currentUsed + countNum > letter.approvedQuota) {
                 throw new Error(`Quota exceeded. Remaining: ${letter.approvedQuota - currentUsed}`);
             }
 
@@ -90,15 +113,19 @@ router.post('/letters/:id/permits', async (req, res) => {
                     permitNumber,
                     issueDate: new Date(issueDate),
                     expiryDate: new Date(expiryDate),
-                    quota: quotaNum
+                    workerCount: countNum,
+                    receiptNo,
+                    applicationDate: applicationDate ? new Date(applicationDate) : undefined,
+                    feeAmount: feeAmount ? Number(feeAmount) : 0,
+                    trNumber,
+                    attachmentPath
                 }
             });
 
-            // Update letter usedQuota field if we use it, otherwise the calculation on read is enough.
-            // But let's keep the DB field in sync for easier query performance if needed later.
+            // Update letter usedQuota field
             await tx.recruitmentLetter.update({
                 where: { id },
-                data: { usedQuota: { increment: quotaNum } }
+                data: { usedQuota: { increment: countNum } }
             });
 
             return permit;
