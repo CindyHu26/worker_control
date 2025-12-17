@@ -159,6 +159,7 @@ model PayrollRecord {
   employerId      String   @map("employer_id")
 
   workPeriodStart DateTime @map("work_period_start")
+  workPeriodEnd   DateTime? @map("work_period_end")
   payDate         DateTime @map("pay_date") // Critical for tax year attribution
 
   salaryAmount    Decimal  @default(0) @map("salary_amount")
@@ -266,6 +267,8 @@ model Worker {
   oneStopServiceSerial String? @map("one_stop_service_serial")
   flightDeparture      String? @map("flight_departure")
 
+  oldPassportNumber    String? @map("old_passport_number")
+
   dormitoryId String? @map("dormitory_id")
 
   dormitory Dormitory? @relation(fields: [dormitoryId], references: [id])
@@ -299,6 +302,7 @@ model Worker {
   advancePayments     AdvancePayment[]
   studentEvaluation   StudentEvaluation?
   payrollRecords      PayrollRecord[]
+  attachments         Attachment[]
 
   @@map("workers")
 }
@@ -807,22 +811,6 @@ model CommentMention {
   @@map("comment_mentions")
 }
 
-model Attachment {
-  id       String @id @default(uuid())
-  refId    String @map("ref_id")
-  refTable String @map("ref_table")
-
-  filePath String  @map("file_path")
-  fileName String  @map("file_name")
-  fileType String? @map("file_type")
-
-  uploaderId String?  @map("uploader_id")
-  uploadedAt DateTime @default(now()) @map("uploaded_at")
-
-  @@index([refTable, refId])
-  @@map("attachments")
-}
-
 model FeeItem {
   id            String  @id @default(uuid())
   name          String
@@ -882,7 +870,7 @@ model Bill {
   employer   Employer?   @relation(fields: [employerId], references: [id])
   deployment Deployment? @relation(fields: [deploymentId], references: [id])
   items        BillItem[]
-  feeSchedules BillItem[]
+  feeSchedules FeeSchedule[]
   invoice      Invoice?
 
   createdAt DateTime @default(now()) @map("created_at")

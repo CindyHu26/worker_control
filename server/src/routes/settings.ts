@@ -21,6 +21,25 @@ router.get('/agency-companies', async (req, res) => {
     }
 });
 
+// Get Single Agency Company
+router.get('/agency-companies/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const company = await prisma.agencyCompany.findUnique({
+            where: { id }
+        });
+
+        if (!company) {
+            return res.status(404).json({ error: 'Agency company not found' });
+        }
+
+        res.json(company);
+    } catch (error) {
+        console.error('Error fetching agency company:', error);
+        res.status(500).json({ error: 'Failed to fetch agency company' });
+    }
+});
+
 // Create Agency Company
 router.post('/agency-companies', async (req, res) => {
     try {
