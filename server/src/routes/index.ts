@@ -6,7 +6,6 @@ import workerRoutes from './workers';
 import authRoutes from './auth';
 import recruitmentRoutes from './recruitment';
 import employerRoutes from './employers';
-import attachmentRoutes from './attachments';
 import commentRoutes from './comments';
 import documentRoutes from './documents';
 import deploymentRoutes from './deployments';
@@ -30,6 +29,7 @@ import taxRoutes from './tax';
 import complianceRoutes from './compliance';
 import leadsRoutes from './leads';
 import taxConfigRoutes from './taxConfig';
+import utilsRoutes from './utils';
 const router = Router();
 
 
@@ -51,7 +51,6 @@ router.use('/recruitment', recruitmentRoutes);
 // Quota routes must come before general employer routes if they share the /employers prefix
 router.use('/employers', quotaRoutes); // Handles /:id/labor-counts etc.
 router.use('/employers', employerRoutes);
-router.use('/attachments', attachmentRoutes);
 router.use('/comments', commentRoutes);
 router.use('/documents', documentRoutes);
 router.use('/deployments', deploymentRoutes);
@@ -72,5 +71,6 @@ router.use('/tax-config', taxConfigRoutes);
 router.use('/search', searchRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/leads', leadsRoutes);
+router.use('/utils', utilsRoutes);
 
 export default router;

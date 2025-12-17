@@ -7,6 +7,7 @@ import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import multer from 'multer';
 import { buildWorkerDocumentContext, getTemplateKeys } from '../utils/documentContext';
+import { storageService } from '../services/storageService';
 
 const router = Router();
 
@@ -487,6 +488,31 @@ router.get('/download-temp/:guid/:filename', (req, res) => {
         res.download(filePath, filename); // Set Content-Disposition automatically
     } else {
         res.status(404).send('File not found or expired');
+    }
+});
+
+
+/**
+ * POST /api/documents/batch-download
+ * Body: { attachmentIds: string[] }
+ * Returns: Streamed Zip File
+ */
+router.post('/batch-download', async (req, res) => {
+    try {
+        const { attachmentIds } = req.body;
+
+        if (!Array.isArray(attachmentIds) || attachmentIds.length === 0) {
+            return res.status(400).json({ error: 'attachmentIds array is required and must not be empty' });
+        }
+
+        await storageService.streamBatchAsZip(attachmentIds, res);
+
+        // Note: Response is handled by the stream pipe, so we don't send json here
+    } catch (error) {
+        console.error('Batch Download Error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal Server Error during batch download' });
+        }
     }
 });
 
