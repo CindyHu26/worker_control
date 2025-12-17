@@ -413,28 +413,6 @@ model RecruitmentLetter {
   @@map("recruitment_letters")
 }
 
-model EntryPermit {
-  id                  String   @id @default(uuid())
-  recruitmentLetterId String   @map("recruitment_letter_id")
-  permitNumber        String   @unique @map("permit_number")
-  issueDate           DateTime @map("issue_date")
-  expiryDate          DateTime @map("expiry_date")
-  quota               Int      @map("quota") // Batch size
-  
-  // To track usage of this specific permit batch
-  usedCount           Int      @default(0) @map("used_count")
-
-  recruitmentLetter RecruitmentLetter @relation(fields: [recruitmentLetterId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  deployments Deployment[]
-
-  @@map("entry_permits")
-}
-
 model WorkerPassport {
   id             String   @id @default(uuid())
   workerId       String   @map("worker_id")
@@ -759,30 +737,101 @@ model WorkerAddressHistory {
   @@map("worker_address_history")
 }
 
+// --------------------------------------
+// 1. 國內求才 (Job Order) - 申請招募函的前置作業
+// --------------------------------------
 model JobOrder {
-  id                       String    @id @default(uuid())
-  employerId               String    @map("employer_id")
-  orderDate                DateTime  @default(now()) @map("order_date")
-  requiredWorkers          Int       @map("required_workers")
-  expectedArrivalDate      DateTime? @map("expected_arrival_date")
-  localRecruitmentDeadline DateTime? @map("local_recruitment_deadline")
-  status                   String    @default("open") // Enum
+  id            String   @id @default(uuid())
+  employerId    String   @map("employer_id")
+  employer      Employer @relation(fields: [employerId], references: [id])
 
-  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  // 基本資訊
+  jobType       String   @map("job_type")       // Enum: CARETAKER, FACTORY_WORKER...
+  vacancyCount  Int      @default(1) @map("vacancy_count") // 需求人數
+  
+  // 登記資訊
+  registryDate  DateTime @map("registry_date")  // 求才登記日
+  expiryDate    DateTime @map("expiry_date")    // 有效期限 (通常是登記後60天或90天)
+  centerName    String?  @map("center_name")    // 受理之就服中心 (e.g. 台中就業中心)
+  
+  // 結果 (求才證明)
+  certificateNo String?  @map("certificate_no") // 求才證明序號 (關鍵：申請招募函必備)
+  successCount  Int      @default(0) @map("success_count") // 國內媒合成功人數 (這會扣減可申請移工人數)
+  
+  // 狀態
+  status        String   @default("active")     // active, completed, expired
 
-  createdBy     String?       @map("created_by")
-  updatedBy     String?       @map("updated_by")
-  createdByUser InternalUser? @relation("JobOrderCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser InternalUser? @relation("JobOrderUpdatedBy", fields: [updatedBy], references: [id])
+  // 關聯：一張求才證明可以申請一張招募函
+  recruitmentLetter RecruitmentLetter?
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  interviews          Interview[]
-  domesticRecruitment DomesticRecruitment?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("job_orders")
+}
+
+// --------------------------------------
+// 2. 招募函 (Recruitment Letter) - 核心額度來源
+// --------------------------------------
+model RecruitmentLetter {
+  id            String   @id @default(uuid())
+  employerId    String   @map("employer_id")
+  employer      Employer @relation(fields: [employerId], references: [id])
+  
+  // 來源關聯
+  jobOrderId    String?  @unique @map("job_order_id") // 關聯到國內求才
+  jobOrder      JobOrder? @relation(fields: [jobOrderId], references: [id])
+
+  // --- A. 申請階段 (Application Phase) ---
+  applicationType String   @default("INITIAL")   // INITIAL(初次), REISSUE(重新), SUPPLEMENTARY(增額)
+  applicationDate DateTime? @map("application_date") // 送件日
+  receiptNo       String?  @map("receipt_no")    // 收文號 (勞動部收文)
+  
+  // --- B. 核准階段 (Approval Phase) ---
+  permitNo        String   @unique @map("permit_no") // 招募函文號 (勞動發事字第...)
+  issueDate       DateTime @map("issue_date")    // 發文日
+  validUntil      DateTime @map("valid_until")   // 函文有效期限 (通常為發文日+1年 or 6個月)
+  
+  // --- C. 額度控管 (Quota Management) ---
+  approvedQuota   Int      @default(0) @map("approved_quota") // 核准名額
+  usedQuota       Int      @default(0) @map("used_quota")     // 已使用名額 (已申請入國引進)
+  revokedQuota    Int      @default(0) @map("revoked_quota")  // 放棄/被廢止名額
+
+  // --- D. 備註與附件 ---
+  notes           String?
+  attachmentPath  String?  @map("attachment_path") // 掃描檔路徑
+
+  // 關聯：一張招募函可以申請多張「入國引進許可」
+  entryPermits    EntryPermit[]
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("recruitment_letters")
+}
+
+// --------------------------------------
+// 3. 入國引進許可 (Entry Permit) - 消耗招募函額度
+// --------------------------------------
+// (這部分你原本可能有，我稍微補強關聯)
+model EntryPermit {
+  id                  String   @id @default(uuid())
+  recruitmentLetterId String   @map("recruitment_letter_id")
+  recruitmentLetter   RecruitmentLetter @relation(fields: [recruitmentLetterId], references: [id])
+  
+  permitNo            String   @unique @map("permit_no") // 入國引進函號
+  issueDate           DateTime @map("issue_date")
+  expiryDate          DateTime @map("expiry_date") // 簽證要在這之前辦
+
+  workerCount         Int      @default(1) @map("worker_count") // 這張函核准幾人 (通常是一批)
+
+  // 關聯：這張函用在哪些移工身上
+  deployments         Deployment[]
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("entry_permits")
 }
 
 model DomesticRecruitment {

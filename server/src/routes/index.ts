@@ -9,6 +9,7 @@ import employerRoutes from './employers';
 import commentRoutes from './comments';
 import documentRoutes from './documents';
 import deploymentRoutes from './deployments';
+import permitRoutes from './permits';
 
 import evaluationRoutes from './evaluation';
 import usersRoutes from './users';
@@ -54,6 +55,7 @@ router.use('/employers', employerRoutes);
 router.use('/comments', commentRoutes);
 router.use('/documents', documentRoutes);
 router.use('/deployments', deploymentRoutes);
+router.use('/permits', permitRoutes);
 router.use('/users', usersRoutes);
 router.use('/accounting', accountingRoutes);
 router.use('/jobs', jobsRoutes);
