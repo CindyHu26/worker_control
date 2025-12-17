@@ -46,18 +46,46 @@ router.get('/:id', async (req, res) => {
 // POST /api/leads
 router.post('/', async (req, res) => {
     try {
-        const data = req.body;
-        // Validation could be added here
+        console.log('Received Lead Payload:', req.body); // [除錯] 讓您在後端終端機看到收到什麼
+
+        const {
+            companyName,
+            contactPerson,
+            phone,
+            mobile,
+            email,
+            address,
+            source,
+            industry,
+            estimatedWorkerCount
+        } = req.body;
+
+        // 驗證必填欄位
+        if (!companyName) {
+            return res.status(400).json({ error: 'Company Name is required' });
+        }
+
         const lead = await prisma.lead.create({
             data: {
-                ...data,
+                companyName,
+                contactPerson,
+                phone,
+                mobile,
+                email,
+                address,
+                source,
+                industry,
+                // [關鍵修正] 強制轉型，防止 Prisma 報錯 "Provided String, expected Int"
+                estimatedWorkerCount: estimatedWorkerCount ? Number(estimatedWorkerCount) : 0,
                 status: 'NEW'
             }
         });
+
+        console.log('Lead Created:', lead.id); // [除錯] 確認資料庫寫入成功
         res.json(lead);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to create lead' });
+    } catch (error: any) {
+        console.error('Create Lead Error:', error); // [除錯] 這行會告訴您具體是哪個欄位錯了
+        res.status(500).json({ error: error.message || 'Failed to create lead' });
     }
 });
 

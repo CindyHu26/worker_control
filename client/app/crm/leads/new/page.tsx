@@ -63,13 +63,16 @@ export default function CreateLeadPage() {
             if (res.ok) {
                 // Success: Redirect to board
                 router.push('/crm/board');
+                router.refresh(); // [建議加入] 強制 Next.js 重新整理資料，避免因為快取導致看板沒更新
             } else {
                 const err = await res.json();
-                alert(`Error creating lead: ${err.error || 'Unknown error'}`);
+                console.error('Server Error Response:', err); // 開發者工具 Console 看詳細
+                alert(`建立失敗: ${err.error || '伺服器未回傳具體錯誤'}`);
             }
         } catch (error) {
-            console.error(error);
-            alert('Network error creating lead');
+            console.error('Network/Client Error:', error);
+            // 如果是 CORS 問題，這裡會報錯
+            alert('網路連線錯誤 (請檢查後端是否啟動，或 CORS 設定)');
         } finally {
             setIsSubmitting(false);
         }

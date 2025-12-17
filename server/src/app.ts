@@ -4,7 +4,10 @@ import routes from './routes';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000', // 前端網址
+    credentials: true // 必須開啟，因為您前端用了 credentials: 'include'
+}));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
