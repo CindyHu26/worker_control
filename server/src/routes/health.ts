@@ -7,21 +7,33 @@ const router = Router();
 // GET /api/health-checks
 router.get('/', async (req, res) => {
     try {
-        const { filter } = req.query;
+        const { filter, days, types } = req.query; // types can be "6mo,18mo"
         const whereClause: any = {};
         const now = new Date();
 
-        if (filter === 'upcoming_30') {
-            const in30Days = new Date();
-            in30Days.setDate(in30Days.getDate() + 30);
+        if (filter === 'upcoming') {
+            const rangeDays = days ? Number(days) : 30; // Default 30
+            const futureDate = new Date();
+            futureDate.setDate(futureDate.getDate() + rangeDays);
+
             whereClause.checkDate = {
                 gte: now,
-                lte: in30Days
+                lte: futureDate
             };
             whereClause.status = { not: 'completed' };
         } else if (filter === 'overdue') {
             whereClause.checkDate = { lt: now };
             whereClause.status = { not: 'completed' };
+        } else if (filter === 'history') {
+            // Just show completed or all past
+        }
+
+        // Type Filtering
+        if (types) {
+            const typeList = (types as string).split(',');
+            if (typeList.length > 0) {
+                whereClause.checkType = { in: typeList };
+            }
         }
 
         const checks = await prisma.healthCheck.findMany({
@@ -37,6 +49,74 @@ router.get('/', async (req, res) => {
     } catch (error) {
         console.error('Fetch Health Checks Error:', error);
         res.status(500).json({ error: 'Failed to fetch health checks' });
+    }
+});
+
+// GET /api/health-checks/:id 
+router.get('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const check = await prisma.healthCheck.findUnique({
+            where: { id },
+            include: {
+                worker: true,
+                deployment: {
+                    include: {
+                        employer: true,
+                        healthChecks: true // Fetch all checks for this deployment for timeline
+                    }
+                }
+            }
+        });
+
+        if (!check) return res.status(404).json({ error: 'Not found' });
+
+        // Fetch related comments (Tracking History)
+        const comments = await prisma.systemComment.findMany({
+            where: {
+                recordId: id,
+                recordTableName: 'health_checks'
+            },
+            include: { author: { select: { username: true, id: true } } },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json({ ...check, comments });
+    } catch (error) {
+        console.error('Get Health Check Detail Error:', error);
+        res.status(500).json({ error: 'Failed to fetch details' });
+    }
+});
+
+// POST /api/health-checks/:id/comments (Tracking Log)
+router.post('/:id/comments', async (req, res) => {
+    const { id } = req.params;
+    const { content, userId } = req.body; // In real app, userId from session
+
+    try {
+        // Find a default user if none provided (for demo purposes)
+        let authorId = userId;
+        if (!authorId) {
+            const defaultUser = await prisma.internalUser.findFirst();
+            if (defaultUser) authorId = defaultUser.id;
+        }
+
+        if (!authorId) return res.status(400).json({ error: 'No user context' });
+
+        const comment = await prisma.systemComment.create({
+            data: {
+                recordId: id,
+                recordTableName: 'health_checks',
+                content,
+                createdBy: authorId
+            },
+            include: { author: { select: { username: true } } }
+        });
+
+        res.json(comment);
+    } catch (error) {
+        console.error('Add Comment Error:', error);
+        res.status(500).json({ error: 'Failed to add comment' });
     }
 });
 
