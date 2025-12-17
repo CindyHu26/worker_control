@@ -236,13 +236,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                 onClick={() => setIsConvertModalOpen(true)}
                                 className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
                             >
-                                <CheckCircle size={18} /> Convert to Employer
+                                <CheckCircle size={18} /> 轉為正式客戶
                             </button>
                             <button
                                 onClick={handleMarkLost}
                                 className="flex items-center gap-2 bg-slate-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 border border-slate-200"
                             >
-                                <XCircle size={18} /> Mark Lost
+                                <XCircle size={18} /> 標記為流失
                             </button>
                         </>
                     )}
@@ -255,12 +255,12 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                     {/* Contact Info */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                            <User size={18} /> Contact Info
+                            <User size={18} /> 聯絡資訊
                         </h3>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs text-slate-400 uppercase font-bold">Contact Person</label>
+                                <label className="text-xs text-slate-400 uppercase font-bold">聯絡人 (Contact Person)</label>
                                 <div className="text-slate-800 font-medium">{lead.contactPerson || '-'}</div>
                                 <div className="text-xs text-slate-500">{lead.jobTitle}</div>
                             </div>
@@ -286,9 +286,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                             <hr className="my-4" />
 
                             <div>
-                                <label className="text-xs text-slate-400 uppercase font-bold">Next Follow Up</label>
+                                <label className="text-xs text-slate-400 uppercase font-bold">下次追蹤日期</label>
                                 <div className="text-slate-800 font-medium text-lg">
-                                    {lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate).toLocaleDateString() : 'Not Set'}
+                                    {lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate).toLocaleDateString() : '未設定'}
                                 </div>
                             </div>
                         </div>
@@ -297,11 +297,11 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                     {/* Quota Simulation */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                            <Calculator size={18} /> Quota Simulation (3K5)
+                            <Calculator size={18} /> 3K5 配額試算
                         </h3>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs text-slate-500 block mb-1">Avg. Domestic Workers</label>
+                                <label className="text-xs text-slate-500 block mb-1">平均本勞人數 (Avg. Domestic Workers)</label>
                                 <input
                                     type="number"
                                     className="w-full p-2 border border-slate-300 rounded-lg"
@@ -311,23 +311,23 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                 />
                             </div>
                             <div>
-                                <label className="text-xs text-slate-500 block mb-1">Allocation Rate</label>
+                                <label className="text-xs text-slate-500 block mb-1">核配比率 (Allocation Rate)</label>
                                 <select
                                     className="w-full p-2 border border-slate-300 rounded-lg"
                                     value={simAllocationRate}
                                     onChange={(e) => setSimAllocationRate(Number(e.target.value))}
                                 >
-                                    <option value={0.10}>10% (C Tier)</option>
-                                    <option value={0.15}>15% (B Tier)</option>
-                                    <option value={0.20}>20% (A Tier)</option>
-                                    <option value={0.25}>25% (A+ Tier)</option>
-                                    <option value={0.35}>35% (Max)</option>
+                                    <option value={0.10}>10% (C級)</option>
+                                    <option value={0.15}>15% (B級)</option>
+                                    <option value={0.20}>20% (A級)</option>
+                                    <option value={0.25}>25% (A+級)</option>
+                                    <option value={0.35}>35% (最高)</option>
                                 </select>
                             </div>
                             <div className="bg-slate-50 p-4 rounded-lg text-center mt-2">
-                                <span className="text-xs text-slate-500 uppercase block mb-1">Estimated Quota</span>
+                                <span className="text-xs text-slate-500 uppercase block mb-1">預估配額 (Estimated Quota)</span>
                                 <span className="text-3xl font-bold text-blue-600">{simQuota}</span>
-                                <span className="text-sm text-slate-400 ml-1">People</span>
+                                <span className="text-sm text-slate-400 ml-1">人</span>
                             </div>
                         </div>
                     </div>
@@ -337,7 +337,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 <div className="col-span-8 space-y-6">
                     {/* Add Interaction Box */}
                     <div className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm">
-                        <h3 className="font-bold text-slate-700 mb-4">Log Activity</h3>
+                        <h3 className="font-bold text-slate-700 mb-4">紀錄活動 (Log Activity)</h3>
                         <form onSubmit={handleAddInteraction} className="space-y-3">
                             <div className="flex gap-4">
                                 <select
@@ -345,15 +345,15 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                     value={newType}
                                     onChange={(e) => setNewType(e.target.value)}
                                 >
-                                    <option value="Call">Phone Call</option>
-                                    <option value="Visit">Site Visit</option>
-                                    <option value="Email">Email</option>
+                                    <option value="Call">電話聯繫 (Call)</option>
+                                    <option value="Visit">現場拜訪 (Visit)</option>
+                                    <option value="Email">電子郵件 (Email)</option>
                                     <option value="Line">LINE</option>
-                                    <option value="Meeting">Meeting</option>
+                                    <option value="Meeting">會議 (Meeting)</option>
                                 </select>
                                 <input
                                     type="text"
-                                    placeholder="Short summary (e.g. Discussed pricing)"
+                                    placeholder="簡短摘要 (例如：討論報價)"
                                     className="flex-1 p-2 border border-slate-300 rounded-lg text-sm"
                                     value={newSummary}
                                     onChange={(e) => setNewSummary(e.target.value)}
@@ -362,7 +362,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                             </div>
                             <div className="relative">
                                 <textarea
-                                    placeholder="Detailed notes..."
+                                    placeholder="詳細記錄..."
                                     className="w-full p-2 border border-slate-300 rounded-lg text-sm h-24"
                                     value={newNotes}
                                     onChange={(e) => setNewNotes(e.target.value)}
@@ -370,13 +370,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                 {showZeroFeeWarning && (
                                     <div className="absolute bottom-2 left-2 right-2 bg-yellow-50 border border-yellow-200 p-2 rounded text-xs text-yellow-700 flex items-center gap-2">
                                         <AlertTriangle size={14} />
-                                        Reminder: For Indonesian workers in Manufacturing, verified Zero Fee policy applies (Employers must pay Airfare & Visa).
+                                        提醒：針對印尼勞工及製造業，需留意零付費相關規定（雇主需負擔機票與簽證費）。
                                     </div>
                                 )}
                             </div>
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2 text-sm text-slate-600">
-                                    <span>Next Follow Up:</span>
+                                    <span>下次追蹤日期：</span>
                                     <input
                                         type="date"
                                         className="p-1 border border-slate-300 rounded"
@@ -389,7 +389,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                     disabled={isSubmitting}
                                     className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                                 >
-                                    <Send size={14} /> Log Activity
+                                    <Send size={14} /> 紀錄活動
                                 </button>
                             </div>
                         </form>
@@ -397,9 +397,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
                     {/* Timeline List */}
                     <div className="space-y-4">
-                        <h3 className="font-bold text-slate-500 uppercase text-xs">Past Activities</h3>
+                        <h3 className="font-bold text-slate-500 uppercase text-xs">過去活動紀錄</h3>
                         {lead.interactions.length === 0 && (
-                            <div className="text-center text-slate-400 py-10">No activities recorded yet.</div>
+                            <div className="text-center text-slate-400 py-10">尚無活動紀錄。</div>
                         )}
                         {lead.interactions.map(interaction => (
                             <div key={interaction.id} className="bg-white p-4 rounded-xl border border-slate-200 flex gap-4">
@@ -432,7 +432,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                <FileText className="text-blue-600" /> Convert to Employer
+                                <FileText className="text-blue-600" /> 轉為正式客戶
                             </h2>
                             <button onClick={() => setIsConvertModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                                 <XCircle size={24} />
@@ -440,7 +440,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                         </div>
                         <form onSubmit={handleConvertSubmit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Company Name</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">公司名稱 (Company Name)</label>
                                 <input
                                     type="text"
                                     value={lead.companyName || ''}
@@ -450,17 +450,17 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1 required">Tax ID (Unified Business No.)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1 required">統一編號 (Tax ID)</label>
                                 <input
                                     type="text"
                                     maxLength={8}
                                     required
-                                    placeholder="e.g. 12345678"
+                                    placeholder="例如：12345678"
                                     className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={convertData.taxId}
                                     onChange={e => setConvertData({ ...convertData, taxId: e.target.value.replace(/\D/g, '') })}
                                 />
-                                <p className="text-xs text-slate-500 mt-1">Must be 8 digits.</p>
+                                <p className="text-xs text-slate-500 mt-1">必須為8碼。</p>
                             </div>
 
                             <div>
@@ -476,7 +476,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                     <option value="06">06 家庭看護 (Home Care)</option>
                                     <option value="08">08 機構看護 (Institution)</option>
                                 </select>
-                                <p className="text-xs text-slate-500 mt-1">Standard industry classification code</p>
+                                <p className="text-xs text-slate-500 mt-1">標準行業代碼</p>
                             </div>
 
                             <div>
@@ -484,7 +484,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                 <input
                                     type="text"
                                     required
-                                    placeholder="Enter company registration address"
+                                    placeholder="輸入公司登記地址"
                                     className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={convertData.invoiceAddress}
                                     onChange={e => setConvertData({ ...convertData, invoiceAddress: e.target.value })}
@@ -498,12 +498,12 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                         <input
                                             type="text"
                                             required
-                                            placeholder="Enter factory address"
+                                            placeholder="輸入工廠登記地址"
                                             className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                             value={convertData.factoryAddress}
                                             onChange={e => setConvertData({ ...convertData, factoryAddress: e.target.value })}
                                         />
-                                        <p className="text-xs text-slate-500 mt-1">Required for dormitory application</p>
+                                        <p className="text-xs text-slate-500 mt-1">需用於申請宿舍</p>
                                     </div>
 
                                     <div>
@@ -541,9 +541,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                 <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 flex items-start gap-2">
                                     <Calculator size={16} className="mt-0.5" />
                                     <div>
-                                        <strong>3K5 Quota Calculation:</strong>
+                                        <strong>3K5 配額試算：</strong>
                                         <div className="text-xs opacity-80">
-                                            {convertData.avgDomesticWorkers} × {convertData.allocationRate * 100}% = <b>{calculate3K5Quota(convertData.avgDomesticWorkers, convertData.allocationRate)}</b> people
+                                            {convertData.avgDomesticWorkers} × {convertData.allocationRate * 100}% = <b>{calculate3K5Quota(convertData.avgDomesticWorkers, convertData.allocationRate)}</b> 人
                                         </div>
                                     </div>
                                 </div>
@@ -555,13 +555,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                     onClick={() => setIsConvertModalOpen(false)}
                                     className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                                 >
-                                    Cancel
+                                    取消 (Cancel)
                                 </button>
                                 <button
                                     type="submit"
                                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                                 >
-                                    Confirm Conversion
+                                    確認轉換 (Confirm)
                                 </button>
                             </div>
                         </form>

@@ -100,7 +100,7 @@ export default function CreateLeadPage() {
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                     <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2 pb-2 border-b border-slate-100">
                         <Briefcase size={20} className="text-blue-600" />
-                        Company Details
+                        公司詳細資訊 (Company Details)
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -136,7 +136,7 @@ export default function CreateLeadPage() {
 
                         {/* Estimated Workers */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">預計聘僱人數</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">預計聘僱人數 (Estimated Workers)</label>
                             <input
                                 {...register('estimatedWorkerCount', { min: 0 })}
                                 type="number"
@@ -147,32 +147,32 @@ export default function CreateLeadPage() {
 
                         {/* Source */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">客源 (Lead Source)</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">來源 (Source)</label>
                             <div className="relative">
                                 <Globe size={16} className="absolute left-3 top-3 text-slate-400" />
                                 <select
                                     {...register('source')}
                                     className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                                 >
-                                    <option value="">Select Source...</option>
-                                    <option value="Cold Call">Cold Call</option>
-                                    <option value="Referral">Referral</option>
-                                    <option value="Website">Website</option>
-                                    <option value="Event">Event</option>
-                                    <option value="Partner">Partner</option>
+                                    <option value="">選擇來源...</option>
+                                    <option value="Cold Call">陌生開發 (Cold Call)</option>
+                                    <option value="Referral">轉介紹 (Referral)</option>
+                                    <option value="Website">網站 (Website)</option>
+                                    <option value="Event">活動 (Event)</option>
+                                    <option value="Partner">合作夥伴 (Partner)</option>
                                 </select>
                             </div>
                         </div>
 
                         {/* Address */}
                         <div className="col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">地址 (Address)</label>
                             <div className="relative">
                                 <MapPin size={16} className="absolute left-3 top-3 text-slate-400" />
                                 <input
                                     {...register('address')}
                                     type="text"
-                                    placeholder="Full company address"
+                                    placeholder="完整公司地址"
                                     className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
@@ -196,7 +196,7 @@ export default function CreateLeadPage() {
                                 <input
                                     {...register('contactPerson')}
                                     type="text"
-                                    placeholder="e.g. 陳經理"
+                                    placeholder="例如：陳經理"
                                     className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
@@ -204,7 +204,7 @@ export default function CreateLeadPage() {
 
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">電子郵件 (Email)</label>
                             <input
                                 {...register('email')}
                                 type="email"
@@ -250,7 +250,7 @@ export default function CreateLeadPage() {
                         onClick={() => router.push('/crm/board')}
                         className="px-6 py-2.5 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 font-medium transition-colors"
                     >
-                        Cancel
+                        取消 (Cancel)
                     </button>
                     <button
                         type="submit"
