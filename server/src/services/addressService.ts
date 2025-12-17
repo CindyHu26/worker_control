@@ -6,10 +6,17 @@ const countyMap = new Map<string, string>(); // "臺北市信義區" -> "Xinyi D
 const roadMap = new Map<string, string>();   // "信義路" -> "Xinyi Rd."
 const villageMap = new Map<string, string>(); // "永吉里" -> "Yongji Vil."
 
+// Global flag to track initialization
+let isInitialized = false;
+
 /**
  * Load CSV datasets on server startup
  */
 export async function loadAddressDatasets() {
+    if (isInitialized) {
+        return;
+    }
+
     try {
         const datasetPath = path.join(__dirname, '../../public/twaddress/data/dataset');
 
@@ -55,7 +62,9 @@ export async function loadAddressDatasets() {
             }
         }
 
+
         console.log(`✅ Address datasets loaded: ${countyMap.size} counties, ${roadMap.size} roads, ${villageMap.size} villages`);
+        isInitialized = true;
     } catch (error) {
         console.error('❌ Failed to load address datasets:', error);
     }

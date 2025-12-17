@@ -22,7 +22,7 @@ router.get('/agency-companies', async (req, res) => {
 });
 
 // Get Single Agency Company
-router.get('/agency-companies/:id', async (req, res) => {
+router.get(['/agency-companies/:id', '/agencies/:id'], async (req, res) => {
     try {
         const { id } = req.params;
         const company = await prisma.agencyCompany.findUnique({

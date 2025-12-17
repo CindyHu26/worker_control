@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Building2, Globe2, Plus, Phone, Mail, MapPin,
     FileText, CheckCircle2, Star, Trash2, Edit2, X,
@@ -48,6 +49,7 @@ interface ForeignAgency {
 }
 
 export default function AgencySettingsPage() {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<'internal' | 'foreign'>('internal');
     const [internalAgencies, setInternalAgencies] = useState<AgencyCompany[]>([]);
     const [foreignAgencies, setForeignAgencies] = useState<ForeignAgency[]>([]);
@@ -160,7 +162,7 @@ export default function AgencySettingsPage() {
                 <div>
                     <div className="flex justify-end mb-4">
                         <button
-                            onClick={() => window.location.href = '/settings/agencies/new'}
+                            onClick={() => router.push('/settings/agencies/new')}
                             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-all shadow-sm"
                         >
                             <Plus size={18} /> 新增公司
@@ -223,7 +225,7 @@ export default function AgencySettingsPage() {
 
                                 <div className="mt-4 pt-4 border-t flex gap-2">
                                     <button
-                                        onClick={() => window.location.href = `/settings/agencies/${agency.id}`}
+                                        onClick={() => router.push(`/settings/agencies/${agency.id}`)}
                                         className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 flex items-center justify-center gap-2 transition-all text-sm font-medium"
                                     >
                                         <Edit2 size={14} />
