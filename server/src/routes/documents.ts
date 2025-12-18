@@ -348,7 +348,6 @@ router.post('/batch-generate', async (req, res) => {
                         include: {
                             employer: {
                                 include: {
-                                    factoryInfo: true,
                                     agency: true
                                 }
                             }
@@ -360,9 +359,17 @@ router.post('/batch-generate', async (req, res) => {
             const emp = worker?.deployments[0]?.employer;
             if (emp) {
                 switch (globalParams.addressOption) {
-                    case 'FACTORY':
-                        resolvedAddress = emp.factoryInfo?.factoryAddress || emp.address || '';
+                    case 'FACTORY': {
+                        let fAddr = '';
+                        if (emp.industryAttributes) {
+                            try {
+                                const attrs = JSON.parse(emp.industryAttributes);
+                                fAddr = attrs.factoryAddress;
+                            } catch (e) { }
+                        }
+                        resolvedAddress = fAddr || emp.address || '';
                         break;
+                    }
                     case 'EMPLOYER_HOME':
                         resolvedAddress = emp.responsiblePersonAddress || '';
                         break;

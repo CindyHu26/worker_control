@@ -25,7 +25,7 @@ export async function createNotification(
     // 1. Find or Create System User (Bot)
     // For simplicity, we use the first admin or a specific 'system' user if it existed.
     // Here we'll just pick the first user to be the 'author' or null if we make author optional (but schema requires author).
-    const systemUser = await prisma.internalUser.findFirst();
+    const systemUser = await prisma.systemAccount.findFirst();
     if (!systemUser) return;
 
     // 2. Create Comment (System Alert)
@@ -118,37 +118,65 @@ export async function runDailyChecks() {
             // Fallback to admin if no assignment
             if (!targetUserId) {
                 if (!adminUserId) {
-                    const admin = await prisma.internalUser.findFirst({ where: { role: 'admin' } });
+                    const admin = await prisma.systemAccount.findFirst({
+                        where: { systemRole: { name: 'ADMIN' } }
+                    });
                     adminUserId = admin?.id;
                 }
-                targetUserId = adminUserId;
+                const accountId = adminUserId;
+                if (!accountId) continue;
+
+                // Helper to check and notify
+                const checkDate = async (date: Date | null, label: string) => {
+                    if (!date) return;
+                    const diffTime = date.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (checkPoints.includes(diffDays)) {
+                        await createNotification(
+                            accountId,
+                            `${workerName}'s ${label} expires in ${diffDays} days (${date.toISOString().split('T')[0]})`,
+                            deployment.workerId,
+                            'Worker'
+                        );
+                        console.log(`[Scheduler] Notified ${label} for ${workerName} (${diffDays} days)`);
+                    }
+                };
+
+                await checkDate(tl.residencePermitExpiry, 'ARC');
+                await checkDate(tl.passportExpiry, 'Passport');
+                await checkDate(tl.medCheck6moDeadline, '6-Mo Med Check');
+                await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
+                await checkDate(tl.medCheck30moDeadline, '30-Mo Med Check');
+            } else {
+                // targetUserId is StaffProfile.id, find the first SystemAccount
+                const account = await prisma.systemAccount.findFirst({
+                    where: { staffId: targetUserId }
+                });
+                if (!account) continue;
+
+                const checkDate = async (date: Date | null, label: string) => {
+                    if (!date) return;
+                    const diffTime = date.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (checkPoints.includes(diffDays)) {
+                        await createNotification(
+                            account.id,
+                            `${workerName}'s ${label} expires in ${diffDays} days (${date.toISOString().split('T')[0]})`,
+                            deployment.workerId,
+                            'Worker'
+                        );
+                        console.log(`[Scheduler] Notified ${label} for ${workerName} (${diffDays} days)`);
+                    }
+                };
+
+                await checkDate(tl.residencePermitExpiry, 'ARC');
+                await checkDate(tl.passportExpiry, 'Passport');
+                await checkDate(tl.medCheck6moDeadline, '6-Mo Med Check');
+                await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
+                await checkDate(tl.medCheck30moDeadline, '30-Mo Med Check');
             }
-
-            if (!targetUserId) continue;
-
-            // Helper to check and notify
-            const checkDate = async (date: Date | null, label: string) => {
-                if (!date) return;
-                // Diff in days
-                const diffTime = date.getTime() - today.getTime();
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (checkPoints.includes(diffDays)) {
-                    await createNotification(
-                        targetUserId!,
-                        `${workerName}'s ${label} expires in ${diffDays} days (${date.toISOString().split('T')[0]})`,
-                        deployment.workerId,
-                        'Worker'
-                    );
-                    console.log(`[Scheduler] Notified ${label} for ${workerName} (${diffDays} days)`);
-                }
-            };
-
-            await checkDate(tl.residencePermitExpiry, 'ARC');
-            await checkDate(tl.passportExpiry, 'Passport');
-            await checkDate(tl.medCheck6moDeadline, '6-Mo Med Check');
-            await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
-            await checkDate(tl.medCheck30moDeadline, '30-Mo Med Check');
         }
 
         processedCount += batch.length;
@@ -193,8 +221,13 @@ export async function runDailyChecks() {
             // A smarter way is: check if there's a recent system comment for this?
             // Or just notify. Simplest is notify.
 
+            const account = await prisma.systemAccount.findFirst({
+                where: { staffId: lead.assignedTo }
+            });
+            if (!account) continue;
+
             await createNotification(
-                lead.assignedTo,
+                account.id,
                 `Follow-up due for Lead: ${lead.companyName || lead.contactPerson} (Since ${lead.nextFollowUpDate?.toISOString().split('T')[0]})`,
                 lead.id,
                 'Lead'

@@ -1,11 +1,63 @@
-
+import { z } from 'zod';
 import prisma from '../prisma';
+
+// 定義結構，確保 JSON 裡面不會被亂存垃圾
+// Define schemas for industry-specific attributes
+const FactoryAttrs = z.object({
+    factoryRegistrationNo: z.string().optional(),
+    industryCode: z.string().optional(),
+    industryType: z.string().optional(),
+    factoryAddress: z.string().optional(),
+    factoryAddressEn: z.string().optional(),
+});
+
+const CaretakerAttrs = z.object({
+    patientName: z.string().optional(),
+    hospitalCertNo: z.string().optional(),
+    careAddress: z.string().optional(),
+    relationship: z.string().optional(),
+});
+
+// 存檔時 (Create/Update)
+export async function updateEmployer(id: string, data: any) {
+    let jsonString = null;
+
+    // Remove coreData separation if data is flat, but user example used data.coreData
+    // Assuming 'data' contains { coreData: {...}, attributes: {...}, category: string }
+    // Or simpler: data has mixed fields. 
+    // Let's assume the caller passes { ...coreFields, attributes: {...} }
+    // But to match user pattern:
+
+    const { attributes, ...coreData } = data;
+
+    // 根據類別驗證資料
+    if (attributes) {
+        if (data.category === 'MANUFACTURING' || coreData.category === 'MANUFACTURING') {
+            const parsed = FactoryAttrs.parse(attributes); // 驗證失敗會噴錯，保護資料庫
+            jsonString = JSON.stringify(parsed);
+        } else if (data.category === 'HOME_CARE' || coreData.category === 'HOME_CARE' || data.category === 'CARETAKER') {
+            const parsed = CaretakerAttrs.parse(attributes);
+            jsonString = JSON.stringify(parsed);
+        } else {
+            // For other categories, maybe just stringify if exists, or ignore
+            jsonString = JSON.stringify(attributes);
+        }
+    }
+
+    return prisma.employer.update({
+        where: { id },
+        data: {
+            ...coreData,
+            industryAttributes: jsonString
+        }
+    });
+}
 
 export const analyzeDataHealth = async (employerId: string) => {
     const employer = await prisma.employer.findUnique({
         where: { id: employerId },
         include: {
-            factoryInfo: true,
+            // factoryInfo relation removed
             laborCounts: { orderBy: { year: 'desc', month: 'desc' }, take: 1 }
         }
     });
@@ -45,9 +97,6 @@ export const analyzeDataHealth = async (employerId: string) => {
 
     // --- 3. Labor Insurance No ---
     // Rule: 8 digits + 1 check digit (Total 9 chars usually, or 8+1 format)
-    // Simplified regex: /^\d{8,9}$/ or specific check digit logic?
-    // User requirement: "8碼數字+1碼檢查碼". We will check if it matches roughly 9 digits/chars.
-    // Let's assume standard format is 9 digits (or 8+1).
     const laborNo = employer.laborInsuranceNo || '';
     if (!laborNo || !/^\d{8,9}$/.test(laborNo.replace(/-/g, ''))) {
         missingFields.push('Missing/Invalid Labor Insurance No');
@@ -57,8 +106,19 @@ export const analyzeDataHealth = async (employerId: string) => {
     // --- 4. Manufacturing Specifics ---
     const isManufacturing = employer.category === 'MANUFACTURING' || employer.industryType?.includes('製造');
     if (isManufacturing) {
+        // Parse attributes
+        let factoryAttrs: any = {};
+        if (employer.industryAttributes) {
+            try {
+                factoryAttrs = JSON.parse(employer.industryAttributes);
+            } catch (e) {
+                console.warn('Failed to parse industryAttributes', e);
+            }
+        }
+
         // Factory Address
-        const hasAddress = employer.address || employer.factoryInfo?.factoryAddress;
+        // Check core address first, then factory attributes
+        const hasAddress = employer.address || factoryAttrs.factoryAddress;
         if (!hasAddress) {
             missingFields.push('Missing Factory Address');
             alertsToCreate.push('缺工廠地址：無法產出求才登記、入國通報與生活計畫書');
@@ -108,10 +168,6 @@ export const analyzeDataHealth = async (employerId: string) => {
 
     // 3. Identify alerts to resolve (if issue is fixed)
     for (const alert of existingAlerts) {
-        // If the alert description is NOT in the current list of issues, it means it's fixed
-        // However, descriptions might vary slightly if we change code. 
-        // Ideally we use codes, but descriptions are okay for prototype.
-        // We check if 'alertsToCreate' includes this description.
         if (!alertsToCreate.includes(alert.description)) {
             await prisma.incident.update({
                 where: { id: alert.id },

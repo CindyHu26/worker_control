@@ -24,7 +24,7 @@ router.post('/update-tax-residency', async (req, res) => {
 
         // We need a system user for comments. Lets try to find one or use a placeholder if schema allows (it doesn't, FK required).
         // For prototype, pick the first user.
-        const systemUser = await prisma.internalUser.findFirst();
+        const systemUser = await prisma.systemAccount.findFirst();
 
         for (const worker of workers) {
             let totalDaysInYear = 0;

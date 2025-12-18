@@ -35,7 +35,8 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "pdf-lib": "^1.17.1",
-    "pizzip": "^3.2.0"
+    "pizzip": "^3.2.0",
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@types/archiver": "^7.0.0",

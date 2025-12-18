@@ -6,7 +6,7 @@ const router = Router();
 
 // Helper to get a system user for auditing
 async function getSystemUser() {
-    const user = await prisma.internalUser.findFirst({
+    const user = await prisma.systemAccount.findFirst({
         orderBy: { createdAt: 'asc' } // Assume first user is Admin/System
     });
     return user?.id || '';

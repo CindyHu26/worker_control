@@ -97,8 +97,8 @@ router.post('/:id/comments', async (req, res) => {
         // Find a default user if none provided (for demo purposes)
         let authorId = userId;
         if (!authorId) {
-            const defaultUser = await prisma.internalUser.findFirst();
-            if (defaultUser) authorId = defaultUser.id;
+            const defaultAccount = await prisma.systemAccount.findFirst();
+            if (defaultAccount) authorId = defaultAccount.id;
         }
 
         if (!authorId) return res.status(400).json({ error: 'No user context' });

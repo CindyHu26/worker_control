@@ -15,32 +15,30 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        const user = await prisma.internalUser.findUnique({
-            where: { username }
+        const user = await prisma.systemAccount.findUnique({
+            where: { username },
+            include: { systemRole: true }
         });
 
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        if (!user || !user.isActive) {
+            return res.status(401).json({ error: 'Invalid credentials or account inactive' });
         }
 
         // Compare password
-        // Note: For seed data 'change_me', we might not have hashed it in the PREVIOUS seed run,
-        // but we updated the seed script to hash it.
-        // If the DB has unhashed password, bcrypt.compare will fail (or we need logic to handle migration).
-        // For now we assume seed will be re-run or user follows instructions.
-
         const validPassword = await bcrypt.compare(password, user.passwordHash);
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        const roleName = user.systemRole?.name || 'staff';
+
         const token = jwt.sign(
-            { id: user.id, username: user.username, role: user.role },
+            { id: user.id, username: user.username, role: roleName },
             JWT_SECRET,
             { expiresIn: '8h' }
         );
 
-        res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+        res.json({ token, user: { id: user.id, username: user.username, role: roleName } });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Login failed' });

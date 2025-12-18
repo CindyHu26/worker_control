@@ -1,8 +1,27 @@
 
 import { Router } from 'express';
 import prisma from '../prisma';
+import { updateEmployer } from '../services/employerService';
+import { z } from 'zod';
 
 const router = Router();
+
+// Define validation schemas locally or export from service
+const FactoryAttrs = z.object({
+    factoryRegistrationNo: z.string().optional(),
+    industryCode: z.string().optional(),
+    industryType: z.string().optional(),
+    factoryAddress: z.string().optional(),
+    factoryAddressEn: z.string().optional(),
+});
+
+const CaretakerAttrs = z.object({
+    patientName: z.string().optional(),
+    hospitalCertNo: z.string().optional(),
+    careAddress: z.string().optional(),
+    relationship: z.string().optional(),
+    patientIdNo: z.string().optional() // Make strict if needed
+});
 
 // GET /api/employers
 router.get('/', async (req, res) => {
@@ -25,7 +44,6 @@ router.get('/', async (req, res) => {
                 { taxId: { contains: keyword } },
                 { responsiblePerson: { contains: keyword } }
             ];
-            // Add HomeCare specific search later if needed (e.g. Patient Name)
         }
 
         const [total, employers] = await Promise.all([
@@ -33,8 +51,6 @@ router.get('/', async (req, res) => {
             prisma.employer.findMany({
                 where: whereClause,
                 include: {
-                    factoryInfo: true,
-                    homeCareInfo: { include: { patients: true } },
                     institutionInfo: true,
                     _count: {
                         select: { deployments: { where: { status: 'active' } } }
@@ -86,6 +102,7 @@ router.post('/', async (req, res) => {
             patientIdNo,
             careAddress,
             relationship,
+            hospitalCertNo,
             // Institution
             institutionCode,
             bedCount
@@ -104,6 +121,34 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Tax ID already exists' });
         }
 
+        // Prepare industryAttributes
+        let jsonString = null;
+        let cat = (category && typeof category === 'string') ? category : 'MANUFACTURING';
+
+        if (cat === 'MANUFACTURING') {
+            const attrs = {
+                factoryRegistrationNo,
+                industryType,
+                factoryAddressEn,
+                factoryAddress: address // fallback or specific
+            };
+            const parsed = FactoryAttrs.safeParse(attrs);
+            if (parsed.success) {
+                jsonString = JSON.stringify(parsed.data);
+            } else {
+                jsonString = JSON.stringify(attrs);
+            }
+        } else if (cat === 'HOME_CARE' || cat === 'CARETAKER') {
+            const attrs = {
+                patientName,
+                hospitalCertNo: hospitalCertNo || 'N/A',
+                careAddress,
+                relationship,
+                patientIdNo
+            };
+            jsonString = JSON.stringify(attrs);
+        }
+
         // Transactional Create
         const newEmployer = await prisma.$transaction(async (tx) => {
             const emp = await tx.employer.create({
@@ -118,37 +163,12 @@ router.post('/', async (req, res) => {
                     companyNameEn,
                     addressEn,
                     responsiblePersonEn,
-                    category: (category && typeof category === 'string') ? category : 'MANUFACTURING'
+                    category: cat,
+                    industryAttributes: jsonString
                 }
             });
 
-            if (category === 'MANUFACTURING') {
-                await tx.factoryInfo.create({
-                    data: {
-                        employerId: emp.id,
-                        factoryRegistrationNo: factoryRegistrationNo ? String(factoryRegistrationNo) : undefined,
-                        industryType: industryType ? String(industryType) : undefined,
-                        factoryAddressEn: factoryAddressEn ? String(factoryAddressEn) : undefined
-                    }
-                });
-            } else if (category === 'HOME_CARE') {
-                const hc = await tx.homeCareInfo.create({
-                    data: {
-                        employerId: emp.id,
-                    }
-                });
-                if (patientName) {
-                    await tx.patient.create({
-                        data: {
-                            homeCareInfoId: hc.id,
-                            name: patientName,
-                            idNo: patientIdNo,
-                            careAddress,
-                            relationship
-                        }
-                    });
-                }
-            } else if (category === 'INSTITUTION') {
+            if (cat === 'INSTITUTION') {
                 await tx.institutionInfo.create({
                     data: {
                         employerId: emp.id,
@@ -213,8 +233,6 @@ router.get('/:id', async (req, res) => {
         const employer = await prisma.employer.findUnique({
             where: { id },
             include: {
-                factoryInfo: true,
-                homeCareInfo: { include: { patients: true } },
                 institutionInfo: true,
                 recruitmentLetters: {
                     orderBy: { issueDate: 'desc' },
@@ -245,20 +263,31 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = { ...req.body };
 
-        // Handle Decimal conversion for allocationRate
-        if (updateData.allocationRate) {
-            updateData.allocationRate = Number(updateData.allocationRate);
+        // Use the service to handle JSON packing
+        const {
+            factoryRegistrationNo, industryCode, industryType, factoryAddress, factoryAddressEn,
+            patientName, hospitalCertNo, careAddress, relationship,
+            ...core
+        } = req.body;
+
+        let attributes = req.body.attributes;
+
+        if (!attributes) {
+            // Reconstruct attributes from flat fields if legacy frontend
+            if (req.body.category === 'MANUFACTURING' || (!req.body.category && factoryRegistrationNo)) {
+                attributes = { factoryRegistrationNo, industryCode, industryType, factoryAddress, factoryAddressEn };
+            } else if (req.body.category === 'HOME_CARE' || req.body.category === 'CARETAKER') {
+                attributes = { patientName, hospitalCertNo, careAddress, relationship };
+            }
         }
 
-        // Handle specific nested updates if necessary (e.g. factory info) - for now simplified
+        const updatePayload = {
+            ...core,
+            attributes
+        };
 
-        const updated = await prisma.employer.update({
-            where: { id },
-            data: updateData
-        });
-
+        const updated = await updateEmployer(id, updatePayload);
         res.json(updated);
     } catch (error) {
         console.error('Update Employer Error:', error);

@@ -144,6 +144,13 @@ export const convertLeadToEmployer = async (
         const factoryAddress = options.factoryAddress || invoiceAddress;
 
         // 5. Create Employer
+        // 5. Create Employer
+        const attributes = (category === 'MANUFACTURING') ? {
+            factoryAddress: factoryAddress,
+            industryType: category,
+            industryCode: industryCode
+        } : {};
+
         const employer = await tx.employer.create({
             data: {
                 companyName: lead.companyName || "Unknown Company",
@@ -161,12 +168,7 @@ export const convertLeadToEmployer = async (
                 complianceStandard: options.complianceStandard || 'NONE',
                 zeroFeeEffectiveDate: options.zeroFeeEffectiveDate || null,
                 // Create Factory Info if manufacturing
-                factoryInfo: (category === 'MANUFACTURING') ? {
-                    create: {
-                        factoryAddress: factoryAddress,
-                        industryType: category
-                    }
-                } : undefined
+                industryAttributes: (category === 'MANUFACTURING') ? JSON.stringify(attributes) : undefined
             }
         });
 

@@ -7,7 +7,7 @@ const router = Router();
 // Helper to get a demo user ID (since we don't have full auth context passed yet)
 // In prod, this comes from req.user
 const getDemoUserId = async () => {
-    const user = await prisma.internalUser.findFirst();
+    const user = await prisma.systemAccount.findFirst();
     return user?.id;
 };
 

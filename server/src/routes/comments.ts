@@ -8,11 +8,13 @@ const router = Router();
 // Simple list for mention selector
 router.get('/users/search', async (req, res) => {
     try {
-        const users = await prisma.internalUser.findMany({
+        const users = await prisma.systemAccount.findMany({
             select: {
                 id: true,
                 username: true,
-                role: true
+                systemRole: {
+                    select: { name: true }
+                }
             }
         });
         res.json(users);
@@ -38,7 +40,9 @@ router.get('/:recordTable/:recordId', async (req, res) => {
                     select: {
                         id: true,
                         username: true,
-                        role: true
+                        systemRole: {
+                            select: { name: true }
+                        }
                     }
                 },
                 mentions: {
@@ -109,7 +113,9 @@ router.post('/', async (req, res) => {
                         select: {
                             id: true,
                             username: true,
-                            role: true
+                            systemRole: {
+                                select: { name: true }
+                            }
                         }
                     },
                     mentions: {

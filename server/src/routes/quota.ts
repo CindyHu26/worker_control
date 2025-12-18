@@ -76,11 +76,9 @@ router.get('/:id/quota-calculation', async (req, res) => {
 
     try {
         // 1. Fetch Employer Settings
+        // 1. Fetch Employer Settings
         const employer = await prisma.employer.findUnique({
-            where: { id },
-            include: {
-                factoryInfo: true // To check industry type if needed
-            }
+            where: { id }
         });
 
         if (!employer) {
@@ -88,12 +86,18 @@ router.get('/:id/quota-calculation', async (req, res) => {
         }
 
         // Check Industry Type
-        // Prompt Check: "If industryType is not Manufacturing, return 0 or error"
-        // We check employer.industryType or generic category
+        // Parse JSON if needed or just rely on category
+        let factoryAttrs: any = {};
+        if (employer.industryAttributes) {
+            try {
+                factoryAttrs = JSON.parse(employer.industryAttributes);
+            } catch (e) { }
+        }
+
         const isManufacturing =
             employer.category === 'MANUFACTURING' ||
             (employer.industryType && employer.industryType.includes('Manufacturing')) ||
-            (employer.factoryInfo && employer.factoryInfo.industryType && employer.factoryInfo.industryType.includes('Manufacturing'));
+            (factoryAttrs.industryType && factoryAttrs.industryType.includes('Manufacturing'));
 
         // Note: Real world string matching might be looser. For now, strict check based on Prompt assumptions.
         // If the prompt implies strict business rule:
