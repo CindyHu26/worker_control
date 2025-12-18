@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Calendar, FileText } from 'lucide-react';
+import { X, Calendar, FileText, MapPin } from 'lucide-react';
+import HospitalSelector from './HospitalSelector';
 
 interface ResultModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ interface ResultModalProps {
 
 export default function ResultModal({ isOpen, onClose, onSave, check }: ResultModalProps) {
     const [result, setResult] = useState(check?.result || 'pending');
+    const [hospital, setHospital] = useState(check?.hospitalName || '');
     const [reportDate, setReportDate] = useState(check?.reportDate?.split('T')[0] || '');
     const [approvalDocNo, setApprovalDocNo] = useState(check?.approvalDocNo || '');
     const [failReason, setFailReason] = useState(check?.failReason || '');
@@ -25,6 +27,7 @@ export default function ResultModal({ isOpen, onClose, onSave, check }: ResultMo
         e.preventDefault();
         onSave({
             result,
+            hospitalName: hospital,
             reportDate,
             approvalDocNo,
             failReason,
@@ -57,6 +60,15 @@ export default function ResultModal({ isOpen, onClose, onSave, check }: ResultMo
                             <option value="fail">不合格 (Fail)</option>
                             <option value="needs_recheck">需複檢 (Needs Re-check)</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <HospitalSelector
+                            value={hospital}
+                            onChange={setHospital}
+                            type={check?.checkType === 'xray' ? 'xray' : 'general'} // Assume check has checkType
+                            label="檢查醫院 (Hospital)"
+                        />
                     </div>
 
                     <div>

@@ -1,0 +1,73 @@
+﻿Country,Number,Code of Hospital,Name of Hospital
+印尼(Indonesia),1,I10,Rosela Indah Medical Center
+印尼(Indonesia),2,I11,Anugerah Ibu Medical Centre Clinic
+印尼(Indonesia),3,I14,Permata Indah Medical Center
+印尼(Indonesia),4,I16,Klinik Insani Medical Centre
+印尼(Indonesia),5,I18,Klinik Amalia Medical Centre
+印尼(Indonesia),6,I19,Klinik Nurhuda Medical Centre
+印尼(Indonesia),7,I20,Klinik Citra Medical Centre
+印尼(Indonesia),8,I21,Klinik Higina Medical Centre
+印尼(Indonesia),9,I22,An-Nur Medical Centre
+印尼(Indonesia),10,I23,Klinik Hidayah Medical Centre
+印尼(Indonesia),11,I24,Klinik AS-Shafa
+印尼(Indonesia),12,I27,Assa' adah Medical Center
+印尼(Indonesia),13,I28,Klinik Azzahra Medical Center
+印尼(Indonesia),14,I29,LKS Central Medical
+印尼(Indonesia),15,I30,LAB. Klinik Permata Semarang
+印尼(Indonesia),16,I31,LAB. Klinik Centrum
+印尼(Indonesia),17,I32,Ultra Medica Kediri
+印尼(Indonesia),18,I33,Ultra Medica Yogyakarta
+印尼(Indonesia),19,I34,Imam Bonjol
+印尼(Indonesia),20,I35,LAB. Klinik An Nur Cilacap
+印尼(Indonesia),21,I36,LAB. Klinik Ultra Medica Semarang
+印尼(Indonesia),22,I37,Klinik Karya Nusantara Medica Malang
+印尼(Indonesia),23,I39,LAB. Klinik Ultra Medica Surabaya
+印尼(Indonesia),24,I40,Klinik Utama Dialisa Surabaya
+印尼(Indonesia),25,I41,Tihama Medical Center
+印尼(Indonesia),26,I42,Rayhan Medical Center
+印尼(Indonesia),27,I43,Klinik Kesehatan Argaraya Medika
+印尼(Indonesia),28,I44,Haninah Medical Center
+印尼(Indonesia),29,I45,Klink Utama Amanah Medika Pura
+印尼(Indonesia),30,I46,Klinik Utama An-Nur
+印尼(Indonesia),31,I47,Moslem Medical Centre
+印尼(Indonesia),32,I49,Klinik Saadah Bina Medika
+印尼(Indonesia),33,I50,Klinik Utama Anugerah Ibu
+印尼(Indonesia),34,I51,Klinik Spesialis Anugerah Ibu
+印尼(Indonesia),35,I52,RSUD Kabupaten Indramayu
+菲律賓(Philippines),1,P02,Manila Doctor's Hospital
+菲律賓(Philippines),2,P04,Physician's Diagnostic Center
+菲律賓(Philippines),3,P05,S.M.Lazo Medical
+菲律賓(Philippines),4,P08,St. Martin Polyclinic
+菲律賓(Philippines),5,P09,"Physician's Diagnostic Services Center, Cebu City"
+菲律賓(Philippines),6,P10,St. Peter Paul Medical Clinic
+菲律賓(Philippines),7,P12,Philippine Medical Tests System
+菲律賓(Philippines),8,P15,Sacred Heart Diagnostic Medical Center
+菲律賓(Philippines),9,P16,MedWay Healthcare Inc.
+菲律賓(Philippines),10,P17,Clemen's Medical Clinic
+菲律賓(Philippines),11,P18,Medisense Laboratory Center（Davao Branch）
+泰國(Thailand),1,T01,"Siriraj Hospital, Bangkok"
+泰國(Thailand),2,T02,"Chulalongkorn Hospital, Bangkok"
+泰國(Thailand),3,T03,"Faculty of Medicine, Ramathibodi Hospital"
+泰國(Thailand),4,T04,Rajavithi Hospital
+泰國(Thailand),5,T07,Maharat Nakhonratchasima Hospital
+泰國(Thailand),6,T08,Lampang Hospital
+泰國(Thailand),7,T09,Ekachai Hospital
+泰國(Thailand),8,T10,PAOLO CHOKCHAI 4 Hospital
+越南(Vietnam),1,V01,Bach Mai Hospital 白梅醫院
+越南(Vietnam),2,V02,Hue Central Hospital 順化中央醫院
+越南(Vietnam),3,V03,Cho Ray Hospital 大水鑊醫院
+越南(Vietnam),4,V04,Saint Paul Hospital 河内聖保羅醫院
+越南(Vietnam),5,V05,Giao thong Hospital 一號交通運輸醫院
+越南(Vietnam),6,V06,Thong Nhat Hospital 統一醫院
+越南(Vietnam),7,V07,Trang An General Hospital 長安私立綜合醫院
+越南(Vietnam),8,V08,Hong Ngoc Hospital 紅玉多科醫院
+越南(Vietnam),9,V09,E Hospital Ｅ醫院
+越南(Vietnam),10,V10,Hai Phong Medical University Hospital 海防醫藥大學醫院
+越南(Vietnam),11,V11,Danang Hospital 峴港醫院
+越南(Vietnam),12,V12,Khanh Hoa Hospital 慶和省多科醫院
+越南(Vietnam),13,V13,Can Tho General Central Hospital 肯特中央多科醫院
+越南(Vietnam),14,V14,"182 Luong The Vinh Policlinic, Viet Nam National Universith Hospital 河內國家大學醫院梁世榮182號綜合醫診所"
+越南(Vietnam),15,V15,"Minh An Private General Hospital, Nghe An Province 義安省明安綜合醫院"
+越南(Vietnam),16,V16,Thang Long General Hospital 升龍綜合醫院
+越南(Vietnam),17,V17,Green Cross General Hospital　綠十字綜合醫院
+蒙古(Mongolia),1,G01,National Center for Communicable Disease (NCCD)

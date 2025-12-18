@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { AUTHORIZED_HOSPITALS } from '@/constants/hospitals';
+import HospitalSelector from './HospitalSelector';
 import { X, Calendar, MapPin } from 'lucide-react';
 
 interface ScheduleModalProps {
@@ -53,22 +53,12 @@ export default function ScheduleModal({ isOpen, onClose, onSave, check }: Schedu
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            <span className="flex items-center gap-1"><MapPin size={16} /> 選擇指定醫院</span>
-                        </label>
-                        <select
+                        <HospitalSelector
                             value={hospital}
-                            onChange={e => setHospital(e.target.value)}
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            onChange={setHospital}
+                            type="general" // Default to general, could be dynamic based on checkType if needed
                             required
-                        >
-                            <option value="">-- 請選擇 --</option>
-                            {AUTHORIZED_HOSPITALS.map(h => (
-                                <option key={h.id} value={h.name}>
-                                    {h.name} ({h.region})
-                                </option>
-                            ))}
-                        </select>
+                        />
                     </div>
 
                     <div>

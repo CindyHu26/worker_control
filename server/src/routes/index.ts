@@ -34,6 +34,8 @@ import leadsRoutes from './leads';
 import taxConfigRoutes from './taxConfig';
 import utilsRoutes from './utils';
 import interviewsRouter from './interviews';
+import hospitalRoutes from './hospitals';
+import immigrationRouter from './immigration';
 const router = Router();
 
 router.use('/contracts', contractsRouter);
@@ -78,5 +80,8 @@ router.use('/compliance', complianceRoutes);
 router.use('/leads', leadsRoutes);
 router.use('/utils', utilsRoutes);
 router.use('/interviews', interviewsRouter);
+router.use('/hospitals', hospitalRoutes);
+
+router.use('/immigration', immigrationRouter);
 
 export default router;

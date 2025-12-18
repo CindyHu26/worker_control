@@ -12,6 +12,76 @@ datasource db {
 
 // Models
 
+model Hospital {
+  id          String    @id @default(uuid())
+  code        String?   @unique
+  name        String
+  city        String?
+  country     String?   // For overseas hospitals
+  validUntil  DateTime? @map("valid_until") // For general check hospitals
+  
+  isGeneral   Boolean   @default(false) @map("is_general")
+  isXray      Boolean   @default(false) @map("is_xray")
+  isOverseas  Boolean   @default(false) @map("is_overseas")
+  
+  immigrationChecks ImmigrationProcess[]
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // System Audit Fields
+  createdBy  String?   @map("created_by")
+  updatedBy  String?   @map("updated_by")
+  isDeleted  Boolean   @default(false) @map("is_deleted")
+  deletedAt  DateTime? @map("deleted_at")
+
+  @@map("hospitals")
+}
+
+model ImmigrationProcess {
+  id          String   @id @default(uuid())
+  workerId    String   @unique @map("worker_id")
+  status      String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  
+  // 1. Overseas Health Check
+  healthCheckHospitalId String?   @map("health_check_hospital_id")
+  healthCheckDate       DateTime? @map("health_check_date")
+  healthCheckStatus     String?   @map("health_check_status") // PASS, FAIL
+  healthCheckHospital   Hospital? @relation(fields: [healthCheckHospitalId], references: [id])
+  
+  // 2. Good Citizen Certificate (Police Record)
+  policeCode            String?   @map("police_code")
+  policeDate            DateTime? @map("police_date")
+  
+  // 3. Passport
+  passportNo            String?   @map("passport_no")
+  passportIssueDate     DateTime? @map("passport_issue_date")
+  passportExpiryDate    DateTime? @map("passport_expiry_date")
+  passportSubmissionDate DateTime? @map("passport_submission_date")
+  
+  // 4. Training & Biometrics
+  biometricDate         DateTime? @map("biometric_date")
+  trainingDate          DateTime? @map("training_date")
+  trainingCity          String?   @map("training_city")
+  
+  // 5. Entry
+  estimatedEntryDate    DateTime? @map("estimated_entry_date")
+  actualEntryDate       DateTime? @map("actual_entry_date")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // System Audit Fields
+  createdBy  String?   @map("created_by")
+  updatedBy  String?   @map("updated_by")
+  isDeleted  Boolean   @default(false) @map("is_deleted")
+  deletedAt  DateTime? @map("deleted_at")
+  
+  worker     Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@map("immigration_processes")
+}
+
 model SystemAccount {
   id           String   @id @default(uuid())
   username     String   @unique
@@ -276,6 +346,8 @@ model Worker {
   spouseNameEn    String?  @map("spouse_name_en")
   category    String   @default("general") // Enum as string
   gender      String? // Enum as string
+
+  immigrationProcess ImmigrationProcess?
 
   homeCountryId     String? @map("home_country_id")
   taxId             String? @map("tax_id")
