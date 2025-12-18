@@ -468,6 +468,17 @@ model Deployment {
   // 舊的扁平欄位已移除 (employmentPermitReceiptNo, employmentPermitDate...)
   // 改用下方的 employmentPermits 關聯
 
+  // --- Pre-entry Workflow (Pre-entry) ---
+  overseasCheckStatus   String    @default("pending") @map("overseas_check_status") // pending, passed, failed
+  overseasCheckDate     DateTime? @map("overseas_check_date")
+
+  docVerificationStatus String    @default("pending") @map("doc_verification_status") // pending, submitted, verified
+  docSubmissionDate     DateTime? @map("doc_submission_date")
+  docVerifiedDate       DateTime? @map("doc_verified_date")
+  
+  visaStatus            String    @default("pending") @map("visa_status") // pending, applied, issued
+  visaApplicationDate   DateTime? @map("visa_application_date")
+
   // --- 生活照顧 / 膳宿費 ---
   foodStatus        String    @default("provided_free") @map("food_status") 
   foodAmount        Decimal   @default(0) @map("food_amount")
@@ -835,6 +846,7 @@ model EntryPermit {
   expiryDate          DateTime @map("expiry_date") // 簽證要在這之前辦
 
   workerCount         Int      @default(1) @map("worker_count") // 這張函核准幾人 (通常是一批)
+  usedCount           Int      @default(0) @map("used_count")   // 已使用人数
 
   // 申請流程追蹤
   receiptNo           String?   @map("receipt_no")        // 收文號

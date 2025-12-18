@@ -5,7 +5,6 @@ import prisma from '../prisma';
 const router = Router();
 
 // POST /api/deployments
-// POST /api/deployments
 router.post('/', async (req, res) => {
     try {
         const {
@@ -36,7 +35,7 @@ router.post('/', async (req, res) => {
                     throw new Error('Entry Permit does not belong to this employer');
                 }
 
-                if (permit.usedCount >= permit.quota) {
+                if (permit.usedCount >= permit.workerCount) {
                     throw new Error('入國通知人數已滿 (Entry Permit Quota Exceeded)');
                 }
 
@@ -91,6 +90,49 @@ router.post('/', async (req, res) => {
     }
 });
 
+// PATCH /api/deployments/:id
+router.patch('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const data = req.body;
+
+        // Prevent updating immutable fields or fields handled by specific logic if necessary
+        // For now, allow updating workflow fields and basic info
+
+        const updatedDeployment = await prisma.deployment.update({
+            where: { id },
+            data: {
+                // Workflow Fields
+                overseasCheckStatus: data.overseasCheckStatus,
+                overseasCheckDate: data.overseasCheckDate ? new Date(data.overseasCheckDate) : undefined,
+
+                docVerificationStatus: data.docVerificationStatus,
+                docSubmissionDate: data.docSubmissionDate ? new Date(data.docSubmissionDate) : undefined,
+                docVerifiedDate: data.docVerifiedDate ? new Date(data.docVerifiedDate) : undefined,
+
+                visaStatus: data.visaStatus,
+                visaApplicationDate: data.visaApplicationDate ? new Date(data.visaApplicationDate) : undefined,
+                visaLetterNo: data.visaLetterNo,
+                visaNumber: data.visaNumber,
+
+                // Flight Info
+                flightNumber: data.flightNumber,
+                flightArrivalDate: data.flightArrivalDate ? new Date(data.flightArrivalDate) : undefined,
+                entryDate: data.entryDate ? new Date(data.entryDate) : undefined,
+
+                // Status updates if passed explicitly
+                status: data.status,
+                serviceStatus: data.serviceStatus,
+            }
+        });
+
+        res.json(updatedDeployment);
+    } catch (error: any) {
+        console.error('Update Deployment Error:', error);
+        res.status(500).json({ error: 'Failed to update deployment' });
+    }
+});
+
 // POST /api/deployments/:id/terminate
 router.post('/:id/terminate', async (req, res) => {
     try {
@@ -131,6 +173,70 @@ router.post('/:id/terminate', async (req, res) => {
     } catch (error: any) {
         console.error('Terminate Deployment Error:', error);
         res.status(500).json({ error: 'Failed to terminate deployment' });
+    }
+});
+
+// GET /api/deployments/:id/termination-check
+router.get('/:id/termination-check', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const deployment = await prisma.deployment.findUnique({
+            where: { id },
+            include: {
+                worker: {
+                    include: {
+                        bed: true,
+                        dormitory: true,
+                        bills: {
+                            where: {
+                                balance: { gt: 0 } // Outstanding bills
+                            }
+                        },
+                        insurances: {
+                            where: {
+                                endDate: null // Active insurances
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!deployment || !deployment.worker) {
+            return res.status(404).json({ error: 'Deployment or Worker not found' });
+        }
+
+        const worker = deployment.worker;
+        const checks = {
+            hasOutstandingLoans: (Number(worker.loanAmount) || 0) > 0,
+            outstandingLoanAmount: Number(worker.loanAmount) || 0,
+
+            hasUnpaidBills: worker.bills.length > 0,
+            unpaidBillCount: worker.bills.length,
+            unpaidBillTotal: worker.bills.reduce((sum, b) => sum + Number(b.balance), 0),
+
+            hasActiveDorm: !!worker.dormitoryId,
+            dormName: worker.dormitory?.name || null,
+            bedCode: worker.bed?.bedCode || null,
+
+            hasActiveInsurance: worker.insurances.length > 0,
+            activeInsuranceCount: worker.insurances.length
+        };
+
+        const isClear = !checks.hasOutstandingLoans &&
+            !checks.hasUnpaidBills &&
+            !checks.hasActiveDorm &&
+            !checks.hasActiveInsurance;
+
+        res.json({
+            isClear,
+            checks
+        });
+
+    } catch (error: any) {
+        console.error('Termination Check Error:', error);
+        res.status(500).json({ error: 'Failed to perform termination check' });
     }
 });
 
