@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
         const leads = await prisma.lead.findMany({
             where,
             include: {
-                assignedUser: { select: { username: true, email: true } }
+                assignedUser: { select: { name: true } }
             },
             orderBy: { updatedAt: 'desc' }
         });
@@ -33,7 +33,7 @@ router.get('/:id', async (req, res) => {
             where: { id },
             include: {
                 interactions: { orderBy: { date: 'desc' } },
-                assignedUser: { select: { username: true, email: true } }
+                assignedUser: { select: { name: true } }
             }
         });
         if (!lead) return res.status(404).json({ error: 'Lead not found' });
@@ -44,7 +44,6 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/leads
-// POST /api/leads
 router.post('/', async (req, res) => {
     try {
         const {
@@ -52,15 +51,15 @@ router.post('/', async (req, res) => {
             companyName,
             industry,
             taxId,
-            ...rest // 其他欄位
+            ...rest
         } = req.body;
 
-        // 1. 必填檢查 (防止空資料寫入)
+        // 1. 必填檢查
         if (!companyName) {
             return res.status(400).json({ error: '公司名稱為必填欄位' });
         }
 
-        // 2. 產業別驗證 (Industry Enum Validation)
+        // 2. 產業別驗證
         const VALID_INDUSTRIES = [
             'MANUFACTURING', 'CONSTRUCTION', 'FISHERY', 'HOME_CARE',
             'HOME_HELPER', 'INSTITUTION', 'AGRICULTURE', 'SLAUGHTER',
@@ -73,29 +72,32 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // 3. 統編衝突檢查 (Conflict Check)
+        // 3. 衝突檢查
         if (taxId) {
-            const existingLead = await prisma.lead.findFirst({
-                where: {
-                    // @ts-ignore: Stale Prisma Client types (requires server restart to regenerate)
-                    taxId
-                }
-            });
+            // @ts-ignore
+            const existingLead = await prisma.lead.findFirst({ where: { taxId } });
             if (existingLead) {
                 return res.status(409).json({
                     error: `統編 (${taxId}) 已存在於系統中，由業務 ${existingLead.contactPerson || 'Unknown'} 跟進中。`
                 });
             }
+
+            const existingEmployer = await prisma.employer.findUnique({ where: { taxId } });
+            if (existingEmployer) {
+                return res.status(409).json({
+                    error: `此統編 (${taxId}) 已是正式客戶 (${existingEmployer.companyName})，請直接至客戶管理新增需求。`,
+                    isExistingClient: true
+                });
+            }
         }
 
-        // 3. 資料清洗與轉型 (Data Sanitization)
+        // 4. 建立
         const lead = await prisma.lead.create({
             data: {
                 ...rest,
                 companyName,
                 industry,
                 taxId,
-                // 強制轉為整數，若無法轉換則存為 null 或 0
                 estimatedWorkerCount: estimatedWorkerCount ? parseInt(String(estimatedWorkerCount), 10) : null,
                 status: 'NEW'
             }

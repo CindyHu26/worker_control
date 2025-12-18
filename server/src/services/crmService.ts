@@ -86,13 +86,19 @@ export const mapCategoryToIndustryCode = (category: string): string => {
  * @param operatorId Internal User ID performing the action
  * @param options Conversion data with enhanced validation
  */
+/**
+ * Converts a Lead to an Employer
+ * @param leadId 
+ * @param operatorId Internal User ID performing the action
+ * @param options Conversion data with enhanced validation
+ */
 export const convertLeadToEmployer = async (
     leadId: string,
     operatorId: string,
     options: {
         taxId: string;                    // Required
-        industryCode?: string;            // Optional: '01', '02', '06', '08' (will derive from industryType if not provided)
-        industryType?: string;            // Optional: MANUFACTURING, etc. (for backward compatibility)
+        industryCode?: string;            // Optional: '01', '02', '06', '08'
+        industryType?: string;            // Optional: MANUFACTURING, etc.
         invoiceAddress?: string;          // Company registration address
         factoryAddress?: string;          // Factory address (required for manufacturing)
         avgDomesticWorkers?: number;      // Domestic worker count (required for manufacturing)
@@ -103,10 +109,7 @@ export const convertLeadToEmployer = async (
 ) => {
     return await prisma.$transaction(async (tx) => {
         // 1. Fetch Lead
-        const lead = await tx.lead.findUnique({
-            where: { id: leadId }
-        });
-
+        const lead = await tx.lead.findUnique({ where: { id: leadId } });
         if (!lead) throw new Error("Lead not found");
         if (lead.status === 'WON') throw new Error("Lead already converted");
 
@@ -115,40 +118,29 @@ export const convertLeadToEmployer = async (
         let industryCode: string | undefined;
 
         if (options.industryCode) {
-            // Use industry code if provided
             industryCode = options.industryCode;
             category = mapIndustryCodeToCategory(industryCode);
         } else if (options.industryType) {
-            // Fallback to industryType for backward compatibility
             category = options.industryType;
+            industryCode = mapCategoryToIndustryCode(category);
         } else {
-            // Default
             category = "MANUFACTURING";
+            industryCode = "01";
         }
 
-        // 3. Validation for Manufacturing
+        // 3. Branched Validation
         if (category === 'MANUFACTURING') {
-            if (!options.factoryAddress) {
-                throw new Error("Factory address is required for manufacturing employers");
-            }
-            if (!options.avgDomesticWorkers || options.avgDomesticWorkers <= 0) {
-                throw new Error("Average domestic worker count is required for manufacturing employers");
-            }
-            if (!options.allocationRate) {
-                throw new Error("Allocation rate is required for manufacturing employers");
-            }
+            if (!options.factoryAddress) throw new Error("製造業轉正必須填寫：工廠地址");
+            if (!options.avgDomesticWorkers) throw new Error("製造業轉正必須填寫：國內勞工人數");
+            if (!options.allocationRate) throw new Error("製造業轉正必須填寫：核配比率");
+        } else if (category === 'INSTITUTION') {
+            // Optional: Add specific checks for Institution if needed
         }
 
-        // 4. Prepare Addresses
-        const invoiceAddress = options.invoiceAddress || lead.address || '';
-        const factoryAddress = options.factoryAddress || invoiceAddress;
-
-        // 5. Create Employer
-        // 5. Create Employer
+        // 4. Create Employer
         const attributes = (category === 'MANUFACTURING') ? {
-            factoryAddress: factoryAddress,
-            industryType: category,
-            industryCode: industryCode
+            factoryAddress: options.factoryAddress,
+            workerCount: options.avgDomesticWorkers
         } : {};
 
         const employer = await tx.employer.create({
@@ -158,42 +150,50 @@ export const convertLeadToEmployer = async (
                 phoneNumber: lead.phone,
                 email: lead.email,
                 responsiblePerson: lead.contactPerson,
-                address: invoiceAddress,              // General address (company registration)
-                invoiceAddress: invoiceAddress,       // Explicit invoice address
+                address: options.invoiceAddress || lead.address || '',
+                invoiceAddress: options.invoiceAddress || lead.address || '',
+
                 category: category,
                 industryType: category,
-                industryCode: industryCode,           // Save industry code
+                industryCode: industryCode,
+
+                // Track Source
+                originLeadId: lead.id,
+
                 createdBy: operatorId,
                 allocationRate: options.allocationRate || null,
                 complianceStandard: options.complianceStandard || 'NONE',
                 zeroFeeEffectiveDate: options.zeroFeeEffectiveDate || null,
-                // Create Factory Info if manufacturing
-                industryAttributes: (category === 'MANUFACTURING') ? JSON.stringify(attributes) : undefined
+
+                industryAttributes: (Object.keys(attributes).length > 0) ? JSON.stringify(attributes) : undefined
             }
         });
 
-        // 6. Initialize Labor Count (Quota Basis) if provided
-        if (options.avgDomesticWorkers && options.avgDomesticWorkers > 0) {
+        // 5. Initialize Labor Count (Quota Basis) - Only for Manufacturing
+        if (category === 'MANUFACTURING' && options.avgDomesticWorkers && options.avgDomesticWorkers > 0) {
             const now = new Date();
             await tx.employerLaborCount.create({
                 data: {
                     employerId: employer.id,
                     year: now.getFullYear(),
-                    month: now.getMonth() + 1, // 1-indexed
+                    month: now.getMonth() + 1,
                     count: options.avgDomesticWorkers
                 }
             });
         }
 
-        // 7. Update Lead Status
+        // 6. Update Lead Status and Link
         await tx.lead.update({
             where: { id: leadId },
-            data: { status: 'WON' }
+            data: {
+                status: 'WON',
+                convertedEmployerId: employer.id
+            }
         });
 
-        // 8. System Comment with Quota Calculation
+        // 7. System Comment
         let quotaInfo = '';
-        if (options.avgDomesticWorkers && options.allocationRate) {
+        if (category === 'MANUFACTURING' && options.avgDomesticWorkers && options.allocationRate) {
             const calculatedQuota = calculate3K5Quota(options.avgDomesticWorkers, options.allocationRate);
             quotaInfo = ` | 3K5 Quota: ${options.avgDomesticWorkers} × ${options.allocationRate * 100}% = ${calculatedQuota} people`;
         }

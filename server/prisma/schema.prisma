@@ -248,7 +248,13 @@ model Employer {
 
   // 將原本散落在 FactoryInfo, HomeCareInfo 的欄位整併入此
   // 在 SQLite 中這是 String，在 App 層用 Zod 解析
-  industryAttributes String? @map("industry_attributes")
+  industryAttributes String? @map("industry_attributes") // JSON string for extended attributes (factory address, bed count, etc.)
+
+  originLeadId String? @unique @map("origin_lead_id")
+  convertedFromLead Lead?
+
+
+
 
   institutionInfo InstitutionInfo?
 
@@ -1879,6 +1885,9 @@ model Lead {
   arcId               String?  @map("arc_id") // Alien Resident Certificate ID
   // Business Info
   status              String   @default("NEW") // NEW, CONTACTED, MEETING, NEGOTIATING, WON, LOST
+  convertedEmployerId String?  @unique @map("converted_employer_id")
+  convertedEmployer   Employer? @relation(fields: [convertedEmployerId], references: [id])
+
   source              String?
   estimatedWorkerCount Int?    @map("estimated_worker_count")
   industry            String?
