@@ -356,7 +356,7 @@ router.post('/full-entry', async (req, res) => {
                     englishName: body.englishName,
                     chineseName: body.chineseName,
                     nationality: body.nationality,
-                    dob: new Date(body.dob),
+                    dob: body.dob ? new Date(body.dob) : undefined,
                     category: body.category || 'general', // care, manufacturing
                     gender: body.gender,
                     maritalStatus: body.maritalStatus,
@@ -432,8 +432,8 @@ router.post('/', async (req, res) => {
             passportExpiryDate
         } = req.body;
 
-        if (!englishName || !nationality || !dob) {
-            return res.status(400).json({ error: 'Missing required fields: englishName, nationality, dob' });
+        if (!englishName || !nationality) {
+            return res.status(400).json({ error: 'Missing required fields: englishName, nationality' });
         }
 
         const result = await prisma.$transaction(async (tx) => {
@@ -443,7 +443,7 @@ router.post('/', async (req, res) => {
                     englishName,
                     chineseName,
                     nationality,
-                    dob: new Date(dob),
+                    dob: dob ? new Date(dob) : undefined,
                     mobilePhone,
                     category: 'general' // Default
                 }

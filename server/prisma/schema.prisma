@@ -170,7 +170,7 @@ model StaffBusinessRole {
 
 model Employer {
   id               String  @id @default(uuid())
-  taxId            String  @unique @map("tax_id")
+  taxId            String? @unique @map("tax_id")
   companyName      String  @map("company_name")
   type             String  @default("corporate") // Enum: corporate, individual
   withholdingTaxId String? @map("withholding_tax_id")
@@ -340,8 +340,9 @@ model Worker {
   id          String   @id @default(uuid())
   englishName String   @map("english_name")
   chineseName String?  @map("chinese_name")
-  dob         DateTime
+  dob         DateTime?
   nationality String // Enum as string
+  isTaxResident Boolean @default(true) @map("is_tax_resident")
   status      String @default("CANDIDATE") // CANDIDATE, ACTIVE, INACTIVE, BLACKLIST
 
   // Bilingual Info

@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FormSection from '@/components/layout/FormSection';
-import { Save, User, FileText, Briefcase, FolderOpen } from 'lucide-react';
+import { Save, User, FileText, Briefcase, FolderOpen, HeartPulse } from 'lucide-react';
 import { toast } from 'sonner';
+import EmployerSelector from '@/components/employers/EmployerSelector';
 
 // Validation Schema
 const workerSchema = z.object({
@@ -19,7 +20,7 @@ const workerSchema = z.object({
     englishName: z.string().min(1, '請輸入英文姓名'),
     chineseName: z.string().optional(),
     nationality: z.string().min(1, '請選擇國籍'),
-    dob: z.string().min(1, '請選擇出生日期'),
+    dob: z.string().optional(),
     gender: z.string().optional(),
     mobilePhone: z.string().optional(),
     foreignAddress: z.string().optional(),
@@ -34,6 +35,23 @@ const workerSchema = z.object({
     employerId: z.string().optional(),
     deploymentDate: z.string().optional(),
     contractEndDate: z.string().optional(),
+
+    // Physical & Background (from Wizard)
+    height: z.string().optional(),
+    weight: z.string().optional(),
+    bloodType: z.string().optional(),
+    religion: z.string().optional(),
+    educationLevel: z.string().optional(),
+    birthPlace: z.string().optional(),
+
+    // Family & Financial
+    spouseName: z.string().optional(),
+    overseasFamilyContact: z.string().optional(),
+    overseasContactPhone: z.string().optional(),
+    emergencyContactPhone: z.string().optional(),
+    bankAccountNo: z.string().optional(),
+    bankCode: z.string().optional(),
+    lineId: z.string().optional(),
 
     // Additional
     notes: z.string().optional(),
@@ -117,6 +135,10 @@ export default function WorkerForm({
                         <Briefcase className="h-4 w-4" />
                         派遣資訊
                     </TabsTrigger>
+                    <TabsTrigger value="personal" className="flex items-center gap-2">
+                        <HeartPulse className="h-4 w-4" />
+                        詳細個資
+                    </TabsTrigger>
                     <TabsTrigger value="documents" className="flex items-center gap-2">
                         <FolderOpen className="h-4 w-4" />
                         文件管理
@@ -154,7 +176,7 @@ export default function WorkerForm({
                         <div>
                             <Label htmlFor="gender">性別</Label>
                             <Select
-                                onValueChange={(value) => setValue('gender', value)}
+                                onValueChange={(value: string) => setValue('gender', value)}
                                 defaultValue={watch('gender')}
                             >
                                 <SelectTrigger>
@@ -170,7 +192,7 @@ export default function WorkerForm({
                         <div>
                             <Label htmlFor="nationality" className="required">國籍</Label>
                             <Select
-                                onValueChange={(value) => setValue('nationality', value)}
+                                onValueChange={(value: string) => setValue('nationality', value)}
                                 defaultValue={watch('nationality')}
                             >
                                 <SelectTrigger>
@@ -189,7 +211,7 @@ export default function WorkerForm({
                         </div>
 
                         <div>
-                            <Label htmlFor="dob" className="required">出生日期</Label>
+                            <Label htmlFor="dob">出生日期</Label>
                             <Input
                                 id="dob"
                                 type="date"
@@ -289,17 +311,10 @@ export default function WorkerForm({
                     >
                         <div>
                             <Label htmlFor="employerId">雇主</Label>
-                            <Select
-                                onValueChange={(value) => setValue('employerId', value)}
-                                defaultValue={watch('employerId')}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="選擇雇主" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="placeholder">-- 暫無雇主 --</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <EmployerSelector
+                                value={watch('employerId')}
+                                onChange={(val) => setValue('employerId', val)}
+                            />
                         </div>
 
                         <div>
@@ -322,7 +337,71 @@ export default function WorkerForm({
                     </FormSection>
                 </TabsContent>
 
-                {/* Tab 4: Documents */}
+                {/* Tab 4: Personal Details (Wizard extra fields) */}
+                <TabsContent value="personal" className="space-y-6">
+                    <FormSection title="體態與背景" columns={3}>
+                        <div>
+                            <Label htmlFor="height">身高 (cm)</Label>
+                            <Input id="height" {...register('height')} type="number" />
+                        </div>
+                        <div>
+                            <Label htmlFor="weight">體重 (kg)</Label>
+                            <Input id="weight" {...register('weight')} type="number" />
+                        </div>
+                        <div>
+                            <Label htmlFor="bloodType">血型</Label>
+                            <Input id="bloodType" {...register('bloodType')} placeholder="A, B, AB, O" />
+                        </div>
+                        <div>
+                            <Label htmlFor="religion">宗教</Label>
+                            <Input id="religion" {...register('religion')} />
+                        </div>
+                        <div>
+                            <Label htmlFor="educationLevel">教育程度</Label>
+                            <Input id="educationLevel" {...register('educationLevel')} />
+                        </div>
+                        <div>
+                            <Label htmlFor="birthPlace">出生地</Label>
+                            <Input id="birthPlace" {...register('birthPlace')} />
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="家庭與連絡人" columns={2}>
+                        <div>
+                            <Label htmlFor="spouseName">配偶姓名</Label>
+                            <Input id="spouseName" {...register('spouseName')} />
+                        </div>
+                        <div>
+                            <Label htmlFor="lineId">Line ID</Label>
+                            <Input id="lineId" {...register('lineId')} />
+                        </div>
+                        <div>
+                            <Label htmlFor="overseasFamilyContact">國外家屬聯繫人</Label>
+                            <Input id="overseasFamilyContact" {...register('overseasFamilyContact')} />
+                        </div>
+                        <div>
+                            <Label htmlFor="overseasContactPhone">國外家屬電話</Label>
+                            <Input id="overseasContactPhone" {...register('overseasContactPhone')} />
+                        </div>
+                        <div className="col-span-2">
+                            <Label htmlFor="emergencyContactPhone">緊急聯繫電話</Label>
+                            <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="財務資訊" columns={2} divider={false}>
+                        <div>
+                            <Label htmlFor="bankCode">銀行代碼</Label>
+                            <Input id="bankCode" {...register('bankCode')} placeholder="例如：004" />
+                        </div>
+                        <div>
+                            <Label htmlFor="bankAccountNo">銀行帳號</Label>
+                            <Input id="bankAccountNo" {...register('bankAccountNo')} />
+                        </div>
+                    </FormSection>
+                </TabsContent>
+
+                {/* Tab 5: Documents */}
                 <TabsContent value="documents" className="space-y-6">
                     <div className="text-center py-12 text-gray-500">
                         <FolderOpen className="h-16 w-16 mx-auto mb-4 opacity-20" />
@@ -332,14 +411,14 @@ export default function WorkerForm({
                 </TabsContent>
             </Tabs>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-6 border-t">
+            {/* Action Buttons - Sticky to bottom */}
+            <div className="sticky bottom-0 flex justify-end gap-3 py-4 mt-6 border-t bg-white/80 backdrop-blur-sm z-10">
                 {onCancel && (
                     <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
                         取消
                     </Button>
                 )}
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="shadow-lg">
                     {isLoading && <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
                     <Save className="mr-2 h-4 w-4" />
                     {isEditMode ? '儲存修改' : '確認新增'}

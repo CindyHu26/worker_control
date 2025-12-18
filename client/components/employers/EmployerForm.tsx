@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,13 +13,13 @@ import { Textarea } from '@/components/ui/textarea';
 import FormSection from '@/components/layout/FormSection';
 import ComplianceSelector from '@/components/employers/ComplianceSelector';
 import { isValidGUINumber, isValidNationalID } from '@/utils/validation';
-import { Building, User, FileText, Settings, Building2, Globe, Copy, Save } from 'lucide-react';
+import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Validation Schema
 const employerSchema = z.object({
     companyName: z.string().min(1, '雇主/公司名稱為必填'),
-    taxId: z.string().min(1, '此欄位為必填'),
+    taxId: z.string().optional().or(z.literal('')),
     phoneNumber: z.string().optional(),
     faxNumber: z.string().optional(),
     industryType: z.string().optional(),
@@ -59,7 +59,7 @@ const employerSchema = z.object({
     responsiblePersonEn: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.category === 'HOME_CARE') {
-        if (!isValidNationalID(data.taxId)) {
+        if (data.taxId && !isValidNationalID(data.taxId)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "身分證字號格式錯誤 (需為1碼英文+9碼數字，並符合邏輯)",
@@ -67,7 +67,13 @@ const employerSchema = z.object({
             });
         }
     } else {
-        if (!isValidGUINumber(data.taxId)) {
+        if (!data.taxId) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "統一編號為必填",
+                path: ["taxId"]
+            });
+        } else if (!isValidGUINumber(data.taxId)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "統一編號格式錯誤 (需為8碼數字，並符合邏輯運算)",
@@ -115,7 +121,41 @@ export default function EmployerForm({
         }
     });
 
+    const [taxIdStatus, setTaxIdStatus] = useState<{ loading: boolean; error: string | null }>({
+        loading: false,
+        error: null
+    });
+
     const selectedCategory = watch('category');
+    const taxIdValue = watch('taxId');
+
+    // Debounced Duplicate Check
+    useEffect(() => {
+        if (!taxIdValue || taxIdValue.length < 8 || isEditMode) {
+            setTaxIdStatus({ loading: false, error: null });
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setTaxIdStatus({ loading: true, error: null });
+            try {
+                const res = await fetch(`/api/employers/check-duplicate/${taxIdValue}`);
+                const data = await res.json();
+                if (data.exists) {
+                    setTaxIdStatus({
+                        loading: false,
+                        error: `此號碼已被使用: ${data.employer.companyName}`
+                    });
+                } else {
+                    setTaxIdStatus({ loading: false, error: null });
+                }
+            } catch (err) {
+                setTaxIdStatus({ loading: false, error: null });
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [taxIdValue, isEditMode]);
 
     const onSubmitForm = async (data: EmployerFormData) => {
         try {
@@ -210,6 +250,15 @@ export default function EmployerForm({
                             />
                             {errors.taxId && (
                                 <p className="text-sm text-red-600 mt-1">{errors.taxId.message}</p>
+                            )}
+                            {taxIdStatus.error && (
+                                <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    {taxIdStatus.error}
+                                </p>
+                            )}
+                            {taxIdStatus.loading && (
+                                <p className="text-xs text-gray-400 mt-1">檢查中...</p>
                             )}
                         </div>
 
@@ -444,14 +493,14 @@ export default function EmployerForm({
                 </TabsContent>
             </Tabs>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-6 border-t">
+            {/* Action Buttons - Sticky to bottom */}
+            <div className="sticky bottom-0 flex justify-end gap-3 py-4 mt-6 border-t bg-white/80 backdrop-blur-sm z-10">
                 {onCancel && (
                     <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
                         取消
                     </Button>
                 )}
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="shadow-lg">
                     {isLoading && <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
                     <Save className="mr-2 h-4 w-4" />
                     {isEditMode ? '儲存修改' : '確認新增'}

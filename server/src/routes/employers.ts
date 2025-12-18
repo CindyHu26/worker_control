@@ -23,6 +23,20 @@ const CaretakerAttrs = z.object({
     patientIdNo: z.string().optional() // Make strict if needed
 });
 
+// Check Duplicate Tax ID
+router.get('/check-duplicate/:taxId', async (req, res) => {
+    try {
+        const { taxId } = req.params;
+        const existing = await prisma.employer.findUnique({
+            where: { taxId },
+            select: { id: true, companyName: true }
+        });
+        res.json({ exists: !!existing, employer: existing });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to check duplicate' });
+    }
+});
+
 // GET /api/employers
 router.get('/', async (req, res) => {
     try {
@@ -108,17 +122,19 @@ router.post('/', async (req, res) => {
             bedCount
         } = req.body;
 
-        if (!companyName || !taxId) {
-            return res.status(400).json({ error: 'Company name and Tax ID are required' });
+        if (!companyName) {
+            return res.status(400).json({ error: 'Company name is required' });
         }
 
-        // Check uniqueness
-        const existing = await prisma.employer.findUnique({
-            where: { taxId }
-        });
+        // Check uniqueness if taxId is provided
+        if (taxId) {
+            const existing = await prisma.employer.findUnique({
+                where: { taxId }
+            });
 
-        if (existing) {
-            return res.status(400).json({ error: 'Tax ID already exists' });
+            if (existing) {
+                return res.status(400).json({ error: 'Tax ID / ID Number already exists' });
+            }
         }
 
         // Prepare industryAttributes
