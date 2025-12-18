@@ -310,7 +310,7 @@ model Worker {
   @@map("workers")
 }
 
-// [新增] 移工稅務身分紀錄 (依年度判定)
+// 移工稅務身分紀錄 (依年度判定)
 // 用於解決 "183天" 居住者/非居住者判定問題
 model WorkerTaxStatus {
   id        String   @id @default(uuid())
