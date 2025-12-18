@@ -37,24 +37,27 @@ router.get('/check-duplicate/:taxId', async (req, res) => {
     }
 });
 
+
 // GET /api/employers
 router.get('/', async (req, res) => {
     try {
-        const { q, page = '1', limit = '10', category } = req.query;
+        const { q, page = '1', limit = '10', type } = req.query; // type can be 'corporate' or 'individual'
 
         const pageNum = parseInt(page as string);
         const limitNum = parseInt(limit as string);
         const skip = (pageNum - 1) * limitNum;
 
         const whereClause: any = {};
-        if (category) {
-            whereClause.category = category;
+        if (type === 'corporate') {
+            whereClause.corporateInfo = { isNot: null };
+        } else if (type === 'individual') {
+            whereClause.individualInfo = { isNot: null };
         }
 
         if (q) {
             const keyword = q as string;
             whereClause.OR = [
-                { companyName: { contains: keyword } },
+                { companyName: { contains: keyword, mode: 'insensitive' } },
                 { taxId: { contains: keyword } },
                 { responsiblePerson: { contains: keyword } }
             ];
@@ -65,7 +68,8 @@ router.get('/', async (req, res) => {
             prisma.employer.findMany({
                 where: whereClause,
                 include: {
-                    institutionInfo: true,
+                    corporateInfo: true,
+                    individualInfo: true,
                     _count: {
                         select: { deployments: { where: { status: 'active' } } }
                     }
@@ -100,26 +104,19 @@ router.post('/', async (req, res) => {
             responsiblePerson,
             phoneNumber,
             address,
-            faxNumber,
-            // Bilingual
-            companyNameEn,
-            addressEn,
-            responsiblePersonEn,
-            // Polymorphic fields
-            category,
-            // Manufacturing
+            faxNumber, // Now on CorporateInfo or Employer?
+            email,
+            // Corporate Fields
             factoryRegistrationNo,
             industryType,
-            factoryAddressEn,
-            // Home Care
-            patientName,
-            patientIdNo,
-            careAddress,
-            relationship,
-            hospitalCertNo,
-            // Institution
-            institutionCode,
-            bedCount
+            laborInsuranceNo,
+            healthInsuranceUnitNo,
+            // Individual Fields
+            responsiblePersonIdNo,
+            responsiblePersonDob,
+            responsiblePersonSpouse,
+            responsiblePersonFather,
+            responsiblePersonMother
         } = req.body;
 
         if (!companyName) {
@@ -131,68 +128,51 @@ router.post('/', async (req, res) => {
             const existing = await prisma.employer.findUnique({
                 where: { taxId }
             });
-
             if (existing) {
                 return res.status(400).json({ error: 'Tax ID / ID Number already exists' });
             }
         }
 
-        // Prepare industryAttributes
-        let jsonString = null;
-        let cat = (category && typeof category === 'string') ? category : 'MANUFACTURING';
-
-        if (cat === 'MANUFACTURING') {
-            const attrs = {
-                factoryRegistrationNo,
-                industryType,
-                factoryAddressEn,
-                factoryAddress: address // fallback or specific
-            };
-            const parsed = FactoryAttrs.safeParse(attrs);
-            if (parsed.success) {
-                jsonString = JSON.stringify(parsed.data);
-            } else {
-                jsonString = JSON.stringify(attrs);
-            }
-        } else if (cat === 'HOME_CARE' || cat === 'CARETAKER') {
-            const attrs = {
-                patientName,
-                hospitalCertNo: hospitalCertNo || 'N/A',
-                careAddress,
-                relationship,
-                patientIdNo
-            };
-            jsonString = JSON.stringify(attrs);
-        }
+        // Infer Type
+        const isCorporate = !!(factoryRegistrationNo || industryType || laborInsuranceNo);
+        const isIndividual = !!(responsiblePersonIdNo || responsiblePersonSpouse);
 
         // Transactional Create
         const newEmployer = await prisma.$transaction(async (tx) => {
-            const emp = await tx.employer.create({
-                data: {
-                    companyName: String(companyName),
-                    taxId: String(taxId),
-                    responsiblePerson: responsiblePerson ? String(responsiblePerson) : undefined,
-                    phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
-                    address: address ? String(address) : undefined,
-                    faxNumber: faxNumber ? String(faxNumber) : undefined,
-                    // Bilingual
-                    companyNameEn,
-                    addressEn,
-                    responsiblePersonEn,
-                    category: cat,
-                    industryAttributes: jsonString
-                }
-            });
+            const data: any = {
+                companyName: String(companyName),
+                taxId: String(taxId),
+                responsiblePerson: responsiblePerson ? String(responsiblePerson) : undefined,
+                phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
+                address: address ? String(address) : undefined,
+                email: email ? String(email) : undefined,
+            };
 
-            if (cat === 'INSTITUTION') {
-                await tx.institutionInfo.create({
-                    data: {
-                        employerId: emp.id,
-                        institutionCode,
-                        bedCount: bedCount ? Number(bedCount) : undefined
+            if (isCorporate) {
+                data.corporateInfo = {
+                    create: {
+                        factoryRegistrationNo,
+                        industryType,
+                        laborInsuranceNo,
+                        healthInsuranceUnitNo,
+                        faxNumber, // Assuming fax is corporate
                     }
-                });
+                };
+            } else if (isIndividual) {
+                data.individualInfo = {
+                    create: {
+                        responsiblePersonIdNo,
+                        responsiblePersonSpouse,
+                        responsiblePersonFather,
+                        responsiblePersonMother,
+                        responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
+                    }
+                };
             }
+
+            const emp = await tx.employer.create({
+                data
+            });
 
             return emp;
         });
@@ -210,7 +190,7 @@ router.post('/:id/recruitment-letters', async (req, res) => {
         const { id } = req.params; // Employer ID
         const { letterNumber, issueDate, expiryDate, approvedQuota } = req.body;
 
-        const newLetter = await prisma.recruitmentLetter.create({
+        const newLetter = await prisma.employerRecruitmentLetter.create({
             data: {
                 employerId: id,
                 letterNumber,
@@ -232,7 +212,7 @@ router.post('/:id/recruitment-letters', async (req, res) => {
 router.delete('/:id/recruitment-letters/:letterId', async (req, res) => {
     try {
         const { letterId } = req.params;
-        await prisma.recruitmentLetter.delete({
+        await prisma.employerRecruitmentLetter.delete({
             where: { id: letterId }
         });
         res.json({ success: true });
@@ -249,11 +229,12 @@ router.get('/:id', async (req, res) => {
         const employer = await prisma.employer.findUnique({
             where: { id },
             include: {
-                institutionInfo: true,
+                corporateInfo: true,
+                individualInfo: true,
                 recruitmentLetters: {
                     orderBy: { issueDate: 'desc' },
                     include: {
-                        entryPermits: true // if needed for usedQuota calc
+                        deployments: true // Used to be entryPermits, but user schema shows deployments relation
                     }
                 },
                 _count: {
@@ -279,31 +260,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
-        // Use the service to handle JSON packing
-        const {
-            factoryRegistrationNo, industryCode, industryType, factoryAddress, factoryAddressEn,
-            patientName, hospitalCertNo, careAddress, relationship,
-            ...core
-        } = req.body;
-
-        let attributes = req.body.attributes;
-
-        if (!attributes) {
-            // Reconstruct attributes from flat fields if legacy frontend
-            if (req.body.category === 'MANUFACTURING' || (!req.body.category && factoryRegistrationNo)) {
-                attributes = { factoryRegistrationNo, industryCode, industryType, factoryAddress, factoryAddressEn };
-            } else if (req.body.category === 'HOME_CARE' || req.body.category === 'CARETAKER') {
-                attributes = { patientName, hospitalCertNo, careAddress, relationship };
-            }
-        }
-
-        const updatePayload = {
-            ...core,
-            attributes
-        };
-
-        const updated = await updateEmployer(id, updatePayload);
+        const updated = await updateEmployer(id, req.body);
         res.json(updated);
     } catch (error) {
         console.error('Update Employer Error:', error);

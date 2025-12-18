@@ -3,733 +3,404 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// Enums (SQLite treats validation as app-level)
-// We keep the map for consistency but remove db-specific attributes if any
+// Enums
+enum UserRole {
+  admin
+  manager
+  staff
+  @@map("user_role")
+}
+
+enum GenderType {
+  male
+  female
+  other
+  @@map("gender_type")
+}
+
+enum DeploymentStatus {
+  active
+  ended
+  pending
+  terminated
+  @@map("deployment_status")
+}
+
+enum IncidentSeverity {
+  low
+  medium
+  high
+  critical
+  @@map("incident_severity")
+}
+
+enum IncidentStatus {
+  open
+  in_progress
+  closed
+  @@map("incident_status")
+}
+
+enum PermitType {
+  initial
+  extension
+  reissue
+  @@map("permit_type")
+}
+
+enum HealthCheckType {
+  entry
+  mo6  @map("6mo")
+  mo18 @map("18mo")
+  mo30 @map("30mo")
+  supplementary
+  @@map("health_check_type")
+}
+
+enum HealthCheckResult {
+  pass
+  fail
+  pending
+  @@map("health_check_result")
+}
+
+enum NationalityType {
+  PH
+  ID
+  VN
+  TH
+  OTHER
+  @@map("nationality_type")
+}
+
+enum WorkerCategory {
+  general
+  intermediate_skilled
+  professional
+  @@map("worker_category")
+}
+
+enum ManagementSourceType {
+  direct_hiring
+  re_hiring
+  transfer_in
+  replacement
+  @@map("management_source_type")
+}
+
+enum ServiceStatus {
+  active_service
+  contract_terminated
+  runaway
+  transferred_out
+  commission_ended
+  @@map("service_status")
+}
+
+enum StaffRoleType {
+  sales_agent
+  admin_staff
+  bilingual_staff
+  customer_service
+  accountant
+  @@map("staff_role_type")
+}
+
+enum InsuranceType {
+  labor
+  health
+  accident
+  @@map("insurance_type")
+}
+
+enum AddressType {
+  approval_letter
+  medical_pickup
+  actual_residence
+  arc
+  work
+  @@map("address_type")
+}
+
+enum JobOrderStatus {
+  open
+  processing
+  completed
+  cancelled
+  @@map("job_order_status")
+}
+
+enum CandidateResult {
+  selected
+  rejected
+  failed_medical
+  pending
+  @@map("candidate_result")
+}
 
 // Models
 
-model Hospital {
-  id          String    @id @default(uuid())
-  code        String?   @unique
-  name        String
-  city        String?
-  country     String?   // For overseas hospitals
-  validUntil  DateTime? @map("valid_until") // For general check hospitals
+model InternalUser {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  username     String   @unique @db.VarChar(50)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         UserRole @default(staff)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations (Created By / Updated By)
+  createdEmployers          Employer[]          @relation("EmployerCreatedBy")
+  updatedEmployers          Employer[]          @relation("EmployerUpdatedBy")
+  createdWorkers            Worker[]            @relation("WorkerCreatedBy")
+  updatedWorkers            Worker[]            @relation("WorkerUpdatedBy")
+  createdJobOrders          JobOrder[]          @relation("JobOrderCreatedBy")
+  updatedJobOrders          JobOrder[]          @relation("JobOrderUpdatedBy")
+  // ... (Many other relations would be here, omitting for brevity in favor of core logic, 
+  // but strictly strictly speaking, Prisma requires inverse relations for all. 
+  // To keep schema manageable, I will define the mandatory ones and maybe skip inverse 
+  // on Audit fields if not strictly needed for querying USER -> ALL RECORDS they created.)
+  // Actually, let's include the key operational ones.
+  assignedServices          ServiceAssignment[] @relation("ServiceAssignedUser")
   
-  isGeneral   Boolean   @default(false) @map("is_general")
-  isXray      Boolean   @default(false) @map("is_xray")
-  isOverseas  Boolean   @default(false) @map("is_overseas")
-  
-  immigrationChecks ImmigrationProcess[]
+  // Comments & Mentions
+  comments                  SystemComment[]     @relation("CommentAuthor")
+  mentionsReceived          CommentMention[]    @relation("MentionedUser")
 
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("hospitals")
+  @@map("internal_users")
 }
 
-model ImmigrationProcess {
-  id          String   @id @default(uuid())
-  workerId    String   @unique @map("worker_id")
-  status      String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
-  
-  // 1. Overseas Health Check
-  healthCheckHospitalId String?   @map("health_check_hospital_id")
-  healthCheckDate       DateTime? @map("health_check_date")
-  healthCheckStatus     String?   @map("health_check_status") // PASS, FAIL
-  healthCheckHospital   Hospital? @relation(fields: [healthCheckHospitalId], references: [id])
-  
-  // 2. Good Citizen Certificate (Police Record)
-  policeCode            String?   @map("police_code")
-  policeDate            DateTime? @map("police_date")
-  
-  // 3. Passport
-  passportNo            String?   @map("passport_no")
-  passportIssueDate     DateTime? @map("passport_issue_date")
-  passportExpiryDate    DateTime? @map("passport_expiry_date")
-  passportSubmissionDate DateTime? @map("passport_submission_date")
-  
-  // 4. Training & Biometrics
-  biometricDate         DateTime? @map("biometric_date")
-  trainingDate          DateTime? @map("training_date")
-  trainingCity          String?   @map("training_city")
-  
-  // 5. Entry
-  estimatedEntryDate    DateTime? @map("estimated_entry_date")
-  actualEntryDate       DateTime? @map("actual_entry_date")
-
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-  
-  worker     Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
-
-  @@map("immigration_processes")
-}
-
-model SystemAccount {
-  id           String   @id @default(uuid())
-  username     String   @unique
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  isActive     Boolean  @default(true) @map("is_active")
-  
-  systemRoleId String?  @map("system_role_id")
-  systemRole   SystemRole? @relation(fields: [systemRoleId], references: [id])
-  
-  staffId      String?  @map("staff_id")
-  staffProfile StaffProfile? @relation(fields: [staffId], references: [id])
-
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Audit Relations (System Level)
-  createdEmployers Employer[] @relation("EmployerCreatedBy")
-  updatedEmployers Employer[] @relation("EmployerUpdatedBy")
-  createdWorkers   Worker[]   @relation("WorkerCreatedBy")
-  updatedWorkers   Worker[]   @relation("WorkerUpdatedBy")
-  createdJobOrders JobOrder[] @relation("JobOrderCreatedBy")
-  updatedJobOrders JobOrder[] @relation("JobOrderUpdatedBy")
-
-  comments         SystemComment[]  @relation("CommentAuthor")
-  mentionsReceived CommentMention[] @relation("MentionedUser")
-
-  @@map("system_accounts")
-}
-
-model SystemRole {
-  id          String   @id @default(uuid())
-  name        String   @unique // ADMIN, EDITOR, VIEWER
-  description String?
-  accounts    SystemAccount[]
-
-  @@map("system_roles")
-}
-
-model StaffProfile {
-  id           String   @id @default(uuid())
-  name         String
-  employeeCode String?  @unique @map("employee_code")
-  mobile       String?
-  status       String   @default("ACTIVE") // ACTIVE, ON_LEAVE, RESIGNED
-  
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Link
-  accounts     SystemAccount[]
-
-  // Business Relations (Operation Level)
-  assignedServices ServiceAssignment[] @relation("ServiceAssignedStaff")
-  coordinatedDisputes DisputeRecord[]  @relation("DisputeCoordinator")
-  handledResolutions  ResolutionLog[]  @relation("ResolutionHandler")
-  advancePayments     AdvancePayment[] @relation("StaffAdvancePayments")
-  assignedLeads       Lead[]           @relation("LeadAssigned")
-
-  roleHistory         StaffBusinessRole[]
-
-  @@map("staff_profiles")
-}
-
-model BusinessRole {
-  id          String   @id @default(uuid())
-  code        String   @unique // SALES, ADMIN, SERVICE
-  name        String
-  staffRoles  StaffBusinessRole[]
-
-  @@map("business_roles")
-}
-
-model StaffBusinessRole {
-  id             String   @id @default(uuid())
-  staffProfileId String   @map("staff_profile_id")
-  businessRoleId String   @map("business_role_id")
-  startDate      DateTime @map("start_date")
-  endDate        DateTime? @map("end_date")
-
-  staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
-  businessRole   BusinessRole @relation(fields: [businessRoleId], references: [id], onDelete: Cascade)
-
-  @@map("staff_business_roles")
-}
 
 model Employer {
-  id               String  @id @default(uuid())
-  taxId            String? @unique @map("tax_id")
-  companyName      String  @map("company_name")
-  type             String  @default("corporate") // Enum: corporate, individual
-  withholdingTaxId String? @map("withholding_tax_id")
-  invoiceAddress   String? @map("invoice_address")
-
-  responsiblePerson       String?   @map("responsible_person")
+  id                        String   @id @default(uuid()) @db.Uuid
+  taxId                     String   @unique @map("tax_id") @db.VarChar(20)
+  companyName               String   @map("company_name") @db.VarChar(100)
   
-  // Bilingual Info
-  companyNameEn           String?  @map("company_name_en")
-  addressEn               String?  @map("address_en")
-  responsiblePersonEn     String?  @map("responsible_person_en")
-  responsiblePersonDob    DateTime? @map("responsible_person_dob")
-  responsiblePersonIdNo   String?   @map("responsible_person_id_no")
-  responsiblePersonFather String?   @map("responsible_person_father_name")
-  responsiblePersonMother String?   @map("responsible_person_mother_name")
-  responsiblePersonSpouse String?   @map("responsible_person_spouse")
-  idIssueDate             DateTime? @map("id_issue_date")
-  idIssuePlace            String?   @map("id_issue_place")
-  militaryStatus          String?   @map("military_status")
-
-  address     String?
-  phoneNumber String? @map("phone_number")
-
-  factoryRegistrationNo    String? @map("factory_registration_no")
-  factoryRegistrationId    String? @map("factory_registration_id")
-  industryType             String? @map("industry_type")
-  laborInsuranceNo         String? @map("labor_insurance_no")
-  laborInsuranceId         String? @map("labor_insurance_id")
-  healthInsuranceUnitNo    String? @map("health_insurance_unit_no")
-  healthInsuranceId        String? @map("health_insurance_id")
-  email                    String?
-  faxNumber                String? @map("fax_number")
-  billAddress              String? @map("bill_address")
-  industryCode             String? @map("industry_code")
-  responsiblePersonAddress String? @map("responsible_person_address")
-
-  createdBy     String?       @map("created_by")
-  updatedBy     String?       @map("updated_by")
-  createdByUser SystemAccount? @relation("EmployerCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser SystemAccount? @relation("EmployerUpdatedBy", fields: [updatedBy], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  // Responsible Person (Common leader name, or for Individual it is the Employer)
+  responsiblePerson         String?  @map("responsible_person") @db.VarChar(50) 
   
-  // System Audit Fields
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  // Relations
-  recruitmentLetters RecruitmentLetter[]
-  deployments        Deployment[]
-  permitDocuments    PermitDocument[]
-  bills              Bill[]
-  incidents          Incident[]
-  serviceAssignments ServiceAssignment[]
-  jobOrders          JobOrder[]
-  transfersOut       TransferRecord[] @relation("TransferOldEmployer")
-  transfersIn        TransferRecord[] @relation("TransferNewEmployer")
-
-  agencyCompanyId String? @map("agency_company_id")
-  agency          AgencyCompany? @relation(fields: [agencyCompanyId], references: [id])
-
-  serviceContracts ServiceContract[]
-
-  // Polymorphic Relation Fields
-  category        String @default("MANUFACTURING") // MANUFACTURING, HOME_CARE, INSTITUTION
-
-  allocationRate  Decimal? @map("allocation_rate") // 0.10, 0.15, 0.20, 0.25, 0.35
-  totalQuota      Int?     @map("total_quota")
+  address                   String?  @db.Text
+  phoneNumber               String?  @map("phone_number") @db.VarChar(20)
+  email                     String?  @db.VarChar(100)
   
-  complianceStandard   String?   @map("compliance_standard") // RBA, IWAY, NONE
-  zeroFeeEffectiveDate DateTime? @map("zero_fee_effective_date")
+  // Relations to Details
+  corporateInfo             CorporateInfo?
+  individualInfo            IndividualInfo?
   
-  houseTaxId      String?  @map("house_tax_id") // For non-resident tax filing
-
-  // 將原本散落在 FactoryInfo, HomeCareInfo 的欄位整併入此
-  // 在 SQLite 中這是 String，在 App 層用 Zod 解析
-  industryAttributes String? @map("industry_attributes") // JSON string for extended attributes (factory address, bed count, etc.)
-
-  originLeadId String? @unique @map("origin_lead_id")
-  convertedFromLead Lead?
-
-
-
-
-  institutionInfo InstitutionInfo?
-
-  laborCounts     EmployerLaborCount[]
-  payrollRecords  PayrollRecord[]
+  // Existing Relations
+  recruitmentLetters        EmployerRecruitmentLetter[]
+  deployments               Deployment[]
+  permitDocuments           PermitDocument[]
+  incidents                 Incident[]
+  serviceAssignments        ServiceAssignment[]
+  jobOrders                 JobOrder[]
+  
+  createdBy                 String?  @map("created_by") @db.Uuid
+  updatedBy                 String?  @map("updated_by") @db.Uuid
+  createdByUser             InternalUser? @relation("EmployerCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser             InternalUser? @relation("EmployerUpdatedBy", fields: [updatedBy], references: [id])
+  
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("employers")
 }
 
-model EmployerLaborCount {
-  id         String   @id @default(uuid())
-  employerId String   @map("employer_id")
-  year       Int
-  month      Int
-  count      Int      @default(0)
+model CorporateInfo {
+  id                        String   @id @default(uuid()) @db.Uuid
+  employerId                String   @unique @map("employer_id") @db.Uuid
+  employer                  Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
 
-  employer   Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
-
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@unique([employerId, year, month])
-  @@map("employer_labor_counts")
-}
-
-model PayrollRecord {
-  id              String   @id @default(uuid())
-  workerId        String   @map("worker_id")
-  employerId      String   @map("employer_id")
-
-  workPeriodStart DateTime @map("work_period_start")
-  workPeriodEnd   DateTime? @map("work_period_end")
-  payDate         DateTime @map("pay_date") // Critical for tax year attribution
-
-  salaryAmount    Decimal  @default(0) @map("salary_amount")
-  bonusAmount     Decimal  @default(0) @map("bonus_amount")
+  factoryRegistrationNo     String?  @map("factory_registration_no") @db.VarChar(50)
+  factoryRegistrationId     String?  @map("factory_registration_id") @db.VarChar(50)
+  industryType              String?  @map("industry_type") @db.VarChar(50)
+  laborInsuranceNo          String?  @map("labor_insurance_no") @db.VarChar(50)
+  laborInsuranceId          String?  @map("labor_insurance_id") @db.VarChar(50)
+  healthInsuranceUnitNo     String?  @map("health_insurance_unit_no") @db.VarChar(50)
+  healthInsuranceId         String?  @map("health_insurance_id") @db.VarChar(50)
+  faxNumber                 String?  @map("fax_number") @db.VarChar(20)
   
-  taxWithheld     Decimal  @default(0) @map("tax_withheld")
-  taxRateUsed     Decimal  @default(0) @map("tax_rate_used") // e.g. 0.06, 0.18
+  @@map("corporate_info")
+}
 
-  filingStatus    String   @default("PENDING") @map("filing_status") // PENDING, FILED_MONTHLY, FILED_ANNUALLY
+model IndividualInfo {
+  id                        String   @id @default(uuid()) @db.Uuid
+  employerId                String   @unique @map("employer_id") @db.Uuid
+  employer                  Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
   
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  responsiblePersonDob      DateTime? @map("responsible_person_dob") @db.Date
+  responsiblePersonIdNo     String?  @map("responsible_person_id_no") @db.VarChar(20)
+  responsiblePersonFather   String?  @map("responsible_person_father_name") @db.VarChar(50)
+  responsiblePersonMother   String?  @map("responsible_person_mother_name") @db.VarChar(50)
+  responsiblePersonSpouse   String?  @map("responsible_person_spouse") @db.VarChar(50)
+  
+  idIssueDate               DateTime? @map("id_issue_date") @db.Date
+  idIssuePlace              String?  @map("id_issue_place") @db.VarChar(50)
+  militaryStatus            String?  @map("military_status") @db.VarChar(20)
 
-  worker          Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  employer        Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
-
-  // System Audit Fields
-  createdBy       String?   @map("created_by")
-  updatedBy       String?   @map("updated_by")
-  isDeleted       Boolean   @default(false) @map("is_deleted")
-  deletedAt       DateTime? @map("deleted_at")
-
-  @@map("payroll_records")
+  @@map("individual_info")
 }
 
-model InstitutionInfo {
-  id              String   @id @default(uuid())
-  employerId      String   @unique @map("employer_id")
-  employer        Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
-
-  institutionCode String? @map("institution_code")
-  bedCount        Int?    @map("bed_count")
-
-  // System Audit Fields
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("employer_institution_infos")
-}
 
 model Worker {
-  id          String   @id @default(uuid())
-  englishName String   @map("english_name")
-  chineseName String?  @map("chinese_name")
-  dob         DateTime?
-  nationality String // Enum as string
-  isTaxResident Boolean @default(true) @map("is_tax_resident")
-  status      String @default("CANDIDATE") // CANDIDATE, ACTIVE, INACTIVE, BLACKLIST
+  id                        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  englishName               String   @map("english_name") @db.VarChar(100)
+  chineseName               String?  @map("chinese_name") @db.VarChar(50)
+  dob                       DateTime @db.Date
+  nationality               NationalityType
+  category                  WorkerCategory @default(general)
+  gender                    GenderType?
 
-  // Bilingual Info
-  fatherNameEn    String?  @map("father_name_en")
-  motherNameEn    String?  @map("mother_name_en")
-  homeAddressEn   String?  @map("home_address_en")
-  birthPlaceEn    String?  @map("birth_place_en")
-  spouseNameEn    String?  @map("spouse_name_en")
-  category    String   @default("general") // Enum as string
-  gender      String? // Enum as string
-
-  immigrationProcess ImmigrationProcess?
-
-  homeCountryId     String? @map("home_country_id")
-  taxId             String? @map("tax_id")
-  bloodType         String? @map("blood_type")
-  religion          String? @map("religion")
-
-  mobilePhone    String?   @map("mobile_phone")
-  foreignAddress String?   @map("foreign_address")
-  maritalStatus  String?   @map("marital_status")
-  marriageDate   DateTime? @map("marriage_date")
-  divorceDate    DateTime? @map("divorce_date")
-  height         Decimal?
-  weight         Decimal?
-  birthPlace     String?   @map("birth_place")
-  educationLevel String?   @map("education_level")
-  spouseName     String?   @map("spouse_name")
-
-  overseasContactPhone  String? @map("overseas_contact_phone")
-  overseasFamilyContact String? @map("overseas_family_contact")
-
-  lineId                String? @map("line_id")
-  emergencyContactPhone String? @map("emergency_contact_phone")
-
-  bankAccountNo     String?  @map("bank_account_no")
-  bankCode          String?  @map("bank_code")
-  bankBranchName    String?  @map("bank_branch_name")
-  bankAccountHolder String?  @map("bank_account_holder")
-  loanBank          String?  @map("loan_bank")
-  loanAmount        Decimal? @map("loan_amount")
-
-  flightArrivalInfo    String? @map("flight_arrival_info")
-  oneStopServiceSerial String? @map("one_stop_service_serial")
-  flightDeparture      String? @map("flight_departure")
-
-  oldPassportNumber    String? @map("old_passport_number")
-
-  dormitoryId String? @map("dormitory_id")
-
-  dormitory Dormitory? @relation(fields: [dormitoryId], references: [id])
-
-  dormitoryBedId String?  @unique @map("dormitory_bed_id")
-  bed            DormBed? @relation(fields: [dormitoryBedId], references: [id])
-
-  foreignAgencyId String? @map("foreign_agency_id")
-  foreignAgency   ForeignAgency? @relation(fields: [foreignAgencyId], references: [id])
-
-  createdBy     String?       @map("created_by")
-  updatedBy     String?       @map("updated_by")
-  createdByUser SystemAccount? @relation("WorkerCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser SystemAccount? @relation("WorkerUpdatedBy", fields: [updatedBy], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  mobilePhone               String?  @map("mobile_phone") @db.VarChar(50)
+  foreignAddress            String?  @map("foreign_address") @db.Text
+  maritalStatus             String?  @map("marital_status") @db.VarChar(20)
+  marriageDate              DateTime? @map("marriage_date") @db.Date
+  divorceDate               DateTime? @map("divorce_date") @db.Date
+  height                    Decimal? @db.Decimal(5,2)
+  weight                    Decimal? @db.Decimal(5,2)
+  birthPlace                String?  @map("birth_place") @db.VarChar(100)
+  educationLevel            String?  @map("education_level") @db.VarChar(50)
+  spouseName                String?  @map("spouse_name") @db.VarChar(100)
   
-  // System Audit Fields
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  overseasContactPhone      String?  @map("overseas_contact_phone") @db.VarChar(50)
+  overseasFamilyContact     String?  @map("overseas_family_contact") @db.VarChar(100)
+
+  bankAccountNo             String?  @map("bank_account_no") @db.VarChar(50)
+  bankCode                  String?  @map("bank_code") @db.VarChar(20)
+  loanBank                  String?  @map("loan_bank") @db.VarChar(50)
+  loanAmount                Decimal? @map("loan_amount") @db.Decimal(10,2)
+
+  flightArrivalInfo         String?  @map("flight_arrival_info") @db.VarChar(100)
+  oneStopServiceSerial      String?  @map("one_stop_service_serial") @db.VarChar(50)
+  flightDeparture           String?  @map("flight_departure") @db.VarChar(20)
+
+  createdBy                 String?  @map("created_by") @db.Uuid
+  updatedBy                 String?  @map("updated_by") @db.Uuid
+  createdByUser             InternalUser? @relation("WorkerCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser             InternalUser? @relation("WorkerUpdatedBy", fields: [updatedBy], references: [id])
+  
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  passports           WorkerPassport[]
-  arcs                WorkerArc[]
-  deployments         Deployment[]
-  healthChecks        HealthCheck[]
-  incidents           Incident[]
-  serviceAssignments  ServiceAssignment[]
-  insurances          WorkerInsurance[]
-  addressHistory      WorkerAddressHistory[]
-  interviewCandidates InterviewCandidate[]
-  bills               Bill[]
-  transfers           TransferRecord[]
-  advancePayments     AdvancePayment[]
-  studentEvaluation   StudentEvaluation?
-  payrollRecords      PayrollRecord[]
-  attachments         Attachment[]
-  taxStatuses WorkerTaxStatus[]
+  passports                 WorkerPassport[]
+  arcs                      WorkerArc[]
+  deployments               Deployment[]
+  healthChecks              HealthCheck[]
+  incidents                 Incident[]
+  serviceAssignments        ServiceAssignment[]
+  insurances                WorkerInsurance[]
+  addressHistory            WorkerAddressHistory[]
+  interviewCandidates       InterviewCandidate[]
 
   @@map("workers")
 }
 
-// 移工稅務身分紀錄 (依年度判定)
-// 用於解決 "183天" 居住者/非居住者判定問題
-model WorkerTaxStatus {
-  id        String   @id @default(uuid())
-  workerId  String   @map("worker_id")
-  worker    Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+model EmployerRecruitmentLetter {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  employerId     String   @map("employer_id") @db.Uuid
+  letterNumber   String   @unique @map("letter_number") @db.VarChar(50)
+  issueDate      DateTime @map("issue_date") @db.Date
+  expiryDate     DateTime @map("expiry_date") @db.Date
+  approvedQuota  Int      @default(0) @map("approved_quota")
+  usedQuota      Int      @default(0) @map("used_quota")
 
-  year      Int      @map("year")           // 稅務年度 (e.g. 2024)
+  employer       Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
   
-  // 判定結果
-  status    String   @default("NON_RESIDENT") // Enum: RESIDENT (居住者), NON_RESIDENT (非居住者)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   
-  // 判定依據
-  daysStayed Int     @default(0) @map("days_stayed") // 當年度在台天數 (由入出境紀錄計算)
-  
-  // 鎖定狀態 (報稅後通常鎖定)
-  isFinalized Boolean @default(false) @map("is_finalized")
-  
-  notes     String?
+  // Relations
+  deployments    Deployment[]
 
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdAt  DateTime @default(now()) @map("created_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@unique([workerId, year]) // 每個移工每年只有一個稅務身分
-  @@map("worker_tax_statuses")
+  @@map("employer_recruitment_letters")
 }
-
-model StudentEvaluation {
-  id           String   @id @default(uuid())
-  workerId     String   @unique @map("worker_id")
-  deploymentId String?  @map("deployment_id")
-  
-  // 1. Education
-  educationDegree String? @map("education_degree") // PhD, Master, Bachelor, Associate
-  educationScore  Int     @default(0) @map("education_score")
-
-  // 2. Salary
-  avgMonthlySalary Decimal? @map("avg_monthly_salary")
-  salaryScore      Int      @default(0) @map("salary_score")
-
-  // 3. Experience
-  experienceYears Decimal? @map("experience_years") // Use decimal to support partial years or store as Int
-  experienceScore Int      @default(0) @map("experience_score")
-
-  // 4. Qualifications
-  qualificationDetails String? @map("qualification_details") // Special skills/licenses
-  qualificationScore   Int     @default(0) @map("qualification_score")
-
-  // 5. Chinese Capability
-  chineseLevel String? @map("chinese_level") // Fluent, High, Advanced
-  chineseScore Int     @default(0) @map("chinese_score")
-
-  // 6. Other Languages
-  otherLanguageDetails String? @map("other_language_details")
-  otherLanguageScore   Int     @default(0) @map("other_language_score")
-
-  // 7. Overseas Growth
-  overseasGrowthDetails String? @map("overseas_growth_details")
-  overseasGrowthScore   Int     @default(0) @map("overseas_growth_score")
-
-  // 8. Policy
-  policyDetails String? @map("policy_details") // 5+2 industries, New Southbound Policy
-  policyScore   Int     @default(0) @map("policy_score")
-
-  totalScore  Int     @default(0) @map("total_score")
-  isQualified Boolean @default(false) @map("is_qualified")
-
-  status      String  @default("Draft") // Draft, Submitted
-  reviewNotes String? @map("review_notes")
-
-  worker     Worker      @relation(fields: [workerId], references: [id])
-  deployment Deployment? @relation(fields: [deploymentId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("student_evaluations")
-}
-
-
 
 model WorkerPassport {
-  id             String   @id @default(uuid())
-  workerId       String   @map("worker_id")
-  passportNumber String   @map("passport_number")
-  issueDate      DateTime @map("issue_date")
-  expiryDate     DateTime @map("expiry_date")
-  issuePlace     String?  @map("issue_place")
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workerId       String   @map("worker_id") @db.Uuid
+  passportNumber String   @map("passport_number") @db.VarChar(50)
+  issueDate      DateTime @map("issue_date") @db.Date
+  expiryDate     DateTime @map("expiry_date") @db.Date
+  issuePlace     String?  @map("issue_place") @db.VarChar(100)
   isCurrent      Boolean  @default(false) @map("is_current")
-  isVerified     Boolean  @default(false) @map("is_verified")
 
-  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  worker         Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("worker_passports")
 }
 
 model WorkerArc {
-  id         String   @id @default(uuid())
-  workerId   String   @map("worker_id")
-  arcNumber  String   @map("arc_number")
-  issueDate  DateTime @map("issue_date")
-  expiryDate DateTime @map("expiry_date")
-  isCurrent  Boolean  @default(false) @map("is_current")
-  isVerified Boolean  @default(false) @map("is_verified")
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workerId       String   @map("worker_id") @db.Uuid
+  arcNumber      String   @map("arc_number") @db.VarChar(50)
+  issueDate      DateTime @map("issue_date") @db.Date
+  expiryDate     DateTime @map("expiry_date") @db.Date
+  isCurrent      Boolean  @default(false) @map("is_current")
 
-  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  worker         Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("worker_arcs")
 }
 
 model Deployment {
-  id                  String  @id @default(uuid())
-  workerId            String  @map("worker_id")
-  employerId          String  @map("employer_id")
-  entryPermitId       String? @map("entry_permit_id") // 關聯到入國引進許可 (EntryPermit)
+  id                  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workerId            String   @map("worker_id") @db.Uuid
+  employerId          String   @map("employer_id") @db.Uuid
+  recruitmentLetterId String?  @map("recruitment_letter_id") @db.Uuid
 
-  // --- 狀態與階段 ---
-  startDate     DateTime  @map("start_date")
-  endDate       DateTime? @map("end_date")
-  status        String    @default("active")        // Enum: active, inactive, transferred, escaped, repatriated
-  serviceStatus String    @default("active_service") @map("service_status") 
-  sourceType    String    @default("direct_hiring") @map("source_type") 
-  processStage  String    @default("recruitment")   @map("process_stage") 
+  startDate           DateTime @map("start_date") @db.Date
+  endDate             DateTime? @map("end_date") @db.Date
+  status              DeploymentStatus @default(active)
+  serviceStatus       ServiceStatus @default(active_service) @map("service_status")
+  sourceType          ManagementSourceType @default(direct_hiring) @map("source_type")
 
-  // --- 工作內容與薪資 ---
-  jobDescription     String?   @map("job_description")
-  jobType            String?   @map("job_type")
-  shift              String?   @map("shift")
-  laborContractType  String?   @map("labor_contract_type")
-  
-  basicSalary        Decimal?  @map("basic_salary")
-  laborInsuranceAmt  Decimal?  @map("labor_insurance_amt")
-  healthInsuranceAmt Decimal?  @map("health_insurance_amt")
+  jobDescription      String?  @map("job_description") @db.Text
+  entryDate           DateTime? @map("entry_date") @db.Date
+  entryReportSerial   String?  @map("entry_report_serial") @db.VarChar(50)
+  flightNumber        String?  @map("flight_number") @db.VarChar(20)
+  flightArrivalDate   DateTime? @map("flight_arrival_date") @db.Date
+  visaLetterNo        String?  @map("visa_letter_no") @db.VarChar(50)
+  jobType             String?  @map("job_type") @db.VarChar(50)
+  shift               String?  @map("shift") @db.VarChar(50)
 
-  // --- 入境與接機資訊 ---
-  entryDate          DateTime? @map("entry_date")
-  entryReportSerial  String?   @map("entry_report_serial") // 入國通報序號
-  entryReportDocNo   String?   @map("entry_report_doc_no") // 入國通報文號
-  entryReportDate    DateTime? @map("entry_report_date")
-  
-  flightNumber       String?   @map("flight_number")
-  flightArrivalDate  DateTime? @map("flight_arrival_date")
-  
-  // --- 簽證資訊 (Visa) ---
-  // 注意：簽證函 (Visa Letter) 與聘僱許可 (Employment Permit) 不同，保留在此
-  visaLetterNo       String?   @map("visa_letter_no") 
-  visaLetterDate     DateTime? @map("visa_letter_date")
-  visaNumber         String?   @map("visa_number") // 簽證貼紙號碼
+  worker              Worker   @relation(fields: [workerId], references: [id])
+  employer            Employer @relation(fields: [employerId], references: [id])
+  recruitmentLetter   EmployerRecruitmentLetter? @relation(fields: [recruitmentLetterId], references: [id])
 
-  // --- [關鍵修改] 聘僱許可 ---
-  // 舊的扁平欄位已移除 (employmentPermitReceiptNo, employmentPermitDate...)
-  // 改用下方的 employmentPermits 關聯
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  // --- Pre-entry Workflow (Pre-entry) ---
-  overseasCheckStatus   String    @default("pending") @map("overseas_check_status") // pending, passed, failed
-  overseasCheckDate     DateTime? @map("overseas_check_date")
-
-  docVerificationStatus String    @default("pending") @map("doc_verification_status") // pending, submitted, verified
-  docSubmissionDate     DateTime? @map("doc_submission_date")
-  docVerifiedDate       DateTime? @map("doc_verified_date")
-  
-  visaStatus            String    @default("pending") @map("visa_status") // pending, applied, issued
-  visaApplicationDate   DateTime? @map("visa_application_date")
-
-  // --- 生活照顧 / 膳宿費 ---
-  foodStatus        String    @default("provided_free") @map("food_status") 
-  foodAmount        Decimal   @default(0) @map("food_amount")
-
-  // --- 異常與結案資訊 (離境/逃跑/轉出) ---
-  terminationReason     String?   @map("termination_reason")
-  terminationNotes      String?   @map("termination_notes")
-  
-  runawayReportDate     DateTime? @map("runaway_report_date")
-  runawayReportDocNo    String?   @map("runaway_report_doc_no") // 逃跑通報文號
-  runawayReportNo       String?   @map("runaway_report_no")     // 逃跑通報序號
-  
-  terminationPermitDate DateTime? @map("termination_permit_date") // 離境備查日
-  terminationPermitNo   String?   @map("termination_permit_no")   // 離境備查文號
-  
-  transferPermitDate    DateTime? @map("transfer_permit_date")    // 轉出核准日
-  transferPermitNo      String?   @map("transfer_permit_no")      // 轉出核准文號
-  
-  fingerprintDate         DateTime? @map("fingerprint_date")
-  replacementLetterNumber String?   @map("replacement_letter_number") 
-  replacementLetterDate   DateTime? @map("replacement_letter_date")
-
-  // --- 系統欄位 ---
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  // --- 關聯設定 ---
-  worker            Worker                     @relation(fields: [workerId], references: [id])
-  employer          Employer                   @relation(fields: [employerId], references: [id])
-  entryPermit       EntryPermit?               @relation(fields: [entryPermitId], references: [id])
-
-  // [新增] 一對多關聯：支援初次申請、展延、補發等多張許可
-  employmentPermits EmploymentPermit[]
-
-  // 其他既有關聯
-  timelines         WorkerTimeline?
-  healthChecks      HealthCheck[]
-  permitDetails     WorkerPermitDetail[]
-  insurances        WorkerInsurance[]
-  bills             Bill[]
-  monthlyFee        MonthlyServiceFee?
-  feeSchedules      FeeSchedule[]
-  transfers         TransferRecord[]
-  studentEvaluations StudentEvaluation[]
+  // Relations
+  timelines           WorkerTimeline?
+  healthChecks        HealthCheck[]
+  permitDetails       WorkerPermitDetail[]
+  insurances          WorkerInsurance[]
 
   @@map("deployments")
 }
 
-// 聘僱許可 (Employment Permit)
-// 支援：初次申請、展延 (Extension)、補發
-model EmploymentPermit {
-  id           String     @id @default(uuid())
-  deploymentId String     @map("deployment_id")
-  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-
-  permitNumber String     @unique @map("permit_number") // 勞動發事字第...號
-  issueDate    DateTime   @map("issue_date")          // 發文日
-  expiryDate   DateTime   @map("expiry_date")         // 許可屆滿日 (算展延提醒用)
-
-  type         String     @default("INITIAL")         // Enum: INITIAL(初次), EXTENSION(展延), REISSUE(補發)
-  status       String     @default("ACTIVE")          // Enum: ACTIVE, EXPIRED, REVOKED
-
-  // 申請流程追蹤 (M343)
-  receiptNumber   String?   @map("receipt_number")     // 收文號 (原 emp_permit_receipt_no)
-  applicationDate DateTime? @map("application_date")   // 申請日 (原 emp_permit_receipt_date)
-  feeAmount       Int       @default(0) @map("fee_amount") // 審查費
-
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("employment_permits")
-}
-
 model PermitDocument {
-  id               String   @id @default(uuid())
-  employerId       String   @map("employer_id")
-  permitNumber     String   @unique @map("permit_number")
-  issueDate        DateTime @map("issue_date")
-  issuingAuthority String?  @map("issuing_authority")
+  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  employerId       String   @map("employer_id") @db.Uuid
+  permitNumber     String   @unique @map("permit_number") @db.VarChar(50)
+  issueDate        DateTime @map("issue_date") @db.Date
+  issuingAuthority String?  @map("issuing_authority") @db.VarChar(100)
 
-  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  employer         Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
   workerPermitDetails WorkerPermitDetail[]
@@ -738,1292 +409,255 @@ model PermitDocument {
 }
 
 model WorkerPermitDetail {
-  id               String   @id @default(uuid())
-  permitDocumentId String   @map("permit_document_id")
-  deploymentId     String   @map("deployment_id")
-  permitType       String   @map("permit_type") // Enum as string
-  startDate        DateTime @map("start_date")
-  endDate          DateTime @map("end_date")
+  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  permitDocumentId String   @map("permit_document_id") @db.Uuid
+  deploymentId     String   @map("deployment_id") @db.Uuid
+  permitType       PermitType @map("permit_type")
+  startDate        DateTime @map("start_date") @db.Date
+  endDate          DateTime @map("end_date") @db.Date
 
-  permitDocument PermitDocument @relation(fields: [permitDocumentId], references: [id], onDelete: Cascade)
-  deployment     Deployment     @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  permitDocument   PermitDocument @relation(fields: [permitDocumentId], references: [id], onDelete: Cascade)
+  deployment       Deployment     @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("worker_permit_details")
 }
 
 model WorkerTimeline {
-  id           String @id @default(uuid())
-  deploymentId String @unique @map("deployment_id")
-
-  entryMedCheckDeadline DateTime? @map("entry_med_check_deadline")
-  empPermitDeadline     DateTime? @map("emp_permit_deadline")
-  arcDeadline           DateTime? @map("arc_deadline")
-
-  medCheck6moDeadline  DateTime? @map("med_check_6mo_deadline")
-  medCheck18moDeadline DateTime? @map("med_check_18mo_deadline")
-  medCheck30moDeadline DateTime? @map("med_check_30mo_deadline")
-
-  residencePermitExpiry DateTime? @map("residence_permit_expiry")
-  passportExpiry        DateTime? @map("passport_expiry")
-
-  renewalWindowStart DateTime? @map("renewal_window_start")
-  renewalWindowEnd   DateTime? @map("renewal_window_end")
-
-  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  deploymentId          String   @unique @map("deployment_id") @db.Uuid
   
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  // 1. Entry Phase Deadlines
+  entryMedCheckDeadline DateTime? @map("entry_med_check_deadline") @db.Date
+  empPermitDeadline     DateTime? @map("emp_permit_deadline") @db.Date
+  arcDeadline           DateTime? @map("arc_deadline") @db.Date
+
+  // 2. Regular Checks (Legacy names preserved, mapped to specific months)
+  medCheck6moDeadline   DateTime? @map("med_check_6mo_deadline") @db.Date // 6 months
+  medCheck18moDeadline  DateTime? @map("med_check_18mo_deadline") @db.Date // 18 months
+  medCheck30moDeadline  DateTime? @map("med_check_30mo_deadline") @db.Date // 30 months
+  
+  // 3. Document Expiries (Data driven)
+  residencePermitExpiry DateTime? @map("residence_permit_expiry") @db.Date
+  passportExpiry        DateTime? @map("passport_expiry") @db.Date
+  
+  // 4. Renewal Phase
+  renewalWindowStart    DateTime? @map("renewal_window_start") @db.Date // End - 4 months
+  renewalWindowEnd      DateTime? @map("renewal_window_end") @db.Date // End - 2 months
+
+  deployment            Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("worker_timelines")
 }
 
 model HealthCheck {
-  id            String    @id @default(uuid())
-  workerId      String    @map("worker_id")
-  deploymentId  String    @map("deployment_id")
-  checkType     String    @map("check_type") // Enum
-  checkDate     DateTime  @map("check_date")
-  hospitalName  String?   @map("hospital_name")
-  status        String    @default("upcoming") // upcoming, notified, scheduled, completed, archived
-  notificationDate DateTime? @map("notification_date")
-  result        String    @default("pending") // pending, pass, fail, needs_recheck
-  reportDate    DateTime? @map("report_date")
-  approvalDate  DateTime? @map("approval_date")
-  approvalDocNo String?   @map("approval_doc_no")
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workerId     String   @map("worker_id") @db.Uuid
+  deploymentId String   @map("deployment_id") @db.Uuid
+  checkType    HealthCheckType @map("check_type")
+  checkDate    DateTime @map("check_date") @db.Date
+  hospitalName String?  @map("hospital_name") @db.VarChar(100)
+  result       HealthCheckResult @default(pending)
+  reportDate   DateTime? @map("report_date") @db.Date
+  failReason   String?  @map("fail_reason") @db.Text
 
-  isRecheckRequired Boolean   @default(false) @map("is_recheck_required")
-  recheckDate       DateTime? @map("recheck_date")
-  recheckResult     String?   @map("recheck_result")
-  treatmentHospital String?   @map("treatment_hospital")
+  worker       Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
-  failReason String? @map("fail_reason")
-
-  worker     Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("health_checks")
 }
 
 model Incident {
-  id            String   @id @default(uuid())
-  workerId      String?  @map("worker_id")
-  employerId    String?  @map("employer_id")
-  description   String
-  severityLevel String   @map("severity_level") // Enum
-  type          String   @default("general") // general, DATA_MISSING
-  status        String   @default("open") // Enum
-  incidentDate  DateTime @default(now()) @map("incident_date")
-
-  isAutoGenerated Boolean @default(false) @map("is_auto_generated")
-  sourceRefId     String? @map("source_ref_id")
-
-  worker   Worker?   @relation(fields: [workerId], references: [id])
-  employer Employer? @relation(fields: [employerId], references: [id])
-  dispute  DisputeRecord?
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workerId      String?  @map("worker_id") @db.Uuid
+  employerId    String?  @map("employer_id") @db.Uuid
+  description   String   @db.Text
+  severityLevel IncidentSeverity @map("severity_level")
+  status        IncidentStatus @default(open)
+  incidentDate  DateTime @default(now()) @map("incident_date") @db.Timestamptz
   
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  isAutoGenerated Boolean @default(false) @map("is_auto_generated")
+  sourceRefId   String?  @map("source_ref_id") @db.Uuid
+  category      String?  @map("category") @db.VarChar(50)
+
+  worker        Worker?   @relation(fields: [workerId], references: [id])
+  employer      Employer? @relation(fields: [employerId], references: [id])
+
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("incidents")
 }
 
 model ServiceAssignment {
-  id             String    @id @default(uuid())
-  employerId     String?   @map("employer_id")
-  workerId       String?   @map("worker_id")
-  internalUserId String    @map("internal_user_id")
-  role           String // Enum
-  startDate      DateTime  @default(now()) @map("start_date")
-  endDate        DateTime? @map("end_date")
-  notes          String?
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  employerId     String?  @map("employer_id") @db.Uuid
+  workerId       String?  @map("worker_id") @db.Uuid
+  internalUserId String   @map("internal_user_id") @db.Uuid
+  role           StaffRoleType
+  startDate      DateTime @default(now()) @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+  notes          String?  @db.Text
 
-  employer     Employer?    @relation(fields: [employerId], references: [id], onDelete: Cascade)
-  worker       Worker?      @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  internalUser StaffProfile? @relation("ServiceAssignedStaff", fields: [internalUserId], references: [id])
+  employer       Employer? @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  worker         Worker?   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  internalUser   InternalUser @relation("ServiceAssignedUser", fields: [internalUserId], references: [id])
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("service_assignments")
 }
 
 model WorkerInsurance {
-  id            String    @id @default(uuid())
-  workerId      String    @map("worker_id")
-  deploymentId  String?   @map("deployment_id")
-  type          String // Enum
-  providerName  String?   @map("provider_name")
-  policyNumber  String?   @map("policy_number")
-  insuredAmount Decimal?  @map("insured_amount")
-  startDate     DateTime  @map("start_date")
-  endDate       DateTime? @map("end_date")
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workerId       String   @map("worker_id") @db.Uuid
+  deploymentId   String?  @map("deployment_id") @db.Uuid
+  type           InsuranceType
+  providerName   String?  @map("provider_name") @db.VarChar(50)
+  policyNumber   String?  @map("policy_number") @db.VarChar(50)
+  insuredAmount  Decimal? @map("insured_amount") @db.Decimal(10,2)
+  startDate      DateTime @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
 
-  applyDate             DateTime? @map("apply_date")
-  effectiveDate         DateTime? @map("effective_date")
-  withdrawApplyDate     DateTime? @map("withdraw_apply_date")
-  withdrawEffectiveDate DateTime? @map("withdraw_effective_date")
+  worker         Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  deployment     Deployment? @relation(fields: [deploymentId], references: [id])
 
-  worker     Worker      @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  deployment Deployment? @relation(fields: [deploymentId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("worker_insurances")
 }
 
 model WorkerAddressHistory {
-  id            String    @id @default(uuid())
-  workerId      String    @map("worker_id")
-  addressType   String    @map("address_type") // Enum
-  addressDetail String    @map("address_detail")
-  startDate     DateTime  @map("start_date")
-  endDate       DateTime? @map("end_date")
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workerId       String   @map("worker_id") @db.Uuid
+  addressType    AddressType @map("address_type")
+  addressDetail  String   @map("address_detail") @db.Text
+  startDate      DateTime @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
 
-  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  worker         Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("worker_address_history")
 }
 
-// --------------------------------------
-// 1. 國內求才 (Job Order) - 申請招募函的前置作業
-// --------------------------------------
 model JobOrder {
-  id            String   @id @default(uuid())
-  employerId    String   @map("employer_id")
-  employer      Employer @relation(fields: [employerId], references: [id])
+  id                  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  employerId          String   @map("employer_id") @db.Uuid
+  orderDate           DateTime @default(now()) @map("order_date") @db.Date
+  requiredWorkers     Int      @map("required_workers")
+  expectedArrivalDate DateTime? @map("expected_arrival_date") @db.Date
+  localRecruitmentDeadline DateTime? @map("local_recruitment_deadline") @db.Date
+  status              JobOrderStatus @default(open)
 
-  // 基本資訊
-  jobType       String   @map("job_type")       // Enum: CARETAKER, FACTORY_WORKER...
-  vacancyCount  Int      @default(1) @map("vacancy_count") // 需求人數
+  employer            Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  createdBy           String?  @map("created_by") @db.Uuid
+  updatedBy           String?  @map("updated_by") @db.Uuid
+  createdByUser       InternalUser? @relation("JobOrderCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser       InternalUser? @relation("JobOrderUpdatedBy", fields: [updatedBy], references: [id])
   
-  // 登記資訊
-  registryDate  DateTime @map("registry_date")  // 求才登記日
-  expiryDate    DateTime @map("expiry_date")    // 有效期限 (通常是登記後60天或90天)
-  centerName    String?  @map("center_name")    // 受理之就服中心 (e.g. 台中就業中心)
-  
-  // 結果 (求才證明)
-  certificateNo String?  @map("certificate_no") // 求才證明序號 (關鍵：申請招募函必備)
-  successCount  Int      @default(0) @map("success_count") // 國內媒合成功人數 (這會扣減可申請移工人數)
-  
-  // 狀態
-  status        String   @default("active")     // active, completed, expired
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  // 關聯：一張求才證明可以申請一張招募函
-  recruitmentLetter RecruitmentLetter?
-  
-  domesticRecruitment DomesticRecruitment?
-
-  interviews Interview[]
-  jobRequisition JobRequisition?
-
-  createdBy     String?       @map("created_by")
-  updatedBy     String?       @map("updated_by")
-  createdByUser SystemAccount? @relation("JobOrderCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser SystemAccount? @relation("JobOrderUpdatedBy", fields: [updatedBy], references: [id])
-
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  // Relations
+  interviews          Interview[]
 
   @@map("job_orders")
 }
 
-model JobRequisition {
-  id            String   @id @default(uuid())
-  jobOrderId    String   @unique @map("job_order_id")
-  jobOrder      JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
-
-  // 詳細需求 (Job Spec)
-  skills            String?  @map("skills")             // 專業技能要求
-  salaryStructure   String?  @map("salary_structure")   // 薪資結構說明
-  leavePolicy       String?  @map("leave_policy")       // 休假與加班方式
-  workHours         String?  @map("work_hours")         // 工作時間/排班
-  accommodation     String?  @map("accommodation")       // 膳宿提供細節
-  otherRequirements String?  @map("other_requirements") // 其他福利或要求
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("job_requisitions")
-}
-
-// --------------------------------------
-// 2. 招募函 (Recruitment Letter) - 核心額度來源
-// --------------------------------------
-model RecruitmentLetter {
-  id            String   @id @default(uuid())
-  employerId    String   @map("employer_id")
-  employer      Employer @relation(fields: [employerId], references: [id])
-  
-  // 來源關聯
-  jobOrderId    String?  @unique @map("job_order_id") // 關聯到國內求才
-  jobOrder      JobOrder? @relation(fields: [jobOrderId], references: [id])
-
-  // --- A. 申請階段 (Application Phase) ---
-  applicationType String   @default("INITIAL")   // INITIAL(初次), REISSUE(重新), SUPPLEMENTARY(增額)
-  applicationDate DateTime? @map("application_date") // 送件日
-  receiptNo       String?  @map("receipt_no")    // 收文號 (勞動部收文)
-  
-  // --- B. 核准階段 (Approval Phase) ---
-  letterNumber    String   @unique @map("letter_number") // 招募函文號 (勞動發事字第...)
-  issueDate       DateTime @map("issue_date")    // 發文日
-  expiryDate      DateTime @map("expiry_date")   // 函文有效期限 (通常為發文日+1年 or 6個月)
-  
-  // --- C. 額度控管 (Quota Management) ---
-  approvedQuota   Int      @default(0) @map("approved_quota") // 核准名額
-  usedQuota       Int      @default(0) @map("used_quota")     // 已使用名額 (已申請入國引進)
-  revokedQuota    Int      @default(0) @map("revoked_quota")  // 放棄/被廢止名額
-
-  // Information for M343 (Recruitment Application)
-  reviewFeeReceiptNo  String?   @map("review_fee_receipt_no")
-  reviewFeeDate       DateTime? @map("review_fee_date")
-  reviewFeeAmount     Int?      @default(0) @map("review_fee_amount")
-
-  // --- D. 備註與附件 ---
-  notes           String?
-  attachmentPath  String?  @map("attachment_path") // 掃描檔路徑
-
-  // 關聯：一張招募函可以申請多張「入國引進許可」
-  entryPermits    EntryPermit[]
-
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("recruitment_letters")
-}
-
-// --------------------------------------
-// 3. 入國引進許可 (Entry Permit) - 消耗招募函額度
-// --------------------------------------
-// (這部分你原本可能有，我稍微補強關聯)
-model EntryPermit {
-  id                  String   @id @default(uuid())
-  recruitmentLetterId String   @map("recruitment_letter_id")
-  recruitmentLetter   RecruitmentLetter @relation(fields: [recruitmentLetterId], references: [id])
-  
-  permitNo            String   @unique @map("permit_no") // 入國引進函號
-  issueDate           DateTime @map("issue_date")
-  expiryDate          DateTime @map("expiry_date") // 簽證要在這之前辦
-
-  workerCount         Int      @default(1) @map("worker_count") // 這張函核准幾人 (通常是一批)
-  usedCount           Int      @default(0) @map("used_count")   // 已使用人数
-
-  // 申請流程追蹤
-  receiptNo           String?   @map("receipt_no")        // 收文號
-  applicationDate     DateTime? @map("application_date")  // 送件日/申請日
-  feeAmount           Int       @default(0) @map("fee_amount") // 審查費金額
-  trNumber            String?   @map("tr_number")         // 收據單號
-  attachmentPath      String?   @map("attachment_path")   // 檔案路徑
-
-  // 關聯：這張函用在哪些移工身上
-  deployments         Deployment[]
-
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("entry_permits")
-}
-
-model DomesticRecruitment {
-  id                     String   @id @default(uuid())
-  jobOrderId             String   @unique @map("job_order_id")
-  
-  registryDate           DateTime @map("registry_date") // 求才登記日
-  registryNumber         String?  @map("registry_number") // 求才證明序號
-  
-  laborViolationCertificateDate DateTime? @map("labor_violation_certificate_date") // 無違法證明申請日
-  noViolationCertificateNumber  String?   @map("no_violation_certificate_number") // Kept for cert number
-  
-  jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("domestic_recruitments")
-}
-
 model Interview {
-  id            String   @id @default(uuid())
-  jobOrderId    String   @map("job_order_id")
-  interviewDate DateTime @map("interview_date")
-  location      String?
-  interviewer   String?
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  jobOrderId     String   @map("job_order_id") @db.Uuid
+  interviewDate  DateTime @map("interview_date") @db.Timestamptz
+  location       String?  @db.Text
+  interviewer    String?  @db.VarChar(100)
 
-  jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  jobOrder       JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  candidates InterviewCandidate[]
+  candidates     InterviewCandidate[]
 
   @@map("interviews")
 }
 
 model InterviewCandidate {
-  id          String  @id @default(uuid())
-  interviewId String  @map("interview_id")
-  workerId    String  @map("worker_id")
-  result      String  @default("pending") // Enum
-  remarks     String?
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  interviewId  String   @map("interview_id") @db.Uuid
+  workerId     String   @map("worker_id") @db.Uuid
+  result       CandidateResult @default(pending)
+  remarks      String?  @db.Text
 
-  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  worker    Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  worker       Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([interviewId, workerId])
   @@map("interview_candidates")
 }
 
 model SystemComment {
-  id              String @id @default(uuid())
-  recordId        String @map("record_id")
-  recordTableName String @map("record_table_name")
-  content         String
-
-  createdBy String       @map("created_by")
-  author    SystemAccount @relation("CommentAuthor", fields: [createdBy], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  recordId        String   @map("record_id") @db.Uuid
+  recordTableName String   @map("record_table_name") @db.VarChar(50)
+  content         String   @db.Text
   
-  // System Audit Fields
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
 
-  mentions CommentMention[]
+  createdBy       String   @map("created_by") @db.Uuid
+  author          InternalUser @relation("CommentAuthor", fields: [createdBy], references: [id])
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  mentions        CommentMention[]
 
   @@index([recordTableName, recordId])
   @@map("system_comments")
 }
 
 model CommentMention {
-  id              String  @id @default(uuid())
-  commentId       String  @map("comment_id")
-  mentionedUserId String  @map("mentioned_user_id")
-  isRead          Boolean @default(false) @map("is_read")
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  commentId       String   @map("comment_id") @db.Uuid
+  mentionedUserId String   @map("mentioned_user_id") @db.Uuid
+  isRead          Boolean  @default(false) @map("is_read")
 
-  comment SystemComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    SystemAccount @relation("MentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+  comment         SystemComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user            InternalUser  @relation("MentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([commentId, mentionedUserId])
-  
-  // System Audit Fields
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-  
   @@map("comment_mentions")
 }
 
-model FeeItem {
-  id            String  @id @default(uuid())
-  name          String
-  defaultAmount Decimal @map("default_amount")
-  category      String // Enum: service_fee, placement_fee, official_fee, other
-  nationality   String? // Optional: VN, ID, PH, TH
-  description   String?
-  isZeroFeeSubject Boolean @default(false) @map("is_zero_fee_subject")
-
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdAt  DateTime @default(now()) @map("created_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("fee_items")
-}
-
-model InsuranceTier {
-  id            String   @id @default(uuid())
-  grade         Int
-  minSalary     Decimal  @map("min_salary")
-  maxSalary     Decimal  @map("max_salary")
-  laborFee      Decimal  @map("labor_fee")
-  healthFee     Decimal  @map("health_fee")
-  effectiveDate DateTime @default(now()) @map("effective_date")
-  isActive      Boolean  @default(true) @map("is_active")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("insurance_tiers")
-}
-
-model Bill {
-  id        String @id @default(uuid())
-  billNo    String @unique @map("bill_no")
-  payerType String @map("payer_type") // Enum: worker, employer
-
-  workerId     String? @map("worker_id")
-  employerId   String? @map("employer_id")
-  deploymentId String? @map("deployment_id")
-
-  billingDate DateTime @map("billing_date")
-  dueDate     DateTime @map("due_date")
-  totalAmount Decimal  @map("total_amount")
-  paidAmount  Decimal  @default(0) @map("paid_amount")
-  balance     Decimal  @default(0)
-  previousBalance Decimal @default(0) @map("previous_balance")
-
-  year               Int      @default(0) @map("year")
-  month              Int      @default(0) @map("month")
-  billingPeriodStart DateTime @default(now()) @map("billing_period_start")
-  billingPeriodEnd   DateTime @default(now()) @map("billing_period_end")
-
-  status        String  @default("draft") // Enum: draft, issued, paid, overdue, cancelled
-  invoiceNumber String? @map("invoice_number")
-
-  // Relations
-  worker     Worker?     @relation(fields: [workerId], references: [id])
-  employer   Employer?   @relation(fields: [employerId], references: [id])
-  deployment Deployment? @relation(fields: [deploymentId], references: [id])
-  items        BillItem[]
-  feeSchedules FeeSchedule[]
-  invoice      Invoice?
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("bills")
-}
-
-model DocumentTemplate {
-  id          String  @id @default(uuid())
-  name        String
-  category    String // Enum: entry, medical, transfer, termination
-  filePath    String  @map("file_path")
-  description String?
-  isActive    Boolean @default(true) @map("is_active")
-  nationality String? // Optional: VN, ID, PH, TH
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("document_templates")
-}
-
-model BillItem {
-  id          String  @id @default(uuid())
-  billId      String  @map("bill_id")
-  description String
-  amount      Decimal
-  feeCategory String  @map("fee_category") // Enum
-  
-  complianceOverrideReason String? @map("compliance_override_reason")
-  isOverridden             Boolean @default(false) @map("is_overridden")
-
-  bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
-  advancePayment AdvancePayment?
-
-  @@map("bill_items")
-
-  // System Audit Fields
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-}
-
-model MonthlyServiceFee {
-  id           String @id @default(uuid())
-  deploymentId String @unique @map("deployment_id")
-
-  amountYear1 Decimal @default(1800) @map("amount_year_1")
-  amountYear2 Decimal @default(1700) @map("amount_year_2")
-  amountYear3 Decimal @default(1500) @map("amount_year_3")
-  
-  accommodationFee Decimal @default(0) @map("accommodation_fee")
-
-  lastBilledDate DateTime? @map("last_billed_date")
-
-  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdAt  DateTime @default(now()) @map("created_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("monthly_service_fees")
-}
-
-model FeeSchedule {
-  id              String   @id @default(uuid())
-  deploymentId    String   @map("deployment_id")
-  installmentNo   Int      @map("installment_no")
-  scheduleDate    DateTime @map("schedule_date")
-  expectedAmount  Decimal  @map("expected_amount")
-  paidAmount      Decimal  @default(0) @map("paid_amount")
-  status          String   @default("pending") // pending, partial, paid, overdue
-  description     String?
-  
-  billId          String?  @map("bill_id")
-  
-  deployment      Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  bill            Bill?      @relation(fields: [billId], references: [id]) 
-
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("fee_schedules")
-}
-
-// =========================================
-// 宿舍管理模組 (Dormitory Management)
-// =========================================
-
-model Dormitory {
-  id                   String    @id @default(uuid())
-  name                 String
-  address              String
-  capacity             Int       @default(0)
-  currentOccupancy     Int       @default(0) @map("current_occupancy")
-  landlordName         String?   @map("landlord_name")
-  landlordPhone        String?   @map("landlord_phone")
-  accommodationType    String?   @map("accommodation_type") // e.g. Factory Dorm, Rental
-  safetyInspectionDate DateTime? @map("safety_inspection_date")
-  
-  // New Advanced Management Fields
-  primaryManager    String?   @map("primary_manager") // "我司", "他仲", "雇主"
-  totalArea         Decimal?  @map("total_area") // Total area in m²
-  buildingUseType   String?   @map("building_use_type") // Building permit classification e.g. "H-1", "H-2", "Factory"
-  fireSafetyExpiry  DateTime? @map("fire_safety_expiry") // Fire safety certification expiry
-
-  // Compliance Fields for Living Care Plan
-  bathroomCount     Int       @default(0) @map("bathroom_count")
-  waterHeaterCount  Int       @default(0) @map("water_heater_count")
-  isFactorySeparated Boolean  @default(true) @map("is_factory_separated")
-
-  // Safety Equipment
-  hasFireExtinguisher Boolean @default(true) @map("has_fire_extinguisher")
-  hasFireAlarm        Boolean @default(true) @map("has_fire_alarm")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  // Relations
-  rooms       DormRoom[]
-  workers     Worker[]
-  leases      Lease[]
-  equipment   DormEquipment[]
-  maintenance MaintenanceLog[]
-
-  @@map("dormitories")
-}
-
-model DormRoom {
-  id               String  @id @default(uuid())
-  dormitoryId      String  @map("dormitory_id")
-  roomNumber       String  @map("room_number") // e.g. "201", "A-1"
-  capacity         Int     @default(0)
-  currentHeadCount Int     @default(0) @map("current_head_count")
-  gender           String? // Enum: male, female, mixed
-  floor            Int?
-  
-  // New Advanced Management Fields
-  area                Decimal? // Room area in m² (critical for compliance)
-  accommodationType   String?  @map("accommodation_type") // "套房", "雅房"
-
-  dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
-
-  // Relations
-  beds   DormBed[]
-  meters DormMeter[]
-
-  @@map("dorm_rooms")
-
-  // System Audit Fields
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-}
-
-model DormBed {
-  id      String @id @default(uuid())
-  roomId  String @map("room_id")
-  bedCode String @map("bed_code") // e.g. "1", "A", "Upper-L"
-  status  String @default("vacant") // Enum: vacant, occupied, maintenance
-
-  room   DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  worker Worker?  // One-to-One: defined in Worker side as relation
-
-  @@map("dorm_beds")
-
-  // System Audit Fields
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-}
-
-// 水電錶與抄表
-model DormMeter {
-  id          String  @id @default(uuid())
-  roomId      String  @map("room_id")
-  meterName   String  @map("meter_name") // e.g. "201冷氣", "3F總水錶"
-  meterType   String  @map("meter_type") // Enum: electricity, water, gas
-  ratePerUnit Decimal @default(5.0) @map("rate_per_unit")
-
-  room DormRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-
-  // Relations
-  readings MeterReading[]
-
-  @@map("dorm_meters")
-
-  // System Audit Fields
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-}
-
-model MeterReading {
-  id           String   @id @default(uuid())
-  meterId      String   @map("meter_id")
-  readingDate  DateTime @map("reading_date")
-  readingValue Decimal  @map("reading_value")
-  usage        Decimal // usage = current - prev
-  cost         Decimal // cost = usage * rate
-  isBilled     Boolean  @default(false) @map("is_billed")
-
-  meter DormMeter @relation(fields: [meterId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("meter_readings")
-}
-
-model AgencyCompany {
-  id                String   @id @default(uuid())
-  name              String
-  licenseNo         String   @map("license_no")
-  taxId             String   @map("tax_id")
-  responsiblePerson String   @map("responsible_person")
-
-  // Bilingual Info
-  nameEn            String?  @map("name_en")
-  addressEn         String?  @map("address_en")
-  representativeEn  String?  @map("representative_en")
-  address           String?
-  phone             String?
-  fax               String?
-  email             String?
-  
-  // Banking Info
-  bankName          String?  @map("bank_name")
-  bankCode          String?  @map("bank_code")
-  bankBranch        String?  @map("bank_branch")
-  bankAccountNo     String?  @map("bank_account_no")
-  bankAccountName   String?  @map("bank_account_name")
-
-  // Document Assets
-  sealLargeUrl      String?  @map("seal_large_url")
-  sealSmallUrl      String?  @map("seal_small_url")
-  logoUrl           String?  @map("logo_url")
-
-  // Compliance
-  agencyCode        String?  @map("agency_code")
-  licenseExpiryDate DateTime? @map("license_expiry_date")
-
-  isDefault         Boolean  @default(false) @map("is_default")
-  
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  // Relations
-  employers         Employer[]
-
-  @@map("agency_companies")
-}
-
-model TransferRecord {
-  id           String   @id @default(uuid())
-  workerId     String   @map("worker_id")
-  deploymentId String   @map("deployment_id") // The deployment ending due to transfer
-  oldEmployerId String  @map("old_employer_id")
-  newEmployerId String? @map("new_employer_id")
-
-  status       String   @default("pending") // negotiating, agreed, mol_issued, completion_pending, completed, cancelled
-  
-  agreementDate       DateTime? @map("agreement_date") // 雙方/三方合意
-  molLetterNumber     String?   @map("mol_letter_number") // 廢聘號
-  molLetterDate       DateTime? @map("mol_letter_date")  // 廢聘日
-  
-  newEmployerRegDate  DateTime? @map("new_employer_reg_date") // 新雇主登記
-  transferDate        DateTime? @map("transfer_date") // 生效日
-
-  notes String?
-
-  worker       Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  deployment   Deployment @relation(fields: [deploymentId], references: [id])
-  oldEmployer  Employer   @relation("TransferOldEmployer", fields: [oldEmployerId], references: [id])
-  newEmployer  Employer?  @relation("TransferNewEmployer", fields: [newEmployerId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("transfer_records")
-}
-
-model ForeignAgency {
-  id            String   @id @default(uuid())
-  name          String
-  chineseName   String?  @map("chinese_name")
-  country       String   // Enum: VN, ID, PH, TH
-  code          String?
-  contactPerson String?  @map("contact_person")
-  email         String?
-  phone         String?
-
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  // Relations
-  workers       Worker[]
-
-  @@map("foreign_agencies")
-}
-
-model DisputeRecord {
-  id              String   @id @default(uuid())
-  incidentId      String   @unique @map("incident_id")
-  
-  source          String   // 1955, Bureau, Internal
-  complaintType   String   @map("complaint_type") // Wage, Dorm, Management
-  
-  coordinatorId   String?  @map("coordinator_id")
-  coordinator     StaffProfile? @relation("DisputeCoordinator", fields: [coordinatorId], references: [id])
-
-  status          String   @default("open") 
-
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  incident        Incident @relation(fields: [incidentId], references: [id])
-  resolutions     ResolutionLog[]
-
-  @@map("dispute_records")
-}
-
-model ResolutionLog {
-  id              String   @id @default(uuid())
-  disputeRecordId String   @map("dispute_record_id")
-  logDate         DateTime @default(now()) @map("log_date")
-  description     String
-  outcome         String?
-  
-  handlerId       String?  @map("handler_id")
-  handler         StaffProfile? @relation("ResolutionHandler", fields: [handlerId], references: [id])
-
-  disputeRecord   DisputeRecord @relation(fields: [disputeRecordId], references: [id], onDelete: Cascade)
-
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("resolution_logs")
-}
-
-model AdvancePayment {
-  id          String   @id @default(uuid())
-  payerId     String   @map("payer_id")
-  workerId    String?  @map("worker_id") // Usually associated with a worker/job
-  description String
-  amount      Decimal
-  receiptImage String? @map("receipt_image")
-  paymentDate DateTime @default(now()) @map("payment_date")
-  
-  status      String   @default("pending") // pending, approved, reimbursed, billed, rejected
-  
-  billItemId  String?  @unique @map("bill_item_id")
-  billItem    BillItem? @relation(fields: [billItemId], references: [id])
-
-  payer       StaffProfile @relation("StaffAdvancePayments", fields: [payerId], references: [id])
-  worker      Worker?      @relation(fields: [workerId], references: [id])
-
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("advance_payments")
-}
-
-model Invoice {
-  id            String   @id @default(uuid())
-  billId        String   @unique @map("bill_id")
-  
-  invoiceNumber String   @unique @map("invoice_number")
-  invoiceDate   DateTime @default(now()) @map("invoice_date") // Issued Date
-  
-  status        String   @default("issued") // issued, void, cancelled
-  
-  // ECPay / E-Invoice Specifics
-  randomCode    String?  @map("random_code") // RelNum or Random
-  totalAmount   Decimal  @map("total_amount")
-  
-  buyerName     String?  @map("buyer_name")
-  buyerIdentifier String? @map("buyer_identifier") // Tax ID
-  
-  carrierType   String?  @map("carrier_type")
-  carrierId     String?  @map("carrier_id")
-  donationCode  String?  @map("donation_code")
-  printMark     String?  @default("N") @map("print_mark")
-
-  // Relations
-  bill          Bill     @relation(fields: [billId], references: [id])
-
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("invoices")
-}
-
-model Lease {
-  id                  String    @id @default(uuid())
-  dormId              String    @map("dorm_id")
-  vendorId            String?   @map("vendor_id") // Landlord/Vendor ID
-  
-  contractItem        String    @map("contract_item") // Contract description
-  payer               String    // Who pays: "我司", "雇主", etc.
-  
-  startDate           DateTime  @map("start_date")
-  endDate             DateTime? @map("end_date")
-  
-  monthlyRent         Decimal   @map("monthly_rent")
-  deposit             Decimal?  @default(0)
-  isUtilitiesIncluded Boolean   @default(false) @map("is_utilities_included")
-  
-  notes               String?
-  
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-  
-  // Relations
-  dormitory Dormitory @relation(fields: [dormId], references: [id], onDelete: Cascade)
-  
-  @@map("leases")
-}
-
-model DormEquipment {
-  id          String   @id @default(uuid())
-  dormId      String   @map("dorm_id")
-  
-  name        String
-  category    String   // "冷氣", "飲水機", "洗衣機", etc.
-  brandModel  String?  @map("brand_model")
-  location    String?  // "201房", "公共區域"
-  status      String   @default("active") // active, maintenance, retired
-  
-  // Automated Scheduling Fields
-  maintenanceIntervalMonths  Int?      @map("maintenance_interval_months") // e.g., 6 months
-  complianceIntervalMonths   Int?      @map("compliance_interval_months") // e.g., 3 months for water quality
-  lastMaintenanceDate        DateTime? @map("last_maintenance_date")
-  nextMaintenanceDate        DateTime? @map("next_maintenance_date") // Auto-calculated
-  
-  purchaseDate   DateTime? @map("purchase_date")
-  warrantyExpiry DateTime? @map("warranty_expiry")
-  
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-  
-  // Relations
-  dormitory       Dormitory        @relation(fields: [dormId], references: [id], onDelete: Cascade)
-  maintenanceLogs MaintenanceLog[]
-  
-  @@map("dorm_equipment")
-}
-
-model MaintenanceLog {
-  id          String   @id @default(uuid())
-  equipmentId String?  @map("equipment_id") // Optional - can be general dorm maintenance
-  dormId      String   @map("dorm_id")
-  
-  itemType    String   @map("item_type") // "維修", "保養", "更換耗材"
-  description String
-  
-  reportedBy       String?   @map("reported_by") // Who reported the issue
-  notificationDate DateTime? @map("notification_date") // When was it reported
-  completionDate   DateTime? @map("completion_date") // When was it completed
-  
-  cost        Decimal?  @default(0)
-  payer       String?   // "我司", "雇主", "廠商"
-  status      String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
-  
-  invoiceInfo String?   @map("invoice_info") // Invoice number or reference
-  photoPaths  String?   @map("photo_paths") // JSON array of photo URLs
-  
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-  
-  // Relations
-  dormitory Dormitory      @relation(fields: [dormId], references: [id], onDelete: Cascade)
-  equipment DormEquipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
-  
-  @@map("maintenance_logs")
-}
-
-model Lead {
-  id                  String   @id @default(uuid())
-  companyName         String?  @map("company_name")
-  contactPerson       String?  @map("contact_person")
-  jobTitle            String?  @map("job_title")
-  phone               String?
-  mobile              String?
-  email               String?
-  lineId              String?  @map("line_id")
-  address             String?
-  taxId               String?  @map("tax_id")
-  arcId               String?  @map("arc_id") // Alien Resident Certificate ID
-  // Business Info
-  status              String   @default("NEW") // NEW, CONTACTED, MEETING, NEGOTIATING, WON, LOST
-  convertedEmployerId String?  @unique @map("converted_employer_id")
-  convertedEmployer   Employer? @relation(fields: [convertedEmployerId], references: [id])
-
-  source              String?
-  estimatedWorkerCount Int?    @map("estimated_worker_count")
-  industry            String?
-  
-  assignedTo          String?  @map("assigned_to")
-  assignedUser        StaffProfile? @relation("LeadAssigned", fields: [assignedTo], references: [id])
-
-  lastContactDate     DateTime? @map("last_contact_date")
-  nextFollowUpDate    DateTime? @map("next_follow_up_date")
-
-  interactions        LeadInteraction[]
-
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("leads")
-}
-
-model LeadInteraction {
-  id           String   @id @default(uuid())
-  leadId       String   @map("lead_id") // One-to-Many
-  type         String   // Call, Visit, Line, Email
-  summary      String
-  detailedNotes String? @map("detailed_notes")
-  outcome      String?
-  date         DateTime @default(now())
-
-  lead         Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("lead_interactions")
-}
-
-model TaxConfig {
-  id        String   @id @default(uuid())
-  year      Int      @unique
-  
-  // Minimum Wage Parameters
-  minWage                    Int     @map("min_wage") // e.g., 27470 for 2024
-  minWageThresholdMultiplier Decimal @default(1.5) @map("min_wage_threshold_multiplier")
-  
-  // Deductions and Exemptions
-  standardDeduction  Int @map("standard_deduction")   // 標準扣除額
-  salaryDeduction    Int @map("salary_deduction")     // 薪資所得特別扣除額
-  personalExemption  Int @map("personal_exemption")   // 免稅額
-  
-  // Tax Rates
-  taxRateResident       Decimal @map("tax_rate_resident")         // 5% for residents
-  nonResidentLowRate    Decimal @map("non_resident_low_rate")     // 6% for low income
-  nonResidentHighRate   Decimal @map("non_resident_high_rate")    // 18% for high income
-  
-  // Metadata
-  effectiveDate DateTime  @map("effective_date")  // When this config becomes active
-  notes         String?                           // Admin notes about changes
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-  
-  @@map("tax_configs")
-}
 
 model Attachment {
-  id          String   @id @default(uuid())
-  fileName    String   @map("file_name")
-  fileType    String   @map("file_type") // MIME type
-  storageKey  String   @map("storage_key") // MinIO object path
-  bucketName  String   @map("bucket_name")
-  size        Int      // Bytes
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  refId     String   @map("ref_id") @db.Uuid
+  refTable  String   @map("ref_table") @db.VarChar(50)
+
+  filePath  String   @map("file_path") @db.Text
+  fileName  String   @map("file_name") @db.VarChar(255)
+  fileType  String?  @map("file_type") @db.VarChar(100)
   
-  // Relations (Optional, for linking to entities)
-  workerId    String?  @map("worker_id")
-  worker      Worker?  @relation(fields: [workerId], references: [id])
+  uploaderId String? @map("uploader_id") @db.Uuid
+  uploadedAt DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
 
-  serviceContractId String? @map("service_contract_id")
-  serviceContract   ServiceContract? @relation(fields: [serviceContractId], references: [id])
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
+  @@index([refTable, refId])
   @@map("attachments")
-}
-
-model ServiceContract {
-  id              String   @id @default(uuid())
-  employerId      String   @map("employer_id")
-  employer        Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
-
-  contractNumber  String?  @map("contract_number") // 合約編號
-  type            String   @default("recruitment") // recruitment, management, other
-  
-  startDate       DateTime @map("start_date")
-  endDate         DateTime @map("end_date")
-  
-  serviceFee      Decimal  @default(0) @map("service_fee") // 服務費總額/月費
-  signedDate      DateTime? @map("signed_date")
-  
-  status          String   @default("active") // draft, active, expired, terminated
-  
-  notes           String?
-  
-  attachments     Attachment[]
-
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // System Audit Fields
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
-  deletedAt  DateTime? @map("deleted_at")
-
-  @@map("service_contracts")
 }
