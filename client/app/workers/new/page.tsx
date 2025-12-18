@@ -1,24 +1,46 @@
-"use client";
+'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
-import WorkerWizard from '@/components/workers/WorkerWizard';
+import PageContainer from '@/components/layout/PageContainer';
+import WorkerForm from '@/components/workers/WorkerForm';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export default function NewWorkerPage() {
-    return (
-        <div className="p-8 max-w-5xl mx-auto">
-            <div className="mb-6 flex items-center gap-4">
-                <Link href="/workers" className="p-2 hover:bg-slate-100 rounded-full transition">
-                    <ChevronLeft size={24} className="text-slate-600" />
-                </Link>
-                <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-slate-900">新增移工 (New Worker Registration)</h1>
-                    <p className="text-slate-500 text-sm">Create a new worker profile or add deployment to existing worker.</p>
-                </div>
-            </div>
+    const router = useRouter();
 
-            <WorkerWizard />
-        </div>
+    const handleSubmit = async (data: any) => {
+        const res = await fetch('/api/workers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || '建立失敗');
+        }
+
+        const worker = await res.json();
+        toast.success('外勞建檔成功');
+        router.push(`/workers/${worker.id}`);
+    };
+
+    const handleCancel = () => {
+        router.push('/workers');
+    };
+
+    return (
+        <PageContainer
+            title="新增移工"
+            subtitle="建立新的外籍勞工檔案或新增派遣記錄"
+            showBack
+            breadcrumbs={[
+                { label: '首頁', href: '/' },
+                { label: '外勞管理', href: '/workers' },
+                { label: '新增移工' }
+            ]}
+        >
+            <WorkerForm onSubmit={handleSubmit} onCancel={handleCancel} />
+        </PageContainer>
     );
 }

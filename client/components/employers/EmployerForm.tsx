@@ -1,18 +1,24 @@
+'use client';
 
-"use client";
-
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Save, Copy, Building, User, FileText, Settings, X, Building2, Globe } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import FormSection from '@/components/layout/FormSection';
 import ComplianceSelector from '@/components/employers/ComplianceSelector';
 import { isValidGUINumber, isValidNationalID } from '@/utils/validation';
+import { Building, User, FileText, Settings, Building2, Globe, Copy, Save } from 'lucide-react';
+import { toast } from 'sonner';
 
-// --- Validation Schema ---
+// Validation Schema
 const employerSchema = z.object({
     companyName: z.string().min(1, '雇主/公司名稱為必填'),
-    // 先定義為字串，稍後在 superRefine 進行邏輯檢查
     taxId: z.string().min(1, '此欄位為必填'),
     phoneNumber: z.string().optional(),
     faxNumber: z.string().optional(),
@@ -20,10 +26,10 @@ const employerSchema = z.object({
 
     responsiblePerson: z.string().optional(),
     responsiblePersonIdNo: z.string().optional(),
-    responsiblePersonDob: z.string().optional(), // Date string YYYY-MM-DD
+    responsiblePersonDob: z.string().optional(),
     responsiblePersonAddress: z.string().optional(),
 
-    category: z.string(), // MANUFACTURING, HOME_CARE, INSTITUTION
+    category: z.string(),
 
     // Manufacturing
     factoryRegistrationNo: z.string().optional(),
@@ -39,23 +45,19 @@ const employerSchema = z.object({
     institutionCode: z.string().optional(),
     bedCount: z.union([z.string(), z.number()]).optional(),
 
-    address: z.string().optional(), // Company Address
+    address: z.string().optional(),
     billAddress: z.string().optional(),
 
-    // Future expansion
     agencyCompanyId: z.string().optional(),
+    allocationRate: z.string().optional(),
+    complianceStandard: z.string().optional(),
+    zeroFeeEffectiveDate: z.string().optional(),
 
-    // New validation fields
-    allocationRate: z.string().optional(), // 0.10, 0.15 etc.
-    complianceStandard: z.string().optional(), // RBA, IWAY, NONE
-    zeroFeeEffectiveDate: z.string().optional(), // YYYY-MM-DD
-
-    // Bilingual Info
+    // Bilingual
     companyNameEn: z.string().optional(),
     addressEn: z.string().optional(),
     responsiblePersonEn: z.string().optional(),
 }).superRefine((data, ctx) => {
-    // 邏輯分流：家庭看護 (Home Care) 驗證身分證，其他 (製造業/機構) 驗證統編
     if (data.category === 'HOME_CARE') {
         if (!isValidNationalID(data.taxId)) {
             ctx.addIssue({
@@ -65,7 +67,6 @@ const employerSchema = z.object({
             });
         }
     } else {
-        // 製造業、機構 -> 驗證統編
         if (!isValidGUINumber(data.taxId)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
@@ -81,406 +82,380 @@ type EmployerFormData = z.infer<typeof employerSchema>;
 interface EmployerFormProps {
     initialData?: Partial<EmployerFormData>;
     onSubmit: (data: EmployerFormData) => Promise<void>;
-    isEdit?: boolean;
+    onCancel?: () => void;
+    isLoading?: boolean;
 }
 
-export default function EmployerForm({ initialData, onSubmit, isEdit = false }: EmployerFormProps) {
-    const [activeTab, setActiveTab] = useState(0);
-    const [isLoading, setIsLoading] = useState(false);
+/**
+ * Refactored EmployerForm using FormSection and landscape optimization
+ * No header/layout - those are handled by PageContainer
+ */
+export default function EmployerForm({
+    initialData,
+    onSubmit,
+    onCancel,
+    isLoading = false
+}: EmployerFormProps) {
+    const [activeTab, setActiveTab] = useState('basic');
+    const isEditMode = !!initialData;
 
-    const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<EmployerFormData>({
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+        setValue,
+        watch
+    } = useForm<EmployerFormData>({
         resolver: zodResolver(employerSchema),
         defaultValues: initialData || {
-            category: 'MANUFACTURING', // Default
+            category: 'MANUFACTURING',
             companyName: '',
             taxId: '',
-            address: '',
-            billAddress: '',
-            phoneNumber: '',
-            faxNumber: '',
-            industryType: '',
-            responsiblePerson: '',
-            responsiblePersonIdNo: '',
-            responsiblePersonDob: '',
-            responsiblePersonAddress: '',
-            factoryRegistrationNo: '',
-            laborInsuranceNo: '',
-            patientName: '',
-            patientIdNo: '',
-            careAddress: '',
-            relationship: '',
-            institutionCode: '',
-            bedCount: '',
-            allocationRate: '',
-            complianceStandard: 'NONE',
-            zeroFeeEffectiveDate: ''
+            complianceStandard: 'NONE'
         }
     });
 
-    const handleFormSubmit = async (data: EmployerFormData) => {
-        setIsLoading(true);
+    const selectedCategory = watch('category');
+
+    const onSubmitForm = async (data: EmployerFormData) => {
         try {
             await onSubmit(data);
-        } catch (error) {
-            console.error(error);
-            alert('儲存失敗');
-        } finally {
-            setIsLoading(false);
+            toast.success(isEditMode ? '更新成功' : '建立成功');
+        } catch (error: any) {
+            toast.error(error.message || '操作失敗');
         }
     };
 
     const copyAddressToBilling = () => {
         const addr = watch('address');
         setValue('billAddress', addr);
+        toast.success('已複製地址');
     };
-
-    const [showWizard, setShowWizard] = useState(!isEdit); // Show wizard if creating new
-    const selectedCategory = watch('category');
-
-    const handleCategorySelect = (cat: string) => {
-        setValue('category', cat);
-        setShowWizard(false);
-    };
-
-    if (showWizard) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-8">
-                <div className="max-w-4xl w-full">
-                    <h1 className="text-3xl font-bold text-slate-900 text-center mb-12">請選擇雇主類型 (Select Employer Category)</h1>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Manufacturing */}
-                        <button
-                            type="button"
-                            onClick={() => handleCategorySelect('MANUFACTURING')}
-                            className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-500 hover:shadow-md transition group text-left"
-                        >
-                            <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 transition">
-                                <Building size={32} />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">製造業 (Manufacturing)</h3>
-                            <p className="text-slate-500">工廠、製造業雇主。需填寫工廠登記證號與行業別。</p>
-                        </button>
-
-                        {/* Home Care */}
-                        <button
-                            type="button"
-                            onClick={() => handleCategorySelect('HOME_CARE')}
-                            className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-green-500 hover:shadow-md transition group text-left"
-                        >
-                            <div className="w-16 h-16 bg-green-50 rounded-xl flex items-center justify-center text-green-600 mb-6 group-hover:scale-110 transition">
-                                <User size={32} />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">家庭看護 (Home Care)</h3>
-                            <p className="text-slate-500">家庭類雇主。需填寫被看護人 (Patient) 資料與照護地點。</p>
-                        </button>
-
-                        {/* Institution */}
-                        <button
-                            type="button"
-                            onClick={() => handleCategorySelect('INSTITUTION')}
-                            className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-500 hover:shadow-md transition group text-left"
-                        >
-                            <div className="w-16 h-16 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 mb-6 group-hover:scale-110 transition">
-                                <Building2 size={32} />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">養護機構 (Institution)</h3>
-                            <p className="text-slate-500">安養院、護理之家。需填寫機構代碼與床位數。</p>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    const tabs = [
-        { label: '基本資料 (Basic)', icon: Building },
-        ...(selectedCategory === 'MANUFACTURING' ? [{ label: '工廠資料 (Factory)', icon: Settings }] : []),
-        ...(selectedCategory === 'HOME_CARE' ? [{ label: '被看護人 (Patient)', icon: User }] : []),
-        ...(selectedCategory === 'INSTITUTION' ? [{ label: '機構資料 (Institution)', icon: Building2 }] : []),
-        { label: '雙語資料 (Bilingual)', icon: Globe },
-        { label: '帳務與聯絡 (Billing)', icon: FileText },
-        { label: '設定 (Settings)', icon: Settings },
-    ];
 
     return (
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col h-full bg-slate-50 min-h-screen">
-            {/* Header / Actions */}
-            <div className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
-                <div>
-                    <h1 className="text-xl font-bold text-slate-900">{isEdit ? '編輯雇主資料' : '新增雇主 (New Employer)'}</h1>
-                    <p className="text-sm text-slate-500 mt-1">請填寫完整的雇主與工廠資訊。</p>
-                </div>
-                <div className="flex gap-3">
-                    <button
-                        type="button"
-                        onClick={() => window.history.back()} // Simple back navigation
-                        className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                    >
-                        <X size={18} /> 取消
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 shadow-sm disabled:opacity-50 transition"
-                    >
-                        <Save size={18} />
-                        {isLoading ? '儲存中...' : '儲存資料'}
-                    </button>
-                </div>
-            </div>
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                {/* Tab Navigation */}
+                <TabsList className="grid w-full grid-cols-5 mb-6">
+                    <TabsTrigger value="basic" className="flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        基本資料
+                    </TabsTrigger>
+                    <TabsTrigger value="category" className="flex items-center gap-2">
+                        {selectedCategory === 'HOME_CARE' && <User className="h-4 w-4" />}
+                        {selectedCategory === 'MANUFACTURING' && <Settings className="h-4 w-4" />}
+                        {selectedCategory === 'INSTITUTION' && <Building2 className="h-4 w-4" />}
+                        {selectedCategory === 'HOME_CARE' ? '被看護人' : selectedCategory === 'MANUFACTURING' ? '工廠資料' : '機構資料'}
+                    </TabsTrigger>
+                    <TabsTrigger value="address" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        地址資訊
+                    </TabsTrigger>
+                    <TabsTrigger value="bilingual" className="flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        雙語資料
+                    </TabsTrigger>
+                    <TabsTrigger value="settings" className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        設定
+                    </TabsTrigger>
+                </TabsList>
 
-            <div className="flex-1 overflow-hidden flex">
-                {/* Sidebar Tabs */}
-                <div className="w-64 bg-white border-r border-slate-200 flex flex-col pt-6">
-                    {tabs.map((tab, index) => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === index;
-                        return (
-                            <button
-                                key={index}
-                                type="button"
-                                onClick={() => setActiveTab(index)}
-                                className={`
-                                    w-full text-left px-6 py-4 flex items-center gap-3 transition-colors border-l-4
-                                    ${isActive
-                                        ? 'bg-blue-50 border-blue-600 text-blue-700'
-                                        : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                                    }
-                                `}
+                {/* Tab 1: Basic Info */}
+                <TabsContent value="basic" className="space-y-6">
+                    <FormSection
+                        title="基本資料"
+                        description="雇主的公司基本資訊"
+                        columns={3}
+                    >
+                        <div>
+                            <Label htmlFor="category" className="required">雇主類型</Label>
+                            <Select
+                                onValueChange={(value) => setValue('category', value)}
+                                defaultValue={watch('category')}
                             >
-                                <Icon size={20} className={isActive ? 'text-blue-600' : 'text-slate-400'} />
-                                <span className="font-medium text-sm">{tab.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="MANUFACTURING">製造業</SelectItem>
+                                    <SelectItem value="HOME_CARE">家庭看護</SelectItem>
+                                    <SelectItem value="INSTITUTION">養護機構</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                {/* Content Area */}
-                <div className="flex-1 overflow-y-auto p-8">
-                    <div className="max-w-4xl mx-auto bg-white rounded-xl shadow border border-slate-200 p-8 min-h-[500px]">
+                        <div className="col-span-2">
+                            <Label htmlFor="companyName" className="required">公司名稱</Label>
+                            <Input
+                                id="companyName"
+                                {...register('companyName')}
+                                placeholder="請輸入公司完整名稱"
+                            />
+                            {errors.companyName && (
+                                <p className="text-sm text-red-600 mt-1">{errors.companyName.message}</p>
+                            )}
+                        </div>
 
-                        {/* Tab 1: Basic Info */}
-                        {activeTab === 0 && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <h2 className="text-lg font-bold text-slate-900 pb-2 border-b border-slate-100 mb-6">基本資料 (Basic Info)</h2>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">公司名稱 (Company Name) <span className="text-red-500">*</span></label>
-                                        <input
-                                            {...register('companyName')}
-                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="請輸入公司完整名稱"
-                                        />
-                                        {errors.companyName && <p className="text-red-500 text-xs">{errors.companyName.message}</p>}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">
-                                            {selectedCategory === 'HOME_CARE'
-                                                ? '雇主身分證字號 (National ID) *'
-                                                : '統一編號 (GUI Number) *'}
-                                        </label>
-                                        <input
-                                            {...register('taxId')}
-                                            maxLength={selectedCategory === 'HOME_CARE' ? 10 : 8}
-                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                                            placeholder={selectedCategory === 'HOME_CARE' ? 'A123456789' : '12345678'}
-                                        />
-                                        {errors.taxId && <p className="text-red-500 text-xs">{errors.taxId.message}</p>}
-                                    </div>
+                        <div>
+                            <Label htmlFor="taxId" className="required">
+                                {selectedCategory === 'HOME_CARE' ? '雇主身分證字號' : '統一編號'}
+                            </Label>
+                            <Input
+                                id="taxId"
+                                {...register('taxId')}
+                                maxLength={selectedCategory === 'HOME_CARE' ? 10 : 8}
+                                placeholder={selectedCategory === 'HOME_CARE' ? 'A123456789' : '12345678'}
+                                className="font-mono"
+                            />
+                            {errors.taxId && (
+                                <p className="text-sm text-red-600 mt-1">{errors.taxId.message}</p>
+                            )}
+                        </div>
 
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">電話 (Phone)</label>
-                                        <input
-                                            {...register('phoneNumber')}
-                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="02-1234-5678"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">傳真 (Fax)</label>
-                                        <input
-                                            {...register('faxNumber')}
-                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="02-1234-5679"
-                                        />
-                                    </div>
+                        <div>
+                            <Label htmlFor="phoneNumber">電話</Label>
+                            <Input
+                                id="phoneNumber"
+                                {...register('phoneNumber')}
+                                placeholder="02-1234-5678"
+                            />
+                        </div>
 
-                                    <div className="space-y-1 col-span-2">
-                                        <label className="block text-sm font-medium text-slate-700">行業類別 (Industry)</label>
-                                        <input
-                                            {...register('industryType')}
-                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="ex. 金屬製造業 (Metal Manufacturing)"
-                                        />
-                                    </div>
+                        <div>
+                            <Label htmlFor="faxNumber">傳真</Label>
+                            <Input
+                                id="faxNumber"
+                                {...register('faxNumber')}
+                                placeholder="02-1234-5679"
+                            />
+                        </div>
+
+                        <div className="col-span-3">
+                            <Label htmlFor="industryType">行業類別</Label>
+                            <Input
+                                id="industryType"
+                                {...register('industryType')}
+                                placeholder="例如：金屬製造業"
+                            />
+                        </div>
+                    </FormSection>
+                </TabsContent>
+
+                {/* Tab 2: Category-Specific */}
+                <TabsContent value="category" className="space-y-6">
+                    {selectedCategory === 'MANUFACTURING' && (
+                        <>
+                            <FormSection
+                                title="負責人與工廠資料"
+                                columns={3}
+                            >
+                                <div>
+                                    <Label htmlFor="responsiblePerson">負責人姓名</Label>
+                                    <Input {...register('responsiblePerson')} />
                                 </div>
-                            </div>
-                        )}
 
-                        {/* Tab 2: Factory Info (Manufacturing) */}
-                        {activeTab === 1 && selectedCategory === 'MANUFACTURING' && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <h2 className="text-lg font-bold text-slate-900 pb-2 border-b border-slate-100 mb-6">負責人與工廠資料</h2>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">負責人姓名 (Responsible Person)</label>
-                                        <input {...register('responsiblePerson')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">工廠登記證號 (Factory Reg No)</label>
-                                        <input {...register('factoryRegistrationNo')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">勞保證號 (Labor Insurance No)</label>
-                                        <input {...register('laborInsuranceNo')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">行業類別 (Industry Type)</label>
-                                        <input {...register('industryType')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">核配比率 (Allocation Rate)</label>
-                                        <select {...register('allocationRate')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                                            <option value="">請選擇 (Select)</option>
-                                            <option value="0.10">10%</option>
-                                            <option value="0.15">15%</option>
-                                            <option value="0.20">20%</option>
-                                            <option value="0.25">25% (3K5)</option>
-                                            <option value="0.35">35%</option>
-                                        </select>
-                                    </div>
-                                    <div className="col-span-2 mt-6 border-t border-slate-200 pt-6">
-                                        <ComplianceSelector
-                                            value={watch('complianceStandard') || 'NONE'}
-                                            onChange={(val) => setValue('complianceStandard', val)}
-                                            effectiveDate={watch('zeroFeeEffectiveDate') || ''}
-                                            onEffectiveDateChange={(date) => setValue('zeroFeeEffectiveDate', date)}
-                                        />
-                                    </div>
+                                <div>
+                                    <Label htmlFor="factoryRegistrationNo">工廠登記證號</Label>
+                                    <Input {...register('factoryRegistrationNo')} className="font-mono" />
                                 </div>
-                            </div>
-                        )}
 
-                        {/* Tab 2: Patient Info (Home Care) */}
-                        {activeTab === 1 && selectedCategory === 'HOME_CARE' && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <h2 className="text-lg font-bold text-slate-900 pb-2 border-b border-slate-100 mb-6">被看護人資料 (Patient Info)</h2>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">雇主姓名 (Employer Name)</label>
-                                        <input {...register('responsiblePerson')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="雇主本人姓名" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">被看護人姓名 (Patient Name)</label>
-                                        <input {...register('patientName')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">被看護人身分證號 (Patient ID)</label>
-                                        <input {...register('patientIdNo')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">與雇主關係 (Relationship)</label>
-                                        <input {...register('relationship')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex. 父子" />
-                                    </div>
-                                    <div className="col-span-2 space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">照護地點 (Care Address)</label>
-                                        <input {...register('careAddress')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-                                    </div>
+                                <div>
+                                    <Label htmlFor="laborInsuranceNo">勞保證號</Label>
+                                    <Input {...register('laborInsuranceNo')} className="font-mono" />
                                 </div>
-                            </div>
-                        )}
 
-                        {/* Tab 2: Institution Info (Institution) */}
-                        {activeTab === 1 && selectedCategory === 'INSTITUTION' && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <h2 className="text-lg font-bold text-slate-900 pb-2 border-b border-slate-100 mb-6">機構資料 (Institution Info)</h2>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">機構負責人 (Responsible Person)</label>
-                                        <input {...register('responsiblePerson')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">機構代碼 (Institution Code)</label>
-                                        <input {...register('institutionCode')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">床位數 (Bed Count)</label>
-                                        <input type="number" {...register('bedCount')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-                                    </div>
+                                <div>
+                                    <Label htmlFor="allocationRate">核配比率</Label>
+                                    <Select
+                                        onValueChange={(value) => setValue('allocationRate', value)}
+                                        defaultValue={watch('allocationRate')}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="請選擇" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="0.10">10%</SelectItem>
+                                            <SelectItem value="0.15">15%</SelectItem>
+                                            <SelectItem value="0.20">20%</SelectItem>
+                                            <SelectItem value="0.25">25% (3K5)</SelectItem>
+                                            <SelectItem value="0.35">35%</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
-                            </div>
-                        )}
+                            </FormSection>
 
-                        {/* Tab: Bilingual Info */}
-                        {tabs.find(t => t.label.includes('Bilingual')) && activeTab === tabs.findIndex(t => t.label.includes('Bilingual')) && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <h2 className="text-lg font-bold text-slate-900 pb-2 border-b border-slate-100 mb-6">雙語資料 (Bilingual Info)</h2>
-                                <div className="space-y-4">
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">English Company Name</label>
-                                        <input {...register('companyNameEn')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. ABC Manufacturing Co., Ltd." />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">English Address</label>
-                                        <input {...register('addressEn')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. No. 123, Sec. 1..." />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">Responsible Person (EN)</label>
-                                        <input {...register('responsiblePersonEn')} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Wang, Da-Ming" />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                            <FormSection
+                                title="合規設定"
+                                divider={false}
+                            >
+                                <ComplianceSelector
+                                    value={watch('complianceStandard') || 'NONE'}
+                                    onChange={(val) => setValue('complianceStandard', val)}
+                                    effectiveDate={watch('zeroFeeEffectiveDate') || ''}
+                                    onEffectiveDateChange={(date) => setValue('zeroFeeEffectiveDate', date)}
+                                />
+                            </FormSection>
+                        </>
+                    )}
 
-                        {/* Tab 3: Billing & Contact */}
-                        {activeTab === 2 && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <h2 className="text-lg font-bold text-slate-900 pb-2 border-b border-slate-100 mb-6">帳務與聯絡 (Billing & Contact)</h2>
-                                <div className="space-y-6">
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">公司登記地址 (Company Address)</label>
-                                        <textarea
-                                            {...register('address')}
-                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]"
-                                            placeholder="請輸入公司營業登記地址"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between items-center">
-                                            <label className="block text-sm font-medium text-slate-700">帳單寄送地址 (Billing Address)</label>
-                                            <button
-                                                type="button"
-                                                onClick={copyAddressToBilling}
-                                                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
-                                            >
-                                                <Copy size={12} />
-                                                同公司地址
-                                            </button>
-                                        </div>
-                                        <textarea
-                                            {...register('billAddress')}
-                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]"
-                                            placeholder="請輸入帳單/發票寄送地址"
-                                        />
-                                    </div>
-                                </div>
+                    {selectedCategory === 'HOME_CARE' && (
+                        <FormSection
+                            title="被看護人資料"
+                            columns={2}
+                            divider={false}
+                        >
+                            <div>
+                                <Label htmlFor="responsiblePerson">雇主姓名</Label>
+                                <Input {...register('responsiblePerson')} placeholder="雇主本人姓名" />
                             </div>
-                        )}
 
-                        {/* Tab 4: Settings */}
-                        {activeTab === 3 && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <h2 className="text-lg font-bold text-slate-900 pb-2 border-b border-slate-100 mb-6">系統與其他設定 (Settings)</h2>
-                                <div className="p-8 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                                    <Settings size={48} className="mx-auto text-slate-300 mb-4" />
-                                    <h3 className="text-slate-900 font-medium">進階設定開發中</h3>
-                                    <p className="text-slate-500 text-sm mt-2">委任仲介公司 (Agency) 與服務費規則設定將在下一階段實作。</p>
-                                </div>
+                            <div>
+                                <Label htmlFor="patientName">被看護人姓名</Label>
+                                <Input {...register('patientName')} />
                             </div>
-                        )}
+
+                            <div>
+                                <Label htmlFor="patientIdNo">被看護人身分證號</Label>
+                                <Input {...register('patientIdNo')} className="font-mono" />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="relationship">與雇主關係</Label>
+                                <Input {...register('relationship')} placeholder="例如：父子" />
+                            </div>
+
+                            <div className="col-span-2">
+                                <Label htmlFor="careAddress">照護地點</Label>
+                                <Input {...register('careAddress')} />
+                            </div>
+                        </FormSection>
+                    )}
+
+                    {selectedCategory === 'INSTITUTION' && (
+                        <FormSection
+                            title="機構資料"
+                            columns={3}
+                            divider={false}
+                        >
+                            <div>
+                                <Label htmlFor="responsiblePerson">機構負責人</Label>
+                                <Input {...register('responsiblePerson')} />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="institutionCode">機構代碼</Label>
+                                <Input {...register('institutionCode')} className="font-mono" />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="bedCount">床位數</Label>
+                                <Input type="number" {...register('bedCount')} />
+                            </div>
+                        </FormSection>
+                    )}
+                </TabsContent>
+
+                {/* Tab 3: Address Info */}
+                <TabsContent value="address" className="space-y-6">
+                    <FormSection
+                        title="地址資訊"
+                        columns={1}
+                        divider={false}
+                    >
+                        <div>
+                            <Label htmlFor="address">公司登記地址</Label>
+                            <Textarea
+                                id="address"
+                                {...register('address')}
+                                placeholder="請輸入公司營業登記地址"
+                                rows={3}
+                            />
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-2">
+                                <Label htmlFor="billAddress">帳單寄送地址</Label>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={copyAddressToBilling}
+                                    className="h-7"
+                                >
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    同公司地址
+                                </Button>
+                            </div>
+                            <Textarea
+                                id="billAddress"
+                                {...register('billAddress')}
+                                placeholder="請輸入帳單/發票寄送地址"
+                                rows={3}
+                            />
+                        </div>
+                    </FormSection>
+                </TabsContent>
+
+                {/* Tab 4: Bilingual */}
+                <TabsContent value="bilingual" className="space-y-6">
+                    <FormSection
+                        title="雙語資料"
+                        description="英文公司名稱、地址與負責人 (用於國際文件)"
+                        columns={1}
+                        divider={false}
+                    >
+                        <div>
+                            <Label htmlFor="companyNameEn">English Company Name</Label>
+                            <Input
+                                id="companyNameEn"
+                                {...register('companyNameEn')}
+                                placeholder="e.g. ABC Manufacturing Co., Ltd."
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="addressEn">English Address</Label>
+                            <Input
+                                id="addressEn"
+                                {...register('addressEn')}
+                                placeholder="e.g. No. 123, Sec. 1, Zhongshan Rd., Taipei City"
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="responsiblePersonEn">Responsible Person (EN)</Label>
+                            <Input
+                                id="responsiblePersonEn"
+                                {...register('responsiblePersonEn')}
+                                placeholder="e.g. Wang, Da-Ming"
+                            />
+                        </div>
+                    </FormSection>
+                </TabsContent>
+
+                {/* Tab 5: Settings */}
+                <TabsContent value="settings" className="space-y-6">
+                    <div className="text-center py-12 text-gray-500">
+                        <Settings className="h-16 w-16 mx-auto mb-4 opacity-20" />
+                        <p className="font-medium">進階設定開發中</p>
+                        <p className="text-sm mt-1">委任仲介公司與服務費規則設定將在下一階段實作</p>
                     </div>
-                </div>
+                </TabsContent>
+            </Tabs>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-6 border-t">
+                {onCancel && (
+                    <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+                        取消
+                    </Button>
+                )}
+                <Button type="submit" disabled={isLoading}>
+                    {isLoading && <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+                    <Save className="mr-2 h-4 w-4" />
+                    {isEditMode ? '儲存修改' : '確認新增'}
+                </Button>
             </div>
         </form>
     );

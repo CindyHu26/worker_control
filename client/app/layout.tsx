@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 import { Providers } from './providers';
 import CommandPalette from '@/components/CommandPalette';
+import { Toaster } from 'sonner';
 
 export default function RootLayout({
     children,
@@ -30,6 +31,7 @@ export default function RootLayout({
                     <main className="flex-1 overflow-auto">
                         {children}
                     </main>
+                    <Toaster position="top-right" richColors />
                 </Providers>
             </body>
         </html>
