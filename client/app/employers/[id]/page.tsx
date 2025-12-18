@@ -6,6 +6,7 @@ import { Building2, User, Phone, MapPin } from 'lucide-react';
 import RecruitmentLetterManager from '@/components/employers/RecruitmentLetterManager';
 import LaborCountManager from '@/components/employers/LaborCountManager';
 import EmployerReadinessDashboard from '@/components/employers/EmployerReadinessDashboard';
+import ContractList from '@/components/contracts/ContractList';
 
 interface Employer {
     id: string;
@@ -101,6 +102,9 @@ export default function EmployerDetailPage() {
 
                 {/* Recruitment Letter Management Section */}
                 <RecruitmentLetterManager employerId={id} />
+
+                {/* Contract Management Section */}
+                <ContractList employerId={id} />
 
                 {/* Placeholder for future sections (deployments, etc.) */}
                 <div className="mt-6 p-6 border-2 border-dashed border-gray-200 rounded-lg text-center text-gray-400">

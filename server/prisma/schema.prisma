@@ -102,6 +102,8 @@ model Employer {
   agencyCompanyId String? @map("agency_company_id")
   agency          AgencyCompany? @relation(fields: [agencyCompanyId], references: [id])
 
+  serviceContracts ServiceContract[]
+
   // Polymorphic Relation Fields
   category        String @default("MANUFACTURING") // MANUFACTURING, HOME_CARE, INSTITUTION
 
@@ -741,6 +743,7 @@ model JobOrder {
   domesticRecruitment DomesticRecruitment?
 
   interviews Interview[]
+  jobRequisition JobRequisition?
 
   createdBy     String?       @map("created_by")
   updatedBy     String?       @map("updated_by")
@@ -751,6 +754,25 @@ model JobOrder {
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("job_orders")
+}
+
+model JobRequisition {
+  id            String   @id @default(uuid())
+  jobOrderId    String   @unique @map("job_order_id")
+  jobOrder      JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+
+  // 詳細需求 (Job Spec)
+  skills            String?  @map("skills")             // 專業技能要求
+  salaryStructure   String?  @map("salary_structure")   // 薪資結構說明
+  leavePolicy       String?  @map("leave_policy")       // 休假與加班方式
+  workHours         String?  @map("work_hours")         // 工作時間/排班
+  accommodation     String?  @map("accommodation")       // 膳宿提供細節
+  otherRequirements String?  @map("other_requirements") // 其他福利或要求
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("job_requisitions")
 }
 
 // --------------------------------------
@@ -1518,9 +1540,38 @@ model Attachment {
   // Relations (Optional, for linking to entities)
   workerId    String?  @map("worker_id")
   worker      Worker?  @relation(fields: [workerId], references: [id])
+
+  serviceContractId String? @map("service_contract_id")
+  serviceContract   ServiceContract? @relation(fields: [serviceContractId], references: [id])
   
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("attachments")
+}
+
+model ServiceContract {
+  id              String   @id @default(uuid())
+  employerId      String   @map("employer_id")
+  employer        Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  contractNumber  String?  @map("contract_number") // 合約編號
+  type            String   @default("recruitment") // recruitment, management, other
+  
+  startDate       DateTime @map("start_date")
+  endDate         DateTime @map("end_date")
+  
+  serviceFee      Decimal  @default(0) @map("service_fee") // 服務費總額/月費
+  signedDate      DateTime? @map("signed_date")
+  
+  status          String   @default("active") // draft, active, expired, terminated
+  
+  notes           String?
+  
+  attachments     Attachment[]
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("service_contracts")
 }

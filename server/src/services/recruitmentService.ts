@@ -12,18 +12,43 @@ export const recruitmentService = {
             where: { id: data.id || 'new' },
             create: {
                 employerId,
-                jobType: data.jobType,
-                vacancyCount: data.vacancyCount,
+                jobType: data.jobType || 'FACTORY_WORKER',
+                vacancyCount: Number(data.vacancyCount),
                 registryDate: new Date(data.registryDate),
-                expiryDate: new Date(data.expiryDate), // 通常是登記日+60~90天
+                expiryDate: new Date(new Date(data.registryDate).getTime() + 60 * 24 * 60 * 60 * 1000),
                 centerName: data.centerName,
                 status: 'active'
             },
             update: {
-                vacancyCount: data.vacancyCount,
-                certificateNo: data.certificateNo, // 拿到求才證明後回填
-                successCount: data.successCount,   // 國內媒合成功人數 (會扣減可申請額度)
-                status: data.status
+                vacancyCount: Number(data.vacancyCount),
+                registryDate: data.registryDate ? new Date(data.registryDate) : undefined,
+                certificateNo: data.certificateNo,
+                successCount: data.successCount ? Number(data.successCount) : undefined,
+                status: data.status,
+                centerName: data.centerName
+            }
+        });
+    },
+
+    async upsertJobRequisition(jobOrderId: string, data: any) {
+        return await prisma.jobRequisition.upsert({
+            where: { jobOrderId },
+            update: {
+                skills: data.skills,
+                salaryStructure: data.salaryStructure,
+                leavePolicy: data.leavePolicy,
+                workHours: data.workHours,
+                accommodation: data.accommodation,
+                otherRequirements: data.otherRequirements
+            },
+            create: {
+                jobOrderId,
+                skills: data.skills,
+                salaryStructure: data.salaryStructure,
+                leavePolicy: data.leavePolicy,
+                workHours: data.workHours,
+                accommodation: data.accommodation,
+                otherRequirements: data.otherRequirements
             }
         });
     },
@@ -34,29 +59,29 @@ export const recruitmentService = {
      */
     async createRecruitmentLetter(data: {
         employerId: string;
-        jobOrderId?: string; // 來源求才單 (若是初次招募必填)
-        permitNo: string;    // 勞動發事字第...號
-        issueDate: string;   // 發文日
-        validUntil: string;  // 有效期限
-        approvedQuota: number; // 核准名額
+        jobOrderId?: string;
+        letterNumber: string;
+        issueDate: string;
+        expiryDate: string;
+        approvedQuota: number;
         attachmentPath?: string;
     }) {
         // 檢查文號是否重複
         const existing = await prisma.recruitmentLetter.findUnique({
-            where: { permitNo: data.permitNo }
+            where: { letterNumber: data.letterNumber }
         });
-        if (existing) throw new Error(`招募函文號 ${data.permitNo} 已存在`);
+        if (existing) throw new Error(`招募函文號 ${data.letterNumber} 已存在`);
 
         // 建立招募函
         const letter = await prisma.recruitmentLetter.create({
             data: {
                 employerId: data.employerId,
                 jobOrderId: data.jobOrderId || null,
-                permitNo: data.permitNo,
+                letterNumber: data.letterNumber,
                 issueDate: new Date(data.issueDate),
-                validUntil: new Date(data.validUntil),
+                expiryDate: new Date(data.expiryDate),
                 approvedQuota: data.approvedQuota,
-                usedQuota: 0, // 初始使用量為 0
+                usedQuota: 0,
                 revokedQuota: 0,
                 attachmentPath: data.attachmentPath
             }
@@ -99,9 +124,9 @@ export const recruitmentService = {
 
             return {
                 id: letter.id,
-                permitNo: letter.permitNo,
+                letterNumber: letter.letterNumber,
                 issueDate: letter.issueDate,
-                validUntil: letter.validUntil,
+                expiryDate: letter.expiryDate,
                 jobType: letter.jobOrder?.jobType || 'Unknown',
                 approved: letter.approvedQuota,
                 used: actualUsed,

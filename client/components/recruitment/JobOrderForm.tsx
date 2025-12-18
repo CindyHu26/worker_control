@@ -16,8 +16,9 @@ export default function JobOrderForm({ onSuccess }: JobOrderFormProps) {
     const [employers, setEmployers] = useState<Employer[]>([]);
     const [formData, setFormData] = useState({
         employerId: '',
-        requiredWorkers: 1,
-        orderDate: new Date().toISOString().split('T')[0]
+        vacancyCount: 1,
+        orderDate: new Date().toISOString().split('T')[0],
+        jobType: 'FACTORY_WORKER'
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,8 +45,9 @@ export default function JobOrderForm({ onSuccess }: JobOrderFormProps) {
                 // Reset form slightly but keep date maybe? or reset all
                 setFormData({
                     employerId: '',
-                    requiredWorkers: 1,
-                    orderDate: new Date().toISOString().split('T')[0]
+                    vacancyCount: 1,
+                    orderDate: new Date().toISOString().split('T')[0],
+                    jobType: 'FACTORY_WORKER'
                 });
             } else {
                 alert('Failed to create Job Order');
@@ -80,15 +82,31 @@ export default function JobOrderForm({ onSuccess }: JobOrderFormProps) {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">需求人數 (Required)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">需求人數 (Count)</label>
                     <input
                         type="number"
                         min="1"
                         className="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"
-                        value={formData.requiredWorkers}
-                        onChange={e => setFormData({ ...formData, requiredWorkers: parseInt(e.target.value) })}
+                        value={formData.vacancyCount}
+                        onChange={e => setFormData({ ...formData, vacancyCount: parseInt(e.target.value) })}
                         required
                     />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">職候類別 (Job Type)</label>
+                    <select
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"
+                        value={formData.jobType}
+                        onChange={e => setFormData({ ...formData, jobType: e.target.value })}
+                        required
+                    >
+                        <option value="FACTORY_WORKER">製造業 (Factory)</option>
+                        <option value="CARETAKER">看護工 (Caretaker)</option>
+                        <option value="DOMESTIC_HELPER">幫傭 (Helper)</option>
+                        <option value="CONSTRUCTION">營造業 (Construction)</option>
+                        <option value="AGRICULTURE">農業 (Agriculture)</option>
+                    </select>
                 </div>
 
                 <div>
@@ -106,7 +124,7 @@ export default function JobOrderForm({ onSuccess }: JobOrderFormProps) {
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-medium transition-colors disabled:opacity-50"
+                        className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-medium transition-colors disabled:opacity-50 h-[42px]"
                     >
                         {isSubmitting ? '處理中...' : '新增招募單'}
                     </button>

@@ -75,7 +75,7 @@ router.post('/letters', async (req, res) => {
 router.post('/letters/:id/permits', async (req, res) => {
     const { id } = req.params;
     const {
-        permitNumber,
+        permitNo,
         issueDate,
         expiryDate,
         workerCount,
@@ -110,7 +110,7 @@ router.post('/letters/:id/permits', async (req, res) => {
             const permit = await tx.entryPermit.create({
                 data: {
                     recruitmentLetterId: id,
-                    permitNumber,
+                    permitNo,
                     issueDate: new Date(issueDate),
                     expiryDate: new Date(expiryDate),
                     workerCount: countNum,
@@ -135,6 +135,141 @@ router.post('/letters/:id/permits', async (req, res) => {
     } catch (error: any) {
         console.error(error);
         res.status(400).json({ error: error.message });
+    }
+});
+
+
+// --- Job Order Routes ---
+
+// GET /api/recruitment/job-orders
+router.get('/job-orders', async (req, res) => {
+    try {
+        const { employerId } = req.query;
+        const where: any = {};
+        if (employerId) {
+            where.employerId = String(employerId);
+        }
+
+        const orders = await prisma.jobOrder.findMany({
+            where,
+            include: {
+                employer: { select: { companyName: true, taxId: true } },
+                jobRequisition: true
+            },
+            orderBy: { registryDate: 'desc' }
+        });
+
+        // Add calculated field for frontend (localRecruitmentDeadline)
+        // Usually registryDate + 60 days
+        const result = orders.map(o => {
+            const deadline = new Date(o.registryDate);
+            deadline.setDate(deadline.getDate() + 60);
+            return {
+                ...o,
+                localRecruitmentDeadline: deadline.toISOString(),
+                orderDate: o.registryDate.toISOString(), // Alias for frontend
+                requiredWorkers: o.vacancyCount // Alias for frontend
+            };
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch job orders' });
+    }
+});
+
+// POST /api/recruitment/job-orders
+router.post('/job-orders', async (req, res) => {
+    try {
+        const { employerId, vacancyCount, orderDate, jobType } = req.body;
+
+        const order = await prisma.jobOrder.create({
+            data: {
+                employerId,
+                vacancyCount: Number(vacancyCount),
+                registryDate: new Date(orderDate),
+                jobType: jobType || 'FACTORY_WORKER',
+                expiryDate: new Date(new Date(orderDate).getTime() + 60 * 24 * 60 * 60 * 1000), // Default 60 days
+                status: 'active'
+            }
+        });
+
+        res.json(order);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to create job order' });
+    }
+});
+
+// GET /api/recruitment/job-orders/:id
+router.get('/job-orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await prisma.jobOrder.findUnique({
+            where: { id },
+            include: {
+                employer: true,
+                jobRequisition: true
+            }
+        });
+        if (!order) return res.status(404).json({ error: 'Job order not found' });
+        res.json(order);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch job order' });
+    }
+});
+
+// PUT /api/recruitment/job-orders/:id/requisition
+router.put('/job-orders/:id/requisition', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const data = req.body;
+
+        const requisition = await prisma.jobRequisition.upsert({
+            where: { jobOrderId: id },
+            update: {
+                skills: data.skills,
+                salaryStructure: data.salaryStructure,
+                leavePolicy: data.leavePolicy,
+                workHours: data.workHours,
+                accommodation: data.accommodation,
+                otherRequirements: data.otherRequirements
+            },
+            create: {
+                jobOrderId: id,
+                skills: data.skills,
+                salaryStructure: data.salaryStructure,
+                leavePolicy: data.leavePolicy,
+                workHours: data.workHours,
+                accommodation: data.accommodation,
+                otherRequirements: data.otherRequirements
+            }
+        });
+
+        res.json(requisition);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update job requisition' });
+    }
+});
+
+// GET /api/recruitment/employers/list
+router.get('/employers/list', async (req, res) => {
+    try {
+        const employers = await prisma.employer.findMany({
+            select: {
+                id: true,
+                companyName: true,
+                taxId: true
+            },
+            orderBy: { companyName: 'asc' }
+        });
+        res.json(employers);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch employer list' });
     }
 });
 

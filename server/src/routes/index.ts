@@ -1,3 +1,4 @@
+import { contractsRouter } from './contracts';
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 // Import specific route modules here
@@ -34,8 +35,7 @@ import taxConfigRoutes from './taxConfig';
 import utilsRoutes from './utils';
 const router = Router();
 
-
-
+router.use('/contracts', contractsRouter);
 
 router.use('/auth', authRoutes);
 

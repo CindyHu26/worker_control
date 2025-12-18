@@ -1,7 +1,9 @@
 "use client";
 
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
-import { Briefcase, Calendar, Users, AlertCircle, CheckCircle } from 'lucide-react';
+import { Briefcase, Calendar, Users, AlertCircle, CheckCircle, FileText } from 'lucide-react';
+import { useState } from 'react';
+import JobRequisitionForm from './JobRequisitionForm';
 
 interface JobOrder {
     id: string;
@@ -13,6 +15,14 @@ interface JobOrder {
     orderDate: string; // ISO string
     localRecruitmentDeadline?: string; // ISO string
     status: string;
+    jobRequisition?: {
+        skills?: string;
+        salaryStructure?: string;
+        leavePolicy?: string;
+        workHours?: string;
+        accommodation?: string;
+        otherRequirements?: string;
+    };
 }
 
 interface JobOrderListProps {
@@ -21,6 +31,14 @@ interface JobOrderListProps {
 }
 
 export default function JobOrderList({ jobOrders, isLoading }: JobOrderListProps) {
+    const [selectedJob, setSelectedJob] = useState<JobOrder | null>(null);
+    const [isRequisitionModalOpen, setIsRequisitionModalOpen] = useState(false);
+
+    const handleOpenRequisition = (job: JobOrder) => {
+        setSelectedJob(job);
+        setIsRequisitionModalOpen(true);
+    };
+
     if (isLoading) {
         return <div className="text-center py-10 text-gray-500">載入中...</div>;
     }
@@ -55,6 +73,9 @@ export default function JobOrderList({ jobOrders, isLoading }: JobOrderListProps
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 狀態
+                            </th>
+                            <th scope="col" className="relative px-6 py-3">
+                                <span className="sr-only">操作</span>
                             </th>
                         </tr>
                     </thead>
@@ -118,12 +139,29 @@ export default function JobOrderList({ jobOrders, isLoading }: JobOrderListProps
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <StatusBadge status={job.status} />
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <button
+                                            onClick={() => handleOpenRequisition(job)}
+                                            className="text-indigo-600 hover:text-indigo-900 flex items-center"
+                                        >
+                                            <FileText className="w-4 h-4 mr-1" />
+                                            Job Spec
+                                        </button>
+                                    </td>
                                 </tr>
                             );
                         })}
                     </tbody>
                 </table>
             </div>
+
+            {selectedJob && (
+                <JobRequisitionForm
+                    isOpen={isRequisitionModalOpen}
+                    onClose={() => setIsRequisitionModalOpen(false)}
+                    jobOrder={selectedJob}
+                />
+            )}
         </div>
     );
 }
