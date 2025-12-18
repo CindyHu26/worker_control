@@ -225,6 +225,7 @@ model Worker {
   chineseName String?  @map("chinese_name")
   dob         DateTime
   nationality String // Enum as string
+  status      String @default("CANDIDATE") // CANDIDATE, ACTIVE, INACTIVE, BLACKLIST
 
   // Bilingual Info
   fatherNameEn    String?  @map("father_name_en")

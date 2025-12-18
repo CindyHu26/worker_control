@@ -210,7 +210,8 @@ router.get('/job-orders/:id', async (req, res) => {
             where: { id },
             include: {
                 employer: true,
-                jobRequisition: true
+                jobRequisition: true,
+                interviews: true
             }
         });
         if (!order) return res.status(404).json({ error: 'Job order not found' });

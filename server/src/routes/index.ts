@@ -33,6 +33,7 @@ import complianceRoutes from './compliance';
 import leadsRoutes from './leads';
 import taxConfigRoutes from './taxConfig';
 import utilsRoutes from './utils';
+import interviewsRouter from './interviews';
 const router = Router();
 
 router.use('/contracts', contractsRouter);
@@ -76,5 +77,6 @@ router.use('/search', searchRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/leads', leadsRoutes);
 router.use('/utils', utilsRoutes);
+router.use('/interviews', interviewsRouter);
 
 export default router;

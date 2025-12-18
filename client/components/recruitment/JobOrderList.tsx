@@ -1,8 +1,9 @@
 "use client";
 
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
-import { Briefcase, Calendar, Users, AlertCircle, CheckCircle, FileText } from 'lucide-react';
+import { Briefcase, Calendar, Users, AlertCircle, CheckCircle, FileText, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
+import Link from 'next/link';
 import JobRequisitionForm from './JobRequisitionForm';
 
 interface JobOrder {
@@ -147,6 +148,13 @@ export default function JobOrderList({ jobOrders, isLoading }: JobOrderListProps
                                             <FileText className="w-4 h-4 mr-1" />
                                             Job Spec
                                         </button>
+                                        <Link
+                                            href={`/recruitment/job-orders/${job.id}`}
+                                            className="text-indigo-600 hover:text-indigo-900 flex items-center ml-4"
+                                        >
+                                            Manage
+                                            <ArrowRight className="w-4 h-4 ml-1" />
+                                        </Link>
                                     </td>
                                 </tr>
                             );
