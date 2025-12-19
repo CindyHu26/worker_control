@@ -157,34 +157,48 @@ export const analyzeDataHealth = async (employerId: string) => {
     }
 
     // --- 2. Responsible Person ID ---
-    // Now in IndividualInfo for individuals
     if (employer.individualInfo) {
-        const repId = employer.individualInfo.responsiblePersonIdNo || '';
+        const indInfo = employer.individualInfo as any;
+        const repId = indInfo.responsiblePersonIdNo || '';
         if (!repId || !/^[A-Z][0-9]{9}$/.test(repId)) {
             missingFields.push('Missing/Invalid Responsible Person ID');
             alertsToCreate.push('缺負責人身分證號：無法進行 e 化服務授權與招募許可');
         }
+
+        // --- Home Care Specifics ---
+        if (!indInfo.patientName) {
+            missingFields.push('Missing Patient Name');
+            alertsToCreate.push('缺被看護人姓名');
+        }
+        if (!indInfo.careAddress) {
+            missingFields.push('Missing Care Address');
+            alertsToCreate.push('缺照護地點');
+        }
     }
 
-    // --- 3. Labor Insurance No ---
+    // --- 3. Labor Insurance No & Institution ---
     if (employer.corporateInfo) {
-        const laborNo = employer.corporateInfo.laborInsuranceNo || '';
-        if (!laborNo || !/^\d{8,9}$/.test(laborNo.replace(/-/g, ''))) {
-            missingFields.push('Missing/Invalid Labor Insurance No');
+        const corpInfo = employer.corporateInfo as any;
+        const laborNo = corpInfo.laborInsuranceNo || '';
+        if (!laborNo && !corpInfo.institutionCode) {
+            missingFields.push('Missing Labor Insurance No');
             alertsToCreate.push('缺勞保證號：無法產出招募許可與加保表');
         }
 
+        // --- Institution Specifics ---
+        if (corpInfo.institutionCode) {
+            if (!corpInfo.bedCount) {
+                missingFields.push('Missing Bed Count');
+                alertsToCreate.push('機構缺床位數資訊');
+            }
+        }
+
         // --- 4. Manufacturing Specifics ---
-        if (employer.corporateInfo.industryType?.includes('製造')) {
-            // Factory Address - assumes core address is factory address for now
+        if (corpInfo.industryType?.includes('製造')) {
             if (!employer.address) {
                 missingFields.push('Missing Factory Address');
                 alertsToCreate.push('缺工廠地址：無法產出求才登記、入國通報與生活計畫書');
             }
-
-            // Allocation Rate - check where this is stored? Was 'allocationRate' on Employer? 
-            // I removed it from schema. It should probably be on CorporateInfo. 
-            // Logic skipped if field missing.
         }
     }
 
@@ -239,3 +253,67 @@ export const analyzeDataHealth = async (employerId: string) => {
 };
 
 export const checkRecruitmentReadiness = analyzeDataHealth;
+
+export const getEmployerSummary = async (id: string) => {
+    const employer = await prisma.employer.findUnique({
+        where: { id },
+        include: {
+            corporateInfo: true,
+            individualInfo: true,
+            serviceAssignments: {
+                where: { endDate: null },
+                include: { internalUser: { select: { username: true } } }
+            },
+            deployments: {
+                where: { status: 'active' },
+                select: { id: true }
+            },
+            recruitmentLetters: {
+                where: { expiryDate: { gte: new Date() } },
+                select: { approvedQuota: true, usedQuota: true }
+            }
+        }
+    }) as any;
+
+    if (!employer) return null;
+
+    // Derive Assignee (Sales Agent preferred)
+    const assignee = employer.serviceAssignments.find((a: any) => a.role === 'sales_agent')?.internalUser.username
+        || employer.serviceAssignments[0]?.internalUser.username
+        || '未指派';
+
+    // Calculate Statistics
+    const activeWorkerCount = employer.deployments.length;
+    const totalQuota = employer.recruitmentLetters.reduce((acc: number, curr: any) => acc + (curr.approvedQuota || 0), 0);
+    const usedQuota = employer.recruitmentLetters.reduce((acc: number, curr: any) => acc + (curr.usedQuota || 0), 0);
+    const availableQuota = Math.max(0, totalQuota - usedQuota);
+
+    // Flatten data for frontend
+    return {
+        basic: {
+            id: employer.id,
+            name: employer.companyName,
+            taxId: employer.taxId,
+            responsiblePerson: employer.responsiblePerson || '',
+            phone: employer.phoneNumber || '',
+            fax: employer.corporateInfo?.faxNumber || '',
+            address: employer.address || '',
+            email: employer.email || '',
+        },
+        biz: {
+            industry: employer.corporateInfo?.industryType || '工業/製造',
+            laborInsNo: employer.corporateInfo?.laborInsuranceNo || '',
+            healthInsNo: employer.corporateInfo?.healthInsuranceUnitNo || '',
+            factoryReg: employer.corporateInfo?.factoryRegistrationNo || '',
+        },
+        stats: {
+            activeWorkers: activeWorkerCount,
+            quotaTotal: totalQuota,
+            quotaLeft: availableQuota,
+        },
+        meta: {
+            assignee: assignee,
+            agency: '自有', // Agency relation missing in current schema, defaulting to Own
+        }
+    };
+};

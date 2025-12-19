@@ -224,6 +224,10 @@ model CorporateInfo {
   healthInsuranceId         String?  @map("health_insurance_id") @db.VarChar(50)
   faxNumber                 String?  @map("fax_number") @db.VarChar(20)
   
+  // Institution Specifics
+  institutionCode           String?  @map("institution_code") @db.VarChar(50)
+  bedCount                  Int?     @map("bed_count")
+  
   @@map("corporate_info")
 }
 
@@ -241,6 +245,12 @@ model IndividualInfo {
   idIssueDate               DateTime? @map("id_issue_date") @db.Date
   idIssuePlace              String?  @map("id_issue_place") @db.VarChar(50)
   militaryStatus            String?  @map("military_status") @db.VarChar(20)
+
+  // Home Care Specifics
+  patientName               String?  @map("patient_name") @db.VarChar(50)
+  patientIdNo               String?  @map("patient_id_no") @db.VarChar(20)
+  careAddress               String?  @map("care_address") @db.Text
+  relationship              String?  @map("relationship") @db.VarChar(50)
 
   @@map("individual_info")
 }

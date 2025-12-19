@@ -1,7 +1,7 @@
 
 import { Router } from 'express';
 import prisma from '../prisma';
-import { updateEmployer } from '../services/employerService';
+import { updateEmployer, getEmployerSummary } from '../services/employerService';
 import { z } from 'zod';
 
 const router = Router();
@@ -104,19 +104,26 @@ router.post('/', async (req, res) => {
             responsiblePerson,
             phoneNumber,
             address,
-            faxNumber, // Now on CorporateInfo or Employer?
+            faxNumber,
             email,
             // Corporate Fields
             factoryRegistrationNo,
             industryType,
             laborInsuranceNo,
             healthInsuranceUnitNo,
+            institutionCode,
+            bedCount,
             // Individual Fields
             responsiblePersonIdNo,
             responsiblePersonDob,
             responsiblePersonSpouse,
             responsiblePersonFather,
-            responsiblePersonMother
+            responsiblePersonMother,
+            // Home Care Fields
+            patientName,
+            patientIdNo,
+            careAddress,
+            relationship
         } = req.body;
 
         if (!companyName) {
@@ -134,8 +141,8 @@ router.post('/', async (req, res) => {
         }
 
         // Infer Type
-        const isCorporate = !!(factoryRegistrationNo || industryType || laborInsuranceNo);
-        const isIndividual = !!(responsiblePersonIdNo || responsiblePersonSpouse);
+        const isCorporate = !!(factoryRegistrationNo || industryType || laborInsuranceNo || institutionCode);
+        const isIndividual = !!(responsiblePersonIdNo || responsiblePersonSpouse || patientName || taxId?.length === 10);
 
         // Transactional Create
         const newEmployer = await prisma.$transaction(async (tx) => {
@@ -155,17 +162,23 @@ router.post('/', async (req, res) => {
                         industryType,
                         laborInsuranceNo,
                         healthInsuranceUnitNo,
-                        faxNumber, // Assuming fax is corporate
+                        faxNumber,
+                        institutionCode,
+                        bedCount: bedCount ? Number(bedCount) : undefined
                     }
                 };
             } else if (isIndividual) {
                 data.individualInfo = {
                     create: {
-                        responsiblePersonIdNo,
+                        responsiblePersonIdNo: responsiblePersonIdNo || (taxId?.length === 10 ? taxId : undefined),
                         responsiblePersonSpouse,
                         responsiblePersonFather,
                         responsiblePersonMother,
                         responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
+                        patientName,
+                        patientIdNo,
+                        careAddress,
+                        relationship
                     }
                 };
             }
@@ -226,30 +239,36 @@ router.delete('/:id/recruitment-letters/:letterId', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const employer = await prisma.employer.findUnique({
-            where: { id },
-            include: {
-                corporateInfo: true,
-                individualInfo: true,
-                recruitmentLetters: {
-                    orderBy: { issueDate: 'desc' },
-                    include: {
-                        deployments: true // Used to be entryPermits, but user schema shows deployments relation
-                    }
-                },
-                _count: {
-                    select: {
-                        deployments: { where: { status: 'active' } }
+        const [employer, summary] = await Promise.all([
+            prisma.employer.findUnique({
+                where: { id },
+                include: {
+                    corporateInfo: true,
+                    individualInfo: true,
+                    recruitmentLetters: {
+                        orderBy: { issueDate: 'desc' },
+                        include: {
+                            deployments: true
+                        }
+                    },
+                    _count: {
+                        select: {
+                            deployments: { where: { status: 'active' } }
+                        }
                     }
                 }
-            }
-        });
+            }),
+            getEmployerSummary(id)
+        ]);
 
         if (!employer) {
             return res.status(404).json({ error: 'Employer not found' });
         }
 
-        res.json(employer);
+        res.json({
+            ...employer,
+            summary
+        });
     } catch (error) {
         console.error('Get Employer Error:', error);
         res.status(500).json({ error: 'Failed to fetch employer' });
