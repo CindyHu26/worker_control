@@ -179,13 +179,18 @@ model Employer {
   id                        String   @id @default(uuid()) @db.Uuid
   taxId                     String   @unique @map("tax_id") @db.VarChar(20)
   companyName               String   @map("company_name") @db.VarChar(100)
+  companyNameEn             String?  @map("company_name_en") @db.VarChar(100)
   
   // Responsible Person (Common leader name, or for Individual it is the Employer)
   responsiblePerson         String?  @map("responsible_person") @db.VarChar(50) 
   
   address                   String?  @db.Text
+  addressEn                 String?  @map("address_en") @db.Text
   phoneNumber               String?  @map("phone_number") @db.VarChar(20)
   email                     String?  @db.VarChar(100)
+
+  contactPerson             String?  @map("contact_person") @db.VarChar(50)
+  contactPhone              String?  @map("contact_phone") @db.VarChar(20)
   
   // Relations to Details
   corporateInfo             CorporateInfo?
@@ -218,6 +223,8 @@ model CorporateInfo {
   factoryRegistrationNo     String?  @map("factory_registration_no") @db.VarChar(50)
   factoryRegistrationId     String?  @map("factory_registration_id") @db.VarChar(50)
   industryType              String?  @map("industry_type") @db.VarChar(50)
+  industryCode              String?  @map("industry_code") @db.VarChar(20)
+  capital                   Decimal? @db.Decimal(15, 2)
   laborInsuranceNo          String?  @map("labor_insurance_no") @db.VarChar(50)
   laborInsuranceId          String?  @map("labor_insurance_id") @db.VarChar(50)
   healthInsuranceUnitNo     String?  @map("health_insurance_unit_no") @db.VarChar(50)

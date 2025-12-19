@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,21 +14,28 @@ import { Textarea } from '@/components/ui/textarea';
 import FormSection from '@/components/layout/FormSection';
 import ComplianceSelector from '@/components/employers/ComplianceSelector';
 import { isValidGUINumber, isValidNationalID } from '@/utils/validation';
-import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, AlertTriangle } from 'lucide-react';
+import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, AlertTriangle, AlertCircle, Phone, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmployerSidebar } from './EmployerSidebar';
 
 // Validation Schema
 const baseSchema = z.object({
     companyName: z.string().min(1, '雇主/公司名稱為必填'),
+    companyNameEn: z.string().optional().or(z.literal('')),
     taxId: z.string().optional().or(z.literal('')),
-    phoneNumber: z.string().optional(),
-    faxNumber: z.string().optional(),
+    phoneNumber: z.string().optional().or(z.literal('')),
+    faxNumber: z.string().optional().or(z.literal('')),
     industryType: z.string().optional(),
+    industryCode: z.string().optional(),
+    capital: z.string().optional().or(z.literal('')),
 
     responsiblePerson: z.string().optional(),
     responsiblePersonIdNo: z.string().optional(),
     responsiblePersonDob: z.string().optional(),
     responsiblePersonAddress: z.string().optional(),
+
+    contactPerson: z.string().optional(),
+    contactPhone: z.string().optional(),
 
     category: z.string(),
 
@@ -46,25 +54,13 @@ const baseSchema = z.object({
     bedCount: z.union([z.string(), z.number()]).optional(),
 
     address: z.string().optional(),
+    addressEn: z.string().optional(),
     billAddress: z.string().optional(),
 
     agencyCompanyId: z.string().optional(),
     allocationRate: z.string().optional(),
     complianceStandard: z.string().optional(),
     zeroFeeEffectiveDate: z.string().optional(),
-
-    // Bilingual
-    companyNameEn: z.string().optional(),
-    addressEn: z.string().optional(),
-    responsiblePersonEn: z.string().optional(),
-
-    // Initial Recruitment Letters (optional)
-    initialRecruitmentLetters: z.array(z.object({
-        letterNumber: z.string().min(1, '函文號必填'),
-        issueDate: z.string().min(1, '發文日期必填'),
-        expiryDate: z.string().min(1, '到期日期必填'),
-        approvedQuota: z.number().min(1, '核准名額必須大於0'),
-    })).optional(),
 });
 
 const employerSchema = baseSchema.superRefine((data, ctx) => {
@@ -102,17 +98,12 @@ interface EmployerFormProps {
     isLoading?: boolean;
 }
 
-/**
- * Refactored EmployerForm using FormSection and landscape optimization
- * No header/layout - those are handled by PageContainer
- */
 export default function EmployerForm({
     initialData,
     onSubmit,
     onCancel,
     isLoading = false
 }: EmployerFormProps) {
-    const [activeTab, setActiveTab] = useState('basic');
     const isEditMode = !!initialData;
 
     const {
@@ -136,6 +127,7 @@ export default function EmployerForm({
         error: null
     });
 
+    const formData = watch();
     const selectedCategory = watch('category');
     const taxIdValue = watch('taxId');
 
@@ -167,6 +159,50 @@ export default function EmployerForm({
         return () => clearTimeout(timer);
     }, [taxIdValue, isEditMode]);
 
+    // Calculate Completeness
+    const calculateCompleteness = () => {
+        const fields = [
+            'companyName', 'taxId', 'responsiblePerson', 'phoneNumber',
+            'address', 'contactPerson', 'contactPhone'
+        ];
+        if (selectedCategory === 'MANUFACTURING') {
+            fields.push('factoryRegistrationNo', 'laborInsuranceNo', 'industryCode');
+        } else if (selectedCategory === 'HOME_CARE') {
+            fields.push('patientName', 'patientIdNo', 'careAddress');
+        }
+
+        const filled = fields.filter(f => !!formData[f as keyof EmployerFormData]);
+        return Math.round((filled.length / fields.length) * 100);
+    };
+
+    const completeness = calculateCompleteness();
+
+    const getImpacts = () => {
+        const impacts = [];
+        if (!formData.companyName || !formData.taxId) {
+            impacts.push({
+                title: "無法建立檔案",
+                description: "缺少雇主名稱或統編，系統無法建立有效索引。",
+                level: 'error' as const
+            });
+        }
+        if (!formData.companyNameEn || !formData.addressEn) {
+            impacts.push({
+                title: "無法產出勞動契約",
+                description: "缺少英文名稱或地址，無法生成勞動部公版契約。",
+                level: 'warning' as const
+            });
+        }
+        if (!formData.responsiblePersonIdNo) {
+            impacts.push({
+                title: "無法申請招募許可",
+                description: "未填寫負責人身分證號，勞動部系統將退件。",
+                level: 'warning' as const
+            });
+        }
+        return impacts;
+    };
+
     const onSubmitForm: SubmitHandler<EmployerFormData> = async (data) => {
         try {
             await onSubmit(data);
@@ -182,339 +218,268 @@ export default function EmployerForm({
         toast.success('已複製地址');
     };
 
+    const SectionHeader = ({ title, icon: Icon, isComplete }: { title: string, icon: any, isComplete?: boolean }) => (
+        <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-50 text-blue-600 rounded">
+                    <Icon className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
+            <div className={cn(
+                "px-2 py-1 rounded text-xs font-medium",
+                isComplete ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"
+            )}>
+                {isComplete ? "已完成" : "未完成"}
+            </div>
+        </div>
+    );
+
     return (
-        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                {/* Tab Navigation */}
-                <TabsList className="grid w-full grid-cols-5 mb-6">
-                    <TabsTrigger value="basic" className="flex items-center gap-2">
-                        <Building className="h-4 w-4" />
-                        基本資料
-                    </TabsTrigger>
-                    <TabsTrigger value="category" className="flex items-center gap-2">
-                        {selectedCategory === 'HOME_CARE' && <User className="h-4 w-4" />}
-                        {selectedCategory === 'MANUFACTURING' && <Settings className="h-4 w-4" />}
-                        {selectedCategory === 'INSTITUTION' && <Building2 className="h-4 w-4" />}
-                        {selectedCategory === 'HOME_CARE' ? '被看護人' : selectedCategory === 'MANUFACTURING' ? '工廠資料' : '機構資料'}
-                    </TabsTrigger>
-                    <TabsTrigger value="address" className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        地址資訊
-                    </TabsTrigger>
-                    <TabsTrigger value="bilingual" className="flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        雙語資料
-                    </TabsTrigger>
-                    <TabsTrigger value="settings" className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        設定
-                    </TabsTrigger>
-                </TabsList>
-
-                {/* Tab 1: Basic Info */}
-                <TabsContent value="basic" className="space-y-6">
-                    <FormSection
-                        title="基本資料"
-                        description="雇主的公司基本資訊"
-                        columns={3}
-                    >
-                        <div>
-                            <Label htmlFor="category" className="required">雇主類型</Label>
-                            <Select
-                                onValueChange={(value) => setValue('category', value)}
-                                defaultValue={watch('category')}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="MANUFACTURING">製造業</SelectItem>
-                                    <SelectItem value="HOME_CARE">家庭看護</SelectItem>
-                                    <SelectItem value="INSTITUTION">養護機構</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="col-span-2">
-                            <Label htmlFor="companyName" className="required">公司名稱</Label>
-                            <Input
-                                id="companyName"
-                                {...register('companyName')}
-                                placeholder="請輸入公司完整名稱"
-                            />
-                            {errors.companyName && (
-                                <p className="text-sm text-red-600 mt-1">{errors.companyName.message}</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="taxId" className="required">
-                                {selectedCategory === 'HOME_CARE' ? '雇主身分證字號' : '統一編號'}
-                            </Label>
-                            <Input
-                                id="taxId"
-                                {...register('taxId')}
-                                maxLength={selectedCategory === 'HOME_CARE' ? 10 : 8}
-                                placeholder={selectedCategory === 'HOME_CARE' ? 'A123456789' : '12345678'}
-                                className="font-mono"
-                            />
-                            {errors.taxId && (
-                                <p className="text-sm text-red-600 mt-1">{errors.taxId.message}</p>
-                            )}
-                            {taxIdStatus.error && (
-                                <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    {taxIdStatus.error}
-                                </p>
-                            )}
-                            {taxIdStatus.loading && (
-                                <p className="text-xs text-gray-400 mt-1">檢查中...</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="phoneNumber">電話</Label>
-                            <Input
-                                id="phoneNumber"
-                                {...register('phoneNumber')}
-                                placeholder="02-1234-5678"
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="faxNumber">傳真</Label>
-                            <Input
-                                id="faxNumber"
-                                {...register('faxNumber')}
-                                placeholder="02-1234-5679"
-                            />
-                        </div>
-
-                        <div className="col-span-3">
-                            <Label htmlFor="industryType">行業類別</Label>
-                            <Input
-                                id="industryType"
-                                {...register('industryType')}
-                                placeholder="例如：金屬製造業"
-                            />
-                        </div>
-                    </FormSection>
-                </TabsContent>
-
-                {/* Tab 2: Category-Specific */}
-                <TabsContent value="category" className="space-y-6">
-                    {selectedCategory === 'MANUFACTURING' && (
-                        <>
-                            <FormSection
-                                title="負責人與工廠資料"
-                                columns={3}
-                            >
-                                <div>
-                                    <Label htmlFor="responsiblePerson">負責人姓名</Label>
-                                    <Input {...register('responsiblePerson')} />
+        <form onSubmit={handleSubmit(onSubmitForm)} className="max-w-[1600px] mx-auto p-6">
+            <div className="flex gap-8">
+                {/* Main Content */}
+                <div className="flex-1 space-y-8">
+                    {/* Section 1: Basic Info */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <SectionHeader
+                            title="基本資料 (Basic Info)"
+                            icon={Building}
+                            isComplete={!!(formData.taxId && formData.companyName)}
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="taxId" className="required">統一編號 (TAX ID)</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="taxId"
+                                        {...register('taxId')}
+                                        placeholder="例如: 84149961"
+                                        className="font-mono bg-gray-50/50"
+                                    />
+                                    <Button type="button" variant="outline" size="sm" className="h-10 text-blue-600 border-blue-100 hover:bg-blue-50">
+                                        <Globe className="h-4 w-4 mr-1" /> 帶入
+                                    </Button>
                                 </div>
-
-                                <div>
-                                    <Label htmlFor="factoryRegistrationNo">工廠登記證號</Label>
-                                    <Input {...register('factoryRegistrationNo')} className="font-mono" />
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="laborInsuranceNo">勞保證號</Label>
-                                    <Input {...register('laborInsuranceNo')} className="font-mono" />
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="allocationRate">核配比率</Label>
-                                    <Select
-                                        onValueChange={(value) => setValue('allocationRate', value)}
-                                        defaultValue={watch('allocationRate')}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="請選擇" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="0.10">10%</SelectItem>
-                                            <SelectItem value="0.15">15%</SelectItem>
-                                            <SelectItem value="0.20">20%</SelectItem>
-                                            <SelectItem value="0.25">25% (3K5)</SelectItem>
-                                            <SelectItem value="0.35">35%</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </FormSection>
-
-                            <FormSection
-                                title="合規設定"
-                                divider={false}
-                            >
-                                <ComplianceSelector
-                                    value={watch('complianceStandard') || 'NONE'}
-                                    onChange={(val) => setValue('complianceStandard', val)}
-                                    effectiveDate={watch('zeroFeeEffectiveDate') || ''}
-                                    onEffectiveDateChange={(date) => setValue('zeroFeeEffectiveDate', date)}
+                                {errors.taxId && <p className="text-xs text-red-500">{errors.taxId.message}</p>}
+                                {taxIdStatus.error && <p className="text-xs text-amber-500">{taxIdStatus.error}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="companyName" className="required">雇主名稱 (Company Name)</Label>
+                                <Input
+                                    id="companyName"
+                                    {...register('companyName')}
+                                    placeholder="公司全名"
+                                    className="bg-gray-50/50"
                                 />
-                            </FormSection>
-                        </>
-                    )}
-
-                    {selectedCategory === 'HOME_CARE' && (
-                        <FormSection
-                            title="被看護人資料"
-                            columns={2}
-                            divider={false}
-                        >
-                            <div>
-                                <Label htmlFor="responsiblePerson">雇主姓名</Label>
-                                <Input {...register('responsiblePerson')} placeholder="雇主本人姓名" />
+                                {errors.companyName && <p className="text-xs text-red-500">{errors.companyName.message}</p>}
                             </div>
-
-                            <div>
-                                <Label htmlFor="patientName">被看護人姓名</Label>
-                                <Input {...register('patientName')} />
+                            <div className="md:col-span-2 space-y-2">
+                                <Label htmlFor="companyNameEn">英文名稱 (English Name) - 勞動契約必填</Label>
+                                <Input
+                                    id="companyNameEn"
+                                    {...register('companyNameEn')}
+                                    placeholder="Required for English Contracts"
+                                    className="bg-gray-50/50"
+                                />
                             </div>
-
-                            <div>
-                                <Label htmlFor="patientIdNo">被看護人身分證號</Label>
-                                <Input {...register('patientIdNo')} className="font-mono" />
+                            <div className="space-y-2">
+                                <Label htmlFor="industryCode">行業代號 (Industry Code)</Label>
+                                <Input
+                                    id="industryCode"
+                                    {...register('industryCode')}
+                                    placeholder="例如: 2611"
+                                    className="bg-gray-50/50"
+                                />
                             </div>
-
-                            <div>
-                                <Label htmlFor="relationship">與雇主關係</Label>
-                                <Input {...register('relationship')} placeholder="例如：父子" />
+                            <div className="space-y-2">
+                                <Label htmlFor="capital">資本額 (Capital)</Label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-gray-400 text-sm">$</span>
+                                    <Input
+                                        id="capital"
+                                        {...register('capital')}
+                                        placeholder="0"
+                                        className="pl-7 bg-gray-50/50"
+                                    />
+                                </div>
                             </div>
-
-                            <div className="col-span-2">
-                                <Label htmlFor="careAddress">照護地點</Label>
-                                <Input {...register('careAddress')} />
-                            </div>
-                        </FormSection>
-                    )}
-
-                    {selectedCategory === 'INSTITUTION' && (
-                        <FormSection
-                            title="機構資料"
-                            columns={3}
-                            divider={false}
-                        >
-                            <div>
-                                <Label htmlFor="responsiblePerson">機構負責人</Label>
-                                <Input {...register('responsiblePerson')} />
-                            </div>
-
-                            <div>
-                                <Label htmlFor="institutionCode">機構代碼</Label>
-                                <Input {...register('institutionCode')} className="font-mono" />
-                            </div>
-
-                            <div>
-                                <Label htmlFor="bedCount">床位數</Label>
-                                <Input type="number" {...register('bedCount')} />
-                            </div>
-                        </FormSection>
-                    )}
-                </TabsContent>
-
-                {/* Tab 3: Address Info */}
-                <TabsContent value="address" className="space-y-6">
-                    <FormSection
-                        title="地址資訊"
-                        columns={1}
-                        divider={false}
-                    >
-                        <div>
-                            <Label htmlFor="address">公司登記地址</Label>
-                            <Textarea
-                                id="address"
-                                {...register('address')}
-                                placeholder="請輸入公司營業登記地址"
-                                rows={3}
-                            />
                         </div>
-
-                        <div>
-                            <div className="flex justify-between items-center mb-2">
-                                <Label htmlFor="billAddress">帳單寄送地址</Label>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={copyAddressToBilling}
-                                    className="h-7"
-                                >
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    同公司地址
-                                </Button>
-                            </div>
-                            <Textarea
-                                id="billAddress"
-                                {...register('billAddress')}
-                                placeholder="請輸入帳單/發票寄送地址"
-                                rows={3}
-                            />
-                        </div>
-                    </FormSection>
-                </TabsContent>
-
-                {/* Tab 4: Bilingual */}
-                <TabsContent value="bilingual" className="space-y-6">
-                    <FormSection
-                        title="雙語資料"
-                        description="英文公司名稱、地址與負責人 (用於國際文件)"
-                        columns={1}
-                        divider={false}
-                    >
-                        <div>
-                            <Label htmlFor="companyNameEn">English Company Name</Label>
-                            <Input
-                                id="companyNameEn"
-                                {...register('companyNameEn')}
-                                placeholder="e.g. ABC Manufacturing Co., Ltd."
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="addressEn">English Address</Label>
-                            <Input
-                                id="addressEn"
-                                {...register('addressEn')}
-                                placeholder="e.g. No. 123, Sec. 1, Zhongshan Rd., Taipei City"
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="responsiblePersonEn">Responsible Person (EN)</Label>
-                            <Input
-                                id="responsiblePersonEn"
-                                {...register('responsiblePersonEn')}
-                                placeholder="e.g. Wang, Da-Ming"
-                            />
-                        </div>
-                    </FormSection>
-                </TabsContent>
-
-                {/* Tab 5: Settings */}
-                <TabsContent value="settings" className="space-y-6">
-                    <div className="text-center py-12 text-gray-500">
-                        <Settings className="h-16 w-16 mx-auto mb-4 opacity-20" />
-                        <p className="font-medium">進階設定開發中</p>
-                        <p className="text-sm mt-1">委任仲介公司與服務費規則設定將在下一階段實作</p>
                     </div>
-                </TabsContent>
-            </Tabs>
 
-            {/* Action Buttons - Sticky to bottom */}
-            <div className="sticky bottom-0 flex justify-end gap-3 py-4 mt-6 border-t bg-white/80 backdrop-blur-sm z-10">
-                {onCancel && (
-                    <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
-                        取消
-                    </Button>
-                )}
-                <Button type="submit" disabled={isLoading} className="shadow-lg">
-                    {isLoading && <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                    <Save className="mr-2 h-4 w-4" />
-                    {isEditMode ? '儲存修改' : '確認新增'}
-                </Button>
+                    {/* Section 2: Person In Charge */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <SectionHeader
+                            title="負責人資料 (Person In Charge)"
+                            icon={User}
+                            isComplete={!!(formData.responsiblePerson && formData.responsiblePersonIdNo)}
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="responsiblePerson" className="required">負責人姓名</Label>
+                                <Input
+                                    id="responsiblePerson"
+                                    {...register('responsiblePerson')}
+                                    className="bg-gray-50/50"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="responsiblePersonIdNo" className="required">身分證字號 (ID No.)</Label>
+                                <Input
+                                    id="responsiblePersonIdNo"
+                                    {...register('responsiblePersonIdNo')}
+                                    placeholder="A123456789"
+                                    className="font-mono bg-gray-50/50"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="responsiblePersonDob">出生日期 (DOB)</Label>
+                                <Input
+                                    id="responsiblePersonDob"
+                                    type="date"
+                                    {...register('responsiblePersonDob')}
+                                    className="bg-gray-50/50"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 3: Location */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <SectionHeader
+                            title="地址與聯絡 (Location)"
+                            icon={MapPin}
+                            isComplete={!!formData.address}
+                        />
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="address" className="required">公司登記地址 (Registered Address)</Label>
+                                <Textarea
+                                    id="address"
+                                    {...register('address')}
+                                    placeholder="請輸入公司營業登記地址"
+                                    rows={2}
+                                    className="bg-gray-50/50"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="addressEn">EN: English Address (Will appear on Contract)</Label>
+                                <Textarea
+                                    id="addressEn"
+                                    {...register('addressEn')}
+                                    placeholder="English Address"
+                                    rows={2}
+                                    className="bg-gray-50/50"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="contactPerson">聯絡人 (Contact Person)</Label>
+                                    <Input
+                                        id="contactPerson"
+                                        {...register('contactPerson')}
+                                        className="bg-gray-50/50"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="contactPhone">聯絡電話/分機 (Phone)</Label>
+                                    <div className="flex gap-2">
+                                        <div className="p-2.5 bg-gray-100 rounded text-gray-500">
+                                            <Phone className="h-4 w-4" />
+                                        </div>
+                                        <Input
+                                            id="contactPhone"
+                                            {...register('contactPhone')}
+                                            className="bg-gray-50/50"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 4: Type Specific */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded">
+                                <Settings className="h-5 w-5" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                {selectedCategory === 'MANUFACTURING' ? '工廠資料' : selectedCategory === 'HOME_CARE' ? '被看護人資料' : '機構資料'}
+                            </h3>
+                        </div>
+
+                        {selectedCategory === 'MANUFACTURING' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="factoryRegistrationNo">工廠登記證號</Label>
+                                    <Input {...register('factoryRegistrationNo')} className="font-mono bg-gray-50/50" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="laborInsuranceNo">勞保證號</Label>
+                                    <Input {...register('laborInsuranceNo')} className="font-mono bg-gray-50/50" />
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedCategory === 'HOME_CARE' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="patientName">被看護人姓名</Label>
+                                    <Input {...register('patientName')} className="bg-gray-50/50" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="patientIdNo">被看護人身分證號</Label>
+                                    <Input {...register('patientIdNo')} className="font-mono bg-gray-50/50" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="relationship">與雇主關係</Label>
+                                    <Input {...register('relationship')} className="bg-gray-50/50" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="careAddress">照護地點</Label>
+                                    <Input {...register('careAddress')} className="bg-gray-50/50" />
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedCategory === 'INSTITUTION' && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="institutionCode">機構代碼</Label>
+                                    <Input {...register('institutionCode')} className="font-mono bg-gray-50/50" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="bedCount">床位數</Label>
+                                    <Input type="number" {...register('bedCount')} className="bg-gray-50/50" />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end gap-3 pt-4">
+                        {onCancel && (
+                            <Button type="button" variant="ghost" onClick={onCancel} disabled={isLoading} className="text-gray-500">
+                                取消
+                            </Button>
+                        )}
+                        <Button type="submit" disabled={isLoading} className="px-8 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100">
+                            {isLoading && <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+                            <Save className="mr-2 h-4 w-4" />
+                            {isEditMode ? '儲存修改' : '確認新增'}
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Sidebar */}
+                <div className="w-80 shrink-0">
+                    <EmployerSidebar
+                        completeness={completeness}
+                        missingItems={[]} // Can be derived from calculateCompleteness if needed
+                        impacts={getImpacts()}
+                    />
+                </div>
             </div>
         </form>
     );

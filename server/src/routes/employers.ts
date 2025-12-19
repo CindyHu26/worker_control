@@ -40,16 +40,22 @@ router.get('/check-duplicate/:taxId', async (req, res) => {
 // Zod Schema for Employer Creation with Type Coercion
 const createEmployerSchema = z.object({
     companyName: z.string().min(1, "公司名稱必填"),
+    companyNameEn: z.string().optional(),
     taxId: z.string().optional(),
     responsiblePerson: z.string().optional(),
     phoneNumber: z.string().optional(),
     address: z.string().optional(),
+    addressEn: z.string().optional(),
     faxNumber: z.string().optional(),
     email: z.string().optional(),
+    contactPerson: z.string().optional(),
+    contactPhone: z.string().optional(),
 
     // Corporate Fields with type coercion
     factoryRegistrationNo: z.string().optional(),
     industryType: z.string().optional(),
+    industryCode: z.string().optional(),
+    capital: z.coerce.number().optional(),
     laborInsuranceNo: z.string().optional(),
     healthInsuranceUnitNo: z.string().optional(),
     institutionCode: z.string().optional(),
@@ -188,11 +194,15 @@ router.post('/', async (req, res) => {
         const newEmployer = await prisma.$transaction(async (tx) => {
             const data: any = {
                 companyName: String(companyName),
+                companyNameEn: validatedData.companyNameEn,
                 taxId: taxId ? String(taxId) : undefined,
                 responsiblePerson: responsiblePerson ? String(responsiblePerson) : undefined,
                 phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
                 address: address ? String(address) : undefined,
+                addressEn: validatedData.addressEn,
                 email: email ? String(email) : undefined,
+                contactPerson: validatedData.contactPerson,
+                contactPhone: validatedData.contactPhone,
             };
 
             if (isCorporate) {
@@ -200,11 +210,13 @@ router.post('/', async (req, res) => {
                     create: {
                         factoryRegistrationNo,
                         industryType,
+                        industryCode: validatedData.industryCode,
+                        capital: validatedData.capital ? Number(validatedData.capital) : undefined,
                         laborInsuranceNo,
                         healthInsuranceUnitNo,
                         faxNumber,
                         institutionCode,
-                        bedCount: bedCount // Already coerced to number by Zod
+                        bedCount: bedCount
                     }
                 };
             } else if (isIndividual) {
@@ -228,10 +240,10 @@ router.post('/', async (req, res) => {
                 data.recruitmentLetters = {
                     create: initialRecruitmentLetters.map(letter => ({
                         letterNumber: letter.letterNumber,
-                        issueDate: letter.issueDate, // Already coerced to Date by Zod
-                        expiryDate: letter.expiryDate, // Already coerced to Date by Zod
-                        approvedQuota: letter.approvedQuota, // Already coerced to number by Zod
-                        usedQuota: 0 // Initial used is 0
+                        issueDate: letter.issueDate,
+                        expiryDate: letter.expiryDate,
+                        approvedQuota: letter.approvedQuota,
+                        usedQuota: 0
                     }))
                 };
             }
@@ -239,7 +251,7 @@ router.post('/', async (req, res) => {
             const emp = await tx.employer.create({
                 data,
                 include: {
-                    recruitmentLetters: true // Include created letters in response
+                    recruitmentLetters: true
                 }
             });
 

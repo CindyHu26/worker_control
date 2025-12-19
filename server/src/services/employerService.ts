@@ -24,47 +24,46 @@ export async function updateEmployer(id: string, data: any) {
         attributes,
         // Corporate fields
         factoryRegistrationNo, industryCode, industryType, factoryAddress, factoryAddressEn,
+        capital,
         laborInsuranceNo, laborInsuranceId, healthInsuranceUnitNo, healthInsuranceId, faxNumber,
         // Individual fields
         patientName, hospitalCertNo, careAddress, relationship,
         responsiblePersonDob, responsiblePersonIdNo, responsiblePersonFather, responsiblePersonMother, responsiblePersonSpouse,
         idIssueDate, idIssuePlace, militaryStatus,
+        // New Core fields
+        companyNameEn, addressEn, contactPerson, contactPhone,
         ...coreData
     } = data;
 
-    // Determine category from data or fetch current if needed (omitted for brevity, assuming passed or just updating fields present)
-    // Actually, we should update based on what's provided.
-
     // Prepare updates
-    const coreUpdate = { ...coreData };
-
-    // We can use upsert or update for relations if IDs exist, but simpler to use 'update or create' syntax? 
-    // Prisma `update` allows nested `upsert`.
+    const coreUpdate: any = { ...coreData };
+    if (companyNameEn !== undefined) coreUpdate.companyNameEn = companyNameEn;
+    if (addressEn !== undefined) coreUpdate.addressEn = addressEn;
+    if (contactPerson !== undefined) coreUpdate.contactPerson = contactPerson;
+    if (contactPhone !== undefined) coreUpdate.contactPhone = contactPhone;
 
     const updates: any = { ...coreUpdate };
 
     // If Corporate fields are present
-    if (factoryRegistrationNo || industryType || laborInsuranceNo || healthInsuranceUnitNo) {
+    if (factoryRegistrationNo || industryType || industryCode || capital !== undefined || laborInsuranceNo || healthInsuranceUnitNo) {
         updates.corporateInfo = {
             upsert: {
                 create: {
                     factoryRegistrationNo,
                     industryType,
+                    industryCode,
+                    capital: capital ? Number(capital) : undefined,
                     laborInsuranceNo,
                     laborInsuranceId,
                     healthInsuranceUnitNo,
                     healthInsuranceId,
                     faxNumber,
-                    // factoryAddress is usually stored in core address or if different? The schema doesn't have factoryAddress on CorporateInfo yet, maybe strict mapping?
-                    // New Schema: CorporateInfo has factoryRegistrationNo, industryType...
-                    // Note: factoryAddress was in JSON before. Now likely main address or needs field.
-                    // User schema didn't explicitly add factoryAddress to CorporateInfo, let's assume it maps to core Address or we missed it.
-                    // The user request said "CorporateInfo (存工廠登記證...)"
-                    // I will stick to the schema I defined.
                 },
                 update: {
                     factoryRegistrationNo,
                     industryType,
+                    industryCode,
+                    capital: capital ? Number(capital) : undefined,
                     laborInsuranceNo,
                     laborInsuranceId,
                     healthInsuranceUnitNo,
@@ -76,7 +75,7 @@ export async function updateEmployer(id: string, data: any) {
     }
 
     // If Individual fields are present
-    if (responsiblePersonIdNo || responsiblePersonSpouse || responsiblePersonFather) {
+    if (responsiblePersonIdNo || responsiblePersonSpouse || responsiblePersonFather || patientName) {
         updates.individualInfo = {
             upsert: {
                 create: {
@@ -87,7 +86,11 @@ export async function updateEmployer(id: string, data: any) {
                     responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
                     idIssueDate: idIssueDate ? new Date(idIssueDate) : undefined,
                     idIssuePlace,
-                    militaryStatus
+                    militaryStatus,
+                    patientName,
+                    patientIdNo: data.patientIdNo,
+                    careAddress,
+                    relationship
                 },
                 update: {
                     responsiblePersonIdNo,
@@ -97,7 +100,11 @@ export async function updateEmployer(id: string, data: any) {
                     responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
                     idIssueDate: idIssueDate ? new Date(idIssueDate) : undefined,
                     idIssuePlace,
-                    militaryStatus
+                    militaryStatus,
+                    patientName,
+                    patientIdNo: data.patientIdNo,
+                    careAddress,
+                    relationship
                 }
             }
         }
