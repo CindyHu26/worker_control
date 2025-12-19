@@ -103,6 +103,7 @@ export const convertLeadToEmployer = async (
         factoryAddress?: string;          // Factory address (required for manufacturing)
         avgDomesticWorkers?: number;      // Domestic worker count (required for manufacturing)
         allocationRate?: number;          // Allocation rate (required for manufacturing)
+        isExtra?: boolean;                // Whether extra 5% is applied
         complianceStandard?: string;      // NONE, RBA_7_0, RBA_8_0, IWAY_6_0, SA8000
         zeroFeeEffectiveDate?: Date;      // When zero-fee rules take effect
     }
@@ -133,6 +134,12 @@ export const convertLeadToEmployer = async (
             if (!options.factoryAddress) throw new Error("製造業轉正必須填寫：工廠地址");
             if (!options.avgDomesticWorkers) throw new Error("製造業轉正必須填寫：國內勞工人數");
             if (!options.allocationRate) throw new Error("製造業轉正必須填寫：核配比率");
+
+            // Strict Tier Validation
+            const validTiers = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40];
+            if (!validTiers.includes(Number(options.allocationRate.toFixed(2)))) {
+                throw new Error(`無效的核配比率: ${options.allocationRate}. 合法級距為: ${validTiers.join(', ')}`);
+            }
         }
 
         // 4. Create Employer with Nested CorporateInfo
@@ -153,6 +160,9 @@ export const convertLeadToEmployer = async (
                 allocationRate: options.allocationRate || null,
                 complianceStandard: options.complianceStandard || 'NONE',
                 zeroFeeEffectiveDate: options.zeroFeeEffectiveDate || null,
+                industryAttributes: {
+                    isExtra: options.isExtra || false
+                },
 
                 // Nested CorporateInfo Relation
                 corporateInfo: (category === 'MANUFACTURING' || category === 'INSTITUTION') ? {

@@ -748,3 +748,21 @@ model Attachment {
   @@index([refTable, refId])
   @@map("attachments")
 }
+
+model Hospital {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String?  @unique @db.VarChar(50)
+  name       String   @db.VarChar(255)
+  city       String?  @db.VarChar(50)
+  country    String?  @db.VarChar(50)
+  validUntil DateTime? @map("valid_until") @db.Date
+  
+  isGeneral  Boolean @default(false) @map("is_general")
+  isXray     Boolean @default(false) @map("is_xray")
+  isOverseas Boolean @default(false) @map("is_overseas")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("hospitals")
+}

@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { INDUSTRIES, IndustryKey, requiresFactoryInfo } from '@/lib/leadConstants';
-import { AlertCircle, loader2, Calculator } from 'lucide-react';
+import { INDUSTRIES, IndustryKey, requiresFactoryInfo, ALLOCATION_RATES, BASE_RATES, EXTRA_RATES } from '@/lib/leadConstants';
+import { AlertCircle, Loader2, Calculator } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -32,6 +32,9 @@ interface ConvertFormData {
     factoryAddress?: string;
     avgDomesticWorkers?: number;
     allocationRate?: number;
+    baseRate?: string;
+    extraRate?: string;
+    isExtra?: boolean;
     complianceStandard?: string;
 }
 
@@ -73,6 +76,9 @@ export default function ConvertDialog({ open, onClose, lead, onSuccess }: Conver
         factoryAddress: lead.address || '',
         avgDomesticWorkers: 0,
         allocationRate: 0.15,
+        baseRate: '0.15',
+        extraRate: '0.00',
+        isExtra: false,
         complianceStandard: 'NONE'
     });
 
@@ -87,6 +93,9 @@ export default function ConvertDialog({ open, onClose, lead, onSuccess }: Conver
                 factoryAddress: lead.address || '',
                 avgDomesticWorkers: 0,
                 allocationRate: 0.15,
+                baseRate: '0.15',
+                extraRate: '0.00',
+                isExtra: false,
                 complianceStandard: 'NONE'
             });
             setError(null);
@@ -105,6 +114,16 @@ export default function ConvertDialog({ open, onClose, lead, onSuccess }: Conver
             industryCode: getIndustryCode(industryType)
         }));
     };
+
+    // Calculate Total Rate in Effect
+    useEffect(() => {
+        if (formData.baseRate) {
+            const base = parseFloat(formData.baseRate);
+            const extra = formData.isExtra && formData.extraRate ? parseFloat(formData.extraRate) : 0;
+            const total = Math.min(0.40, base + extra);
+            setFormData(prev => ({ ...prev, allocationRate: total }));
+        }
+    }, [formData.baseRate, formData.extraRate, formData.isExtra]);
 
     const validate = (): boolean => {
         if (!formData.taxId || formData.taxId.length !== 8) {
@@ -286,22 +305,48 @@ export default function ConvertDialog({ open, onClose, lead, onSuccess }: Conver
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="allocationRate" className="required">核配比率</Label>
-                                    <Select
-                                        value={formData.allocationRate?.toString()}
-                                        onValueChange={(value) => handleChange('allocationRate', parseFloat(value))}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="0.10">10% (C級)</SelectItem>
-                                            <SelectItem value="0.15">15% (B級)</SelectItem>
-                                            <SelectItem value="0.20">20% (A級)</SelectItem>
-                                            <SelectItem value="0.25">25% (A+級)</SelectItem>
-                                            <SelectItem value="0.35">35% (最高)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <Label className="required">核配比率 (Allocation Rate)</Label>
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
+                                                id="isExtraConvert"
+                                                checked={formData.isExtra}
+                                                onChange={(e) => handleChange('isExtra', e.target.checked)}
+                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <Label htmlFor="isExtraConvert" className="text-[10px] text-gray-500 cursor-pointer">申請 Extra</Label>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Select
+                                            value={formData.baseRate}
+                                            onValueChange={(value) => handleChange('baseRate', value)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="級別" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {BASE_RATES.map((rate) => (
+                                                    <SelectItem key={rate.value} value={rate.value}>{rate.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select
+                                            value={formData.extraRate}
+                                            onValueChange={(value) => handleChange('extraRate', value)}
+                                            disabled={!formData.isExtra}
+                                        >
+                                            <SelectTrigger className={!formData.isExtra ? "opacity-50" : ""}>
+                                                <SelectValue placeholder="Extra" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {EXTRA_RATES.map((rate) => (
+                                                    <SelectItem key={rate.value} value={rate.value}>{rate.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
 
                                 {quota > 0 && (

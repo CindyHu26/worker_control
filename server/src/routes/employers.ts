@@ -46,6 +46,7 @@ const createEmployerSchema = z.object({
     phoneNumber: z.string().optional(),
     address: z.string().optional(),
     addressEn: z.string().optional(),
+    invoiceAddress: z.string().optional(),
     faxNumber: z.string().optional(),
     email: z.string().optional(),
     contactPerson: z.string().optional(),
@@ -55,11 +56,19 @@ const createEmployerSchema = z.object({
     factoryRegistrationNo: z.string().optional(),
     industryType: z.string().optional(),
     industryCode: z.string().optional(),
+    factoryAddress: z.string().optional(),
     capital: z.coerce.number().optional(),
     laborInsuranceNo: z.string().optional(),
     healthInsuranceUnitNo: z.string().optional(),
     institutionCode: z.string().optional(),
-    bedCount: z.coerce.number().optional(), // Type coercion for numeric field
+    bedCount: z.coerce.number().optional(),
+    avgDomesticWorkers: z.coerce.number().optional(),
+
+    // 3K5 & Compliance
+    allocationRate: z.enum(['0.10', '0.15', '0.20', '0.25', '0.30', '0.35', '0.40']).optional(),
+    isExtra: z.boolean().optional(),
+    complianceStandard: z.string().optional(),
+    zeroFeeEffectiveDate: z.string().optional(),
 
     // Individual Fields
     responsiblePersonIdNo: z.string().optional(),
@@ -152,15 +161,22 @@ router.post('/', async (req, res) => {
             responsiblePerson,
             phoneNumber,
             address,
+            invoiceAddress,
             faxNumber,
             email,
             // Corporate Fields
             factoryRegistrationNo,
             industryType,
+            industryCode,
+            factoryAddress,
             laborInsuranceNo,
             healthInsuranceUnitNo,
             institutionCode,
             bedCount,
+            // 3K5 & Compliance
+            allocationRate,
+            complianceStandard,
+            zeroFeeEffectiveDate,
             // Individual Fields
             responsiblePersonIdNo,
             responsiblePersonDob,
@@ -172,6 +188,8 @@ router.post('/', async (req, res) => {
             patientIdNo,
             careAddress,
             relationship,
+            // Manufacturing Specific
+            avgDomesticWorkers,
             // Initial Recruitment Letters
             initialRecruitmentLetters
         } = validatedData;
@@ -200,9 +218,15 @@ router.post('/', async (req, res) => {
                 phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
                 address: address ? String(address) : undefined,
                 addressEn: validatedData.addressEn,
+                invoiceAddress: invoiceAddress ? String(invoiceAddress) : undefined,
                 email: email ? String(email) : undefined,
                 contactPerson: validatedData.contactPerson,
                 contactPhone: validatedData.contactPhone,
+
+                // 3K5 & Compliance
+                allocationRate: allocationRate ? Number(allocationRate) : undefined,
+                complianceStandard: complianceStandard || 'NONE',
+                zeroFeeEffectiveDate: zeroFeeEffectiveDate ? new Date(zeroFeeEffectiveDate) : undefined,
             };
 
             if (isCorporate) {
@@ -211,12 +235,16 @@ router.post('/', async (req, res) => {
                         factoryRegistrationNo,
                         industryType,
                         industryCode: validatedData.industryCode,
+                        factoryAddress,
                         capital: validatedData.capital ? Number(validatedData.capital) : undefined,
                         laborInsuranceNo,
                         healthInsuranceUnitNo,
                         faxNumber,
                         institutionCode,
-                        bedCount: bedCount
+                        bedCount: bedCount,
+                        industryAttributes: {
+                            isExtra: validatedData.isExtra || false
+                        }
                     }
                 };
             } else if (isIndividual) {
@@ -254,6 +282,19 @@ router.post('/', async (req, res) => {
                     recruitmentLetters: true
                 }
             });
+
+            // If Manufacturing AND domestic workers count provided, create initial labor count record
+            if (isCorporate && industryType === 'MANUFACTURING' && avgDomesticWorkers && avgDomesticWorkers > 0) {
+                const now = new Date();
+                await tx.employerLaborCount.create({
+                    data: {
+                        employerId: emp.id,
+                        year: now.getFullYear(),
+                        month: now.getMonth() + 1,
+                        count: Number(avgDomesticWorkers)
+                    }
+                });
+            }
 
             return emp;
         });

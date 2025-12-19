@@ -13,6 +13,31 @@ export const INDUSTRIES = {
     OTHER: '其他'
 } as const;
 
+export const BASE_RATES = [
+    { label: '10% (級別 D)', value: '0.10' },
+    { label: '15% (級別 C)', value: '0.15' },
+    { label: '20% (級別 B)', value: '0.20' },
+    { label: '25% (級別 A)', value: '0.25' },
+    { label: '35% (級別 A+)', value: '0.35' }
+] as const;
+
+export const EXTRA_RATES = [
+    { label: '無 (None)', value: '0.00' },
+    { label: '+5% (Extra)', value: '0.05' },
+    { label: '+10% (Extra)', value: '0.10' },
+    { label: '+15% (Extra)', value: '0.15' }
+] as const;
+
+export const ALLOCATION_RATES = [
+    { label: '10% (級別 D)', value: '0.10' },
+    { label: '15% (級別 C)', value: '0.15' },
+    { label: '20% (級別 B)', value: '0.20' },
+    { label: '25% (級別 A)', value: '0.25' },
+    { label: '30% (含 Extra)', value: '0.30' },
+    { label: '35% (級別 A+)', value: '0.35' },
+    { label: '40% (最高上限)', value: '0.40' }
+] as const;
+
 export type IndustryKey = keyof typeof INDUSTRIES;
 
 // Lead Status (潛在客戶狀態)

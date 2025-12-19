@@ -1,6 +1,7 @@
 import AlertFeed from '../components/dashboard/AlertFeed';
 import IncidentFeed from '../components/dashboard/IncidentFeed';
 import { Users, UserPlus, PlaneLanding, FileCheck } from 'lucide-react';
+import { cookies } from 'next/headers';
 
 async function getStats() {
     // In a server component, we can fetch directly if API is internal, 
@@ -8,7 +9,15 @@ async function getStats() {
     // We need to handle the case where the server might not be running during build.
     // For demo code generation, we'll assume it runs or return mock if fail.
     try {
-        const res = await fetch('http://localhost:3001/api/dashboard/stats', { cache: 'no-store' });
+        const cookieStore = await cookies();
+        const token = cookieStore.get('token')?.value;
+
+        const res = await fetch('http://localhost:3001/api/dashboard/stats', {
+            cache: 'no-store',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!res.ok) throw new Error('Failed to fetch stats');
         return res.json();
     } catch (e) {
