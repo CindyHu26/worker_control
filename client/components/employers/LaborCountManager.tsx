@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Download, Upload, Save, RefreshCw } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 interface LaborCount {
     year: number;
@@ -43,13 +43,38 @@ export default function LaborCountManager({ employerId }: { employerId: string }
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const bstr = evt.target?.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
+                const buffer = evt.target?.result as ArrayBuffer;
+                const workbook = new ExcelJS.Workbook();
+                await workbook.xlsx.load(buffer);
 
-                // Expect columns: Year, Month, Count
-                const data = XLSX.utils.sheet_to_json(ws) as any[];
+                const worksheet = workbook.getWorksheet(1);
+                if (!worksheet) throw new Error('No worksheet found');
+
+                const data: any[] = [];
+                const headers: string[] = [];
+
+                // Get headers from first row
+                const headerRow = worksheet.getRow(1);
+                headerRow.eachCell((cell, colNumber) => {
+                    headers[colNumber] = cell.value?.toString().trim() || '';
+                });
+
+                // Get data from subsequent rows
+                worksheet.eachRow((row, rowNumber) => {
+                    if (rowNumber === 1) return;
+                    const rowData: any = {};
+                    row.eachCell((cell, colNumber) => {
+                        const header = headers[colNumber];
+                        if (header) {
+                            // Extract raw value (handle potential formula result)
+                            const value = cell.value;
+                            rowData[header] = (value && typeof value === 'object' && 'result' in value)
+                                ? value.result
+                                : value;
+                        }
+                    });
+                    data.push(rowData);
+                });
 
                 // Validate and format
                 const formattedData = data.map(row => ({
@@ -63,7 +88,7 @@ export default function LaborCountManager({ employerId }: { employerId: string }
                     return;
                 }
 
-                // Send to API (Existing quota service expects 'data')
+                // Send to API
                 const res = await fetch(`http://localhost:3001/api/employers/${employerId}/labor-counts`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -84,7 +109,7 @@ export default function LaborCountManager({ employerId }: { employerId: string }
                 if (fileInputRef.current) fileInputRef.current.value = '';
             }
         };
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
     };
 
     // Helper to get count for a specific cell
@@ -120,15 +145,30 @@ export default function LaborCountManager({ employerId }: { employerId: string }
                     </button>
 
                     <button
-                        onClick={() => {
-                            // Create sample template
-                            const ws = XLSX.utils.json_to_sheet([
-                                { Year: currentYear, Month: 1, Count: 5 },
-                                { Year: currentYear, Month: 2, Count: 5 }
-                            ]);
-                            const wb = XLSX.utils.book_new();
-                            XLSX.utils.book_append_sheet(wb, ws, "Template");
-                            XLSX.writeFile(wb, "labor_count_template.xlsx");
+                        onClick={async () => {
+                            try {
+                                const workbook = new ExcelJS.Workbook();
+                                const worksheet = workbook.addWorksheet('Template');
+                                worksheet.columns = [
+                                    { header: 'Year', key: 'year', width: 10 },
+                                    { header: 'Month', key: 'month', width: 10 },
+                                    { header: 'Count', key: 'count', width: 10 },
+                                ];
+                                worksheet.addRow({ year: currentYear, month: 1, count: 5 });
+                                worksheet.addRow({ year: currentYear, month: 2, count: 5 });
+
+                                const buffer = await workbook.xlsx.writeBuffer();
+                                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                                const url = window.URL.createObjectURL(blob);
+                                const anchor = document.createElement('a');
+                                anchor.href = url;
+                                anchor.download = 'labor_count_template.xlsx';
+                                anchor.click();
+                                window.URL.revokeObjectURL(url);
+                            } catch (err) {
+                                console.error('Export failed', err);
+                                alert('Export failed');
+                            }
                         }}
                         className="flex items-center gap-2 px-4 py-2 border rounded hover:bg-gray-50 text-sm"
                     >

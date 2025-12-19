@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import prisma from '../prisma';
-import { getTaiwanToday, getTaiwanMonthStart, getTaiwanNow } from '../utils/dateUtils';
+import { getTaiwanToday, getTaiwanMonthStart } from '../utils/dateUtils';
 import { toZonedTime } from 'date-fns-tz';
 
 const router = Router();
@@ -9,9 +9,7 @@ const router = Router();
 router.get('/stats', async (req, res) => {
     try {
         const now = getTaiwanToday();
-        const taiwanNow = toZonedTime(now, 'Asia/Taipei');
-        const startOfMonth = getTaiwanMonthStart(taiwanNow.getFullYear(), taiwanNow.getMonth() + 1);
-        const currentMonth = taiwanNow.getMonth() + 1; // 1-12
+        const startOfMonth = getTaiwanMonthStart(now.getFullYear(), now.getMonth() + 1);
 
         const totalActiveWorkers = await prisma.deployment.count({
             where: {
@@ -28,12 +26,12 @@ router.get('/stats', async (req, res) => {
             }
         });
 
-        // Birthday count using SQL date functions (SQLite compatible)
-        // Count workers with birthdays this month who have active deployments
-        const birthdaysThisMonth = await prisma.$queryRaw<[{ count: number }]>`
+        // Birthday count using Postgres SQL
+        const currentMonth = now.getMonth() + 1;
+        const birthdaysResult = await prisma.$queryRaw<[{ count: bigint }]>`
             SELECT COUNT(*) as count
             FROM workers w
-            WHERE CAST(strftime('%m', w.dob) AS INTEGER) = ${currentMonth}
+            WHERE EXTRACT(MONTH FROM w.dob) = ${currentMonth}
             AND EXISTS (
                 SELECT 1 FROM deployments d 
                 WHERE d.worker_id = w.id 
@@ -41,29 +39,19 @@ router.get('/stats', async (req, res) => {
             )
         `;
 
-        // Active recruitment: RecruitmentLetters with remaining quota
-        // Use raw SQL since Prisma doesn't support field-to-field comparison
-        const activeRecruitmentResult = await prisma.$queryRaw<[{ count: number }]>`
+        const activeRecruitmentResult = await prisma.$queryRaw<[{ count: bigint }]>`
             SELECT COUNT(*) as count
-            FROM recruitment_letters
-            WHERE expiry_date >= ${now.toISOString()}
+            FROM employer_recruitment_letters
+            WHERE expiry_date >= ${now}
             AND used_quota < approved_quota
         `;
-
-        // Pending documents: Count active document templates
-        // (You can adjust this logic based on your actual requirements)
-        const pendingDocuments = await prisma.documentTemplate.count({
-            where: {
-                isActive: true
-            }
-        });
 
         res.json({
             totalActiveWorkers,
             newEntriesThisMonth,
-            birthdaysThisMonth: Number(birthdaysThisMonth[0].count),
+            birthdaysThisMonth: Number(birthdaysResult[0].count),
             activeRecruitment: Number(activeRecruitmentResult[0].count),
-            pendingDocuments
+            pendingDocuments: 0
         });
     } catch (error) {
         console.error('Stats Error:', error);
@@ -75,29 +63,27 @@ router.get('/stats', async (req, res) => {
 router.get('/birthdays', async (req, res) => {
     try {
         const now = getTaiwanToday();
-        const taiwanNow = toZonedTime(now, 'Asia/Taipei');
-        const currentMonth = taiwanNow.getMonth() + 1; // 1-12
+        const currentMonth = now.getMonth() + 1;
 
-        // Use raw SQL for efficient month extraction and joining
         const birthdays = await prisma.$queryRaw<Array<{
             id: string;
             englishName: string;
             chineseName: string | null;
-            dob: string;
+            dob: Date;
             companyName: string;
         }>>`
             SELECT 
                 w.id,
-                w.english_name as englishName,
-                w.chinese_name as chineseName,
+                w.english_name as "englishName",
+                w.chinese_name as "chineseName",
                 w.dob,
-                e.company_name as companyName
+                e.company_name as "companyName"
             FROM workers w
             INNER JOIN deployments d ON d.worker_id = w.id
             INNER JOIN employers e ON e.id = d.employer_id
-            WHERE CAST(strftime('%m', w.dob) AS INTEGER) = ${currentMonth}
+            WHERE EXTRACT(MONTH FROM w.dob) = ${currentMonth}
             AND d.status = 'active'
-            ORDER BY CAST(strftime('%d', w.dob) AS INTEGER) ASC
+            ORDER BY EXTRACT(DAY FROM w.dob) ASC
             LIMIT 50
         `;
 
@@ -113,15 +99,10 @@ router.get('/birthdays', async (req, res) => {
 router.get('/alerts', async (req, res) => {
     try {
         const today = getTaiwanToday();
-        today.setHours(0, 0, 0, 0); // Start of today
-
         const thirtyDaysFromNow = new Date(today);
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30); // Exactly 30 days later
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-        // Fetch timelines where any key date is soon
-        // This is a bit complex in Prisma to do "OR" across multiple fields with relations efficiently
-        // We will fetch where AT LEAST ONE matches
-
+        // 1. Fetch upcoming from WorkerTimeline
         const timelines = await prisma.workerTimeline.findMany({
             where: {
                 OR: [
@@ -131,34 +112,38 @@ router.get('/alerts', async (req, res) => {
                     { residencePermitExpiry: { lte: thirtyDaysFromNow, gte: today } },
                     { passportExpiry: { lte: thirtyDaysFromNow, gte: today } }
                 ],
-                deployment: {
-                    status: 'active' // Only active deployments
-                }
+                deployment: { status: 'active' }
             },
             include: {
                 deployment: {
                     include: {
-                        worker: {
-                            select: {
-                                id: true,
-                                englishName: true,
-                                chineseName: true,
-                                nationality: true
-                            }
-                        },
-                        employer: {
-                            select: {
-                                companyName: true
-                            }
-                        }
+                        worker: true,
+                        employer: true
                     }
                 }
             },
-            take: 50 // Limit for dashboard
+            take: 50
         });
 
-        // Transform into a flat "Alert" structure for frontend
-        const alerts = timelines.map(t => {
+        // 2. Fetch upcoming from direct HealthChecks
+        const healthChecks = await prisma.healthCheck.findMany({
+            where: {
+                checkDate: { lte: thirtyDaysFromNow, gte: today },
+                result: 'pending'
+            },
+            include: {
+                worker: true,
+                deployment: {
+                    include: { employer: true }
+                }
+            },
+            take: 50
+        });
+
+        const alerts: any[] = [];
+
+        // Map timelines
+        timelines.forEach(t => {
             const dueDates = [
                 { type: 'MedCheck 6mo', date: t.medCheck6moDeadline },
                 { type: 'MedCheck 18mo', date: t.medCheck18moDeadline },
@@ -166,26 +151,32 @@ router.get('/alerts', async (req, res) => {
                 { type: 'ARC Expiry', date: t.residencePermitExpiry },
                 { type: 'Passport Expiry', date: t.passportExpiry },
             ];
-
-            // Find the specific one triggering the alert (first one found)
-            const urgentOne = dueDates.find(d => d.date && d.date <= thirtyDaysFromNow && d.date >= today); // Re-check strictly
-
-            // Calculate days remaining consistently
-            let daysRemaining = 0;
-            if (urgentOne?.date) {
-                const diffTime = new Date(urgentOne.date).getTime() - today.getTime();
-                daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const urgent = dueDates.find(d => d.date && d.date <= thirtyDaysFromNow && d.date >= today);
+            if (urgent && urgent.date) {
+                const diffTime = new Date(urgent.date).getTime() - today.getTime();
+                alerts.push({
+                    id: t.id,
+                    workerName: t.deployment.worker.chineseName || t.deployment.worker.englishName,
+                    companyName: t.deployment.employer.companyName,
+                    alertType: urgent.type,
+                    dueDate: urgent.date,
+                    daysRemaining: Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                });
             }
+        });
 
-            return {
-                id: t.id,
-                workerName: t.deployment.worker.chineseName || t.deployment.worker.englishName,
-                companyName: t.deployment.employer.companyName,
-                alertType: urgentOne?.type || 'Generic Deadline',
-                dueDate: urgentOne?.date,
-                daysRemaining: daysRemaining
-            };
-        }).filter(a => a.dueDate); // double check
+        // Map health checks
+        healthChecks.forEach(hc => {
+            const diffTime = new Date(hc.checkDate).getTime() - today.getTime();
+            alerts.push({
+                id: hc.id,
+                workerName: hc.worker.chineseName || hc.worker.englishName,
+                companyName: hc.deployment.employer.companyName,
+                alertType: `Health Check (${hc.checkType})`,
+                dueDate: hc.checkDate,
+                daysRemaining: Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            });
+        });
 
         res.json(alerts);
     } catch (error) {

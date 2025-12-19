@@ -145,7 +145,7 @@ enum CandidateResult {
 // Models
 
 model InternalUser {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username     String   @unique @db.VarChar(50)
   email        String   @unique @db.VarChar(255)
   passwordHash String   @map("password_hash") @db.VarChar(255)
@@ -247,7 +247,7 @@ model IndividualInfo {
 
 
 model Worker {
-  id                        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   englishName               String   @map("english_name") @db.VarChar(100)
   chineseName               String?  @map("chinese_name") @db.VarChar(50)
   dob                       DateTime @db.Date
@@ -301,7 +301,7 @@ model Worker {
 }
 
 model EmployerRecruitmentLetter {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employerId     String   @map("employer_id") @db.Uuid
   letterNumber   String   @unique @map("letter_number") @db.VarChar(50)
   issueDate      DateTime @map("issue_date") @db.Date
@@ -321,7 +321,7 @@ model EmployerRecruitmentLetter {
 }
 
 model WorkerPassport {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workerId       String   @map("worker_id") @db.Uuid
   passportNumber String   @map("passport_number") @db.VarChar(50)
   issueDate      DateTime @map("issue_date") @db.Date
@@ -338,7 +338,7 @@ model WorkerPassport {
 }
 
 model WorkerArc {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workerId       String   @map("worker_id") @db.Uuid
   arcNumber      String   @map("arc_number") @db.VarChar(50)
   issueDate      DateTime @map("issue_date") @db.Date
@@ -354,7 +354,7 @@ model WorkerArc {
 }
 
 model Deployment {
-  id                  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workerId            String   @map("worker_id") @db.Uuid
   employerId          String   @map("employer_id") @db.Uuid
   recruitmentLetterId String?  @map("recruitment_letter_id") @db.Uuid
@@ -391,7 +391,7 @@ model Deployment {
 }
 
 model PermitDocument {
-  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employerId       String   @map("employer_id") @db.Uuid
   permitNumber     String   @unique @map("permit_number") @db.VarChar(50)
   issueDate        DateTime @map("issue_date") @db.Date
@@ -409,7 +409,7 @@ model PermitDocument {
 }
 
 model WorkerPermitDetail {
-  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   permitDocumentId String   @map("permit_document_id") @db.Uuid
   deploymentId     String   @map("deployment_id") @db.Uuid
   permitType       PermitType @map("permit_type")
@@ -426,7 +426,7 @@ model WorkerPermitDetail {
 }
 
 model WorkerTimeline {
-  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   deploymentId          String   @unique @map("deployment_id") @db.Uuid
   
   // 1. Entry Phase Deadlines
@@ -456,7 +456,7 @@ model WorkerTimeline {
 }
 
 model HealthCheck {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workerId     String   @map("worker_id") @db.Uuid
   deploymentId String   @map("deployment_id") @db.Uuid
   checkType    HealthCheckType @map("check_type")
@@ -476,7 +476,7 @@ model HealthCheck {
 }
 
 model Incident {
-  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workerId      String?  @map("worker_id") @db.Uuid
   employerId    String?  @map("employer_id") @db.Uuid
   description   String   @db.Text
@@ -498,7 +498,7 @@ model Incident {
 }
 
 model ServiceAssignment {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employerId     String?  @map("employer_id") @db.Uuid
   workerId       String?  @map("worker_id") @db.Uuid
   internalUserId String   @map("internal_user_id") @db.Uuid
@@ -517,7 +517,7 @@ model ServiceAssignment {
 }
 
 model WorkerInsurance {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workerId       String   @map("worker_id") @db.Uuid
   deploymentId   String?  @map("deployment_id") @db.Uuid
   type           InsuranceType
@@ -537,7 +537,7 @@ model WorkerInsurance {
 }
 
 model WorkerAddressHistory {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workerId       String   @map("worker_id") @db.Uuid
   addressType    AddressType @map("address_type")
   addressDetail  String   @map("address_detail") @db.Text
@@ -552,7 +552,7 @@ model WorkerAddressHistory {
 }
 
 model JobOrder {
-  id                  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employerId          String   @map("employer_id") @db.Uuid
   orderDate           DateTime @default(now()) @map("order_date") @db.Date
   requiredWorkers     Int      @map("required_workers")
@@ -577,7 +577,7 @@ model JobOrder {
 }
 
 model Interview {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   jobOrderId     String   @map("job_order_id") @db.Uuid
   interviewDate  DateTime @map("interview_date") @db.Timestamptz
   location       String?  @db.Text
@@ -595,7 +595,7 @@ model Interview {
 }
 
 model InterviewCandidate {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   interviewId  String   @map("interview_id") @db.Uuid
   workerId     String   @map("worker_id") @db.Uuid
   result       CandidateResult @default(pending)
@@ -612,7 +612,7 @@ model InterviewCandidate {
 }
 
 model SystemComment {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   recordId        String   @map("record_id") @db.Uuid
   recordTableName String   @map("record_table_name") @db.VarChar(50)
   content         String   @db.Text
@@ -631,7 +631,7 @@ model SystemComment {
 }
 
 model CommentMention {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   commentId       String   @map("comment_id") @db.Uuid
   mentionedUserId String   @map("mentioned_user_id") @db.Uuid
   isRead          Boolean  @default(false) @map("is_read")
@@ -647,7 +647,7 @@ model CommentMention {
 
 
 model Attachment {
-  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   refId     String   @map("ref_id") @db.Uuid
   refTable  String   @map("ref_table") @db.VarChar(50)
 

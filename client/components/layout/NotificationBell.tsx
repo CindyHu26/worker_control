@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { apiGet, apiPost } from '@/lib/api';
 
 interface Notification {
     id: string;
@@ -24,14 +25,11 @@ export default function NotificationBell() {
 
     const fetchNotifications = async () => {
         try {
-            // In a real app, authenticated tokens are handled by browser cookies or interceptors
-            const res = await fetch('http://localhost:3001/api/notifications');
-            if (res.ok) {
-                const data = await res.json();
-                setNotifications(data);
-            }
+            const data = await apiGet<Notification[]>('/api/notifications');
+            setNotifications(data);
         } catch (error) {
             console.error("Failed to fetch notifications", error);
+            // Silently fail - notifications are not critical
         }
     };
 
@@ -58,7 +56,7 @@ export default function NotificationBell() {
     const handleMarkRead = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            await fetch(`http://localhost:3001/api/notifications/${id}/read`, { method: 'POST' });
+            await apiPost(`/api/notifications/${id}/read`, {});
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
         } catch (error) {
             console.error(error);
@@ -67,7 +65,7 @@ export default function NotificationBell() {
 
     const handleMarkAllRead = async () => {
         try {
-            await fetch(`http://localhost:3001/api/notifications/read-all`, { method: 'POST' });
+            await apiPost(`/api/notifications/read-all`, {});
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
         } catch (error) {
             console.error(error);
@@ -77,7 +75,7 @@ export default function NotificationBell() {
     const handleItemClick = async (n: Notification) => {
         if (!n.isRead) {
             // Mark read silently
-            fetch(`http://localhost:3001/api/notifications/${n.id}/read`, { method: 'POST' });
+            apiPost(`/api/notifications/${n.id}/read`, {}).catch(console.error);
             setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, isRead: true } : item));
         }
         setIsOpen(false);

@@ -6,11 +6,7 @@ const router = Router();
 // GET /api/users
 router.get('/', async (req, res) => {
     try {
-        const accounts = await prisma.systemAccount.findMany({
-            include: {
-                systemRole: true,
-                staffProfile: true
-            },
+        const accounts = await prisma.internalUser.findMany({
             orderBy: { username: 'asc' }
         });
         res.json(accounts);

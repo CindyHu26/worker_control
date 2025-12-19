@@ -15,13 +15,12 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        const user = await prisma.systemAccount.findUnique({
-            where: { username },
-            include: { systemRole: true }
+        const user = await prisma.internalUser.findUnique({
+            where: { username }
         });
 
-        if (!user || !user.isActive) {
-            return res.status(401).json({ error: 'Invalid credentials or account inactive' });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         // Compare password
@@ -30,17 +29,15 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const roleName = user.systemRole?.name || 'staff';
-
         const token = jwt.sign(
-            { id: user.id, username: user.username, role: roleName },
+            { id: user.id, username: user.username, role: user.role },
             JWT_SECRET,
             { expiresIn: '8h' }
         );
 
-        res.json({ token, user: { id: user.id, username: user.username, role: roleName } });
+        res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
     } catch (error) {
-        console.error(error);
+        console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed' });
     }
 });

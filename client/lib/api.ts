@@ -4,6 +4,8 @@ import Cookies from 'js-cookie';
  * Centralized API utility that automatically attaches Authorization headers
  */
 
+const API_BASE_URL = 'http://localhost:3001';
+
 interface FetchOptions extends RequestInit {
     skipAuth?: boolean;
 }
@@ -16,6 +18,9 @@ interface FetchOptions extends RequestInit {
  */
 export async function apiFetch(url: string, options: FetchOptions = {}): Promise<Response> {
     const { skipAuth = false, headers = {}, ...restOptions } = options;
+
+    // Prepend BASE_URL if url starts with /
+    const fullUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : url;
 
     // Get token from cookies
     const token = Cookies.get('token');
@@ -32,7 +37,7 @@ export async function apiFetch(url: string, options: FetchOptions = {}): Promise
     }
 
     // Make request
-    const response = await fetch(url, {
+    const response = await fetch(fullUrl, {
         ...restOptions,
         headers: requestHeaders,
     });

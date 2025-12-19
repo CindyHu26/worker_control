@@ -8,13 +8,11 @@ const router = Router();
 // Simple list for mention selector
 router.get('/users/search', async (req, res) => {
     try {
-        const users = await prisma.systemAccount.findMany({
+        const users = await prisma.internalUser.findMany({
             select: {
                 id: true,
                 username: true,
-                systemRole: {
-                    select: { name: true }
-                }
+                role: true
             }
         });
         res.json(users);
@@ -40,9 +38,7 @@ router.get('/:recordTable/:recordId', async (req, res) => {
                     select: {
                         id: true,
                         username: true,
-                        systemRole: {
-                            select: { name: true }
-                        }
+                        role: true
                     }
                 },
                 mentions: {
@@ -73,9 +69,6 @@ router.post('/', async (req, res) => {
     try {
         const { recordId, recordTableName, content, mentionedUserIds, createdBy } = req.body;
         // In a real app, createdBy should come from req.user (middleware auth)
-        // For now we accept it in body or rely on a default if missing? 
-        // We should ensure createdBy is passed. 
-        // Assume the frontend passes the current user ID.
 
         if (!createdBy) {
             return res.status(401).json({ error: 'Unauthorized: Missing user ID' });
@@ -113,9 +106,7 @@ router.post('/', async (req, res) => {
                         select: {
                             id: true,
                             username: true,
-                            systemRole: {
-                                select: { name: true }
-                            }
+                            role: true
                         }
                     },
                     mentions: {
