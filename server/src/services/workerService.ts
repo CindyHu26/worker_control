@@ -139,3 +139,68 @@ export const analyzeWorkerHealth = async (workerId: string) => {
         }
     };
 };
+
+export const getWorkerDashboardData = async (workerId: string) => {
+    const worker = await prisma.worker.findUnique({
+        where: { id: workerId },
+        include: {
+            // 1. Core Relations
+            passports: { where: { isCurrent: true } },
+            arcs: { where: { isCurrent: true } },
+            
+            // 2. Fetch Active Deployment
+            deployments: {
+                where: { status: 'active' },
+                take: 1,
+                include: {
+                    employer: true,
+                    recruitmentLetter: true,
+                    entryPermit: true,
+                    employmentPermit: {
+                        orderBy: { issueDate: 'desc' },
+                        take: 1
+                    },
+                    timelines: true
+                }
+            }
+        }
+    });
+
+    if (!worker) return null;
+
+    const currentDeployment = worker.deployments[0] || null;
+    const currentPassport = worker.passports[0] || null;
+    const currentArc = worker.arcs[0] || null;
+
+    // 3. Flatten for Frontend "Old System" view
+    return {
+        basic: {
+            id: worker.id,
+            nameEn: worker.englishName,
+            nameCh: worker.chineseName,
+            nationality: worker.nationality,
+            mobile: worker.mobilePhone,
+            passportNo: currentPassport?.passportNumber,
+            passportExpiry: currentPassport?.expiryDate,
+            arcNo: currentArc?.arcNumber,
+            arcExpiry: currentArc?.expiryDate,
+        },
+        job: {
+            employerName: currentDeployment?.employer?.companyName,
+            workAddress: currentDeployment?.employer?.address || currentDeployment?.jobDescription,
+            salary: (currentDeployment as any)?.basicSalary, // Casting due to potential schema mismatch found in research
+            jobType: currentDeployment?.jobType,
+        },
+        permits: {
+            recruitmentNo: currentDeployment?.recruitmentLetter?.letterNumber,
+            entryPermitNo: (currentDeployment as any)?.entryPermit?.permitNo,
+            employmentPermitNo: (currentDeployment as any)?.employmentPermit?.permitNumber,
+            employmentPermitDate: (currentDeployment as any)?.employmentPermit?.issueDate,
+        },
+        dates: {
+            entryDate: currentDeployment?.entryDate,
+            startDate: currentDeployment?.startDate,
+            endDate: currentDeployment?.endDate,
+        }
+    };
+};

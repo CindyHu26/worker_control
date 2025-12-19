@@ -1,6 +1,6 @@
-
 import { Router } from 'express';
 import prisma from '../prisma';
+import { getWorkerDashboardData } from '../services/workerService';
 
 const router = Router();
 
@@ -161,6 +161,21 @@ router.get('/', async (req, res) => {
     } catch (error) {
         console.error('Search Workers Error:', error);
         res.status(500).json({ error: 'Failed to search workers' });
+    }
+});
+
+// GET /api/workers/:id/dashboard
+router.get('/:id/dashboard', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const data = await getWorkerDashboardData(id);
+        if (!data) {
+            return res.status(404).json({ error: 'Worker not found' });
+        }
+        res.json(data);
+    } catch (error) {
+        console.error('Worker Dashboard Error:', error);
+        res.status(500).json({ error: 'Failed to fetch dashboard data' });
     }
 });
 
