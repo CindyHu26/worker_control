@@ -133,16 +133,9 @@ export const convertLeadToEmployer = async (
             if (!options.factoryAddress) throw new Error("製造業轉正必須填寫：工廠地址");
             if (!options.avgDomesticWorkers) throw new Error("製造業轉正必須填寫：國內勞工人數");
             if (!options.allocationRate) throw new Error("製造業轉正必須填寫：核配比率");
-        } else if (category === 'INSTITUTION') {
-            // Optional: Add specific checks for Institution if needed
         }
 
-        // 4. Create Employer
-        const attributes = (category === 'MANUFACTURING') ? {
-            factoryAddress: options.factoryAddress,
-            workerCount: options.avgDomesticWorkers
-        } : {};
-
+        // 4. Create Employer with Nested CorporateInfo
         const employer = await tx.employer.create({
             data: {
                 companyName: lead.companyName || "Unknown Company",
@@ -153,10 +146,6 @@ export const convertLeadToEmployer = async (
                 address: options.invoiceAddress || lead.address || '',
                 invoiceAddress: options.invoiceAddress || lead.address || '',
 
-                category: category,
-                industryType: category,
-                industryCode: industryCode,
-
                 // Track Source
                 originLeadId: lead.id,
 
@@ -165,7 +154,16 @@ export const convertLeadToEmployer = async (
                 complianceStandard: options.complianceStandard || 'NONE',
                 zeroFeeEffectiveDate: options.zeroFeeEffectiveDate || null,
 
-                industryAttributes: (Object.keys(attributes).length > 0) ? JSON.stringify(attributes) : undefined
+                // Nested CorporateInfo Relation
+                corporateInfo: (category === 'MANUFACTURING' || category === 'INSTITUTION') ? {
+                    create: {
+                        industryType: category,
+                        industryCode: industryCode,
+                        factoryAddress: options.factoryAddress,
+                    }
+                } : undefined,
+
+                // For Individual Info, we might need to handle later or assume category logic
             }
         });
 
@@ -187,7 +185,6 @@ export const convertLeadToEmployer = async (
             where: { id: leadId },
             data: {
                 status: 'WON',
-                convertedEmployerId: employer.id
             }
         });
 
@@ -200,7 +197,7 @@ export const convertLeadToEmployer = async (
 
         await tx.systemComment.create({
             data: {
-                content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})${lead.lineId ? ` | Line ID: ${lead.lineId}` : ''}${quotaInfo}`,
+                content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})${quotaInfo}`,
                 recordId: employer.id,
                 recordTableName: 'Employer',
                 createdBy: operatorId

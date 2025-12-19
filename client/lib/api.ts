@@ -10,6 +10,7 @@ interface FetchOptions extends RequestInit {
     skipAuth?: boolean;
 }
 
+
 /**
  * Make an authenticated API request
  * @param url - API endpoint (e.g., '/api/employers' or full URL)
@@ -82,6 +83,17 @@ export async function apiPost<T = any>(url: string, data: any, options: FetchOpt
     return apiRequest<T>(url, {
         ...options,
         method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+/**
+ * Shorthand for PUT request
+ */
+export async function apiPut<T = any>(url: string, data: any, options: FetchOptions = {}): Promise<T> {
+    return apiRequest<T>(url, {
+        ...options,
+        method: 'PUT',
         body: JSON.stringify(data),
     });
 }

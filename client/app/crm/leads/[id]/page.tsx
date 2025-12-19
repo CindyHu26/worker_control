@@ -195,7 +195,10 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
             if (res.ok) {
                 const data = await res.json();
-                router.push(`/employers/${data.employer.id}`);
+                // Redirect to edit page for data completion as suggested
+                router.push(`/employers/${data.employer.id}/edit`);
+                // Provide guidance (using alert for now since toast might not be imported, I will check imports next)
+                alert("轉正成功！目前資料僅包含基本資訊，請繼續完善雇主詳細資料（如：負責人、授權書、聯絡人等），以利後續公文作業。");
             } else {
                 const err = await res.json();
                 alert('Conversion failed: ' + err.error);

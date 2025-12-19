@@ -17,6 +17,7 @@ import { isValidGUINumber, isValidNationalID } from '@/utils/validation';
 import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, AlertTriangle, AlertCircle, Phone, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmployerSidebar } from './EmployerSidebar';
+import { INDUSTRIES } from '@/lib/leadConstants';
 
 // Validation Schema
 const baseSchema = z.object({
@@ -96,6 +97,7 @@ interface EmployerFormProps {
     onSubmit: (data: EmployerFormData) => Promise<void>;
     onCancel?: () => void;
     isLoading?: boolean;
+    isEdit?: boolean;
 }
 
 export default function EmployerForm({
@@ -248,6 +250,24 @@ export default function EmployerForm({
                             isComplete={!!(formData.taxId && formData.companyName)}
                         />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="md:col-span-2 space-y-2">
+                                <Label className="required">雇主類型 (Employer Category)</Label>
+                                <Select
+                                    value={formData.category}
+                                    onValueChange={(val) => setValue('category', val)}
+                                >
+                                    <SelectTrigger className="bg-gray-50/50">
+                                        <SelectValue placeholder="請選擇類型" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Object.entries(INDUSTRIES).map(([key, label]) => (
+                                            <SelectItem key={key} value={key}>
+                                                {label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="taxId" className="required">統一編號 (TAX ID)</Label>
                                 <div className="flex gap-2">
@@ -405,7 +425,10 @@ export default function EmployerForm({
                                 <Settings className="h-5 w-5" />
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900">
-                                {selectedCategory === 'MANUFACTURING' ? '工廠資料' : selectedCategory === 'HOME_CARE' ? '被看護人資料' : '機構資料'}
+                                {selectedCategory === 'MANUFACTURING' ? '工廠資料' :
+                                    selectedCategory === 'HOME_CARE' ? '被看護人資料' :
+                                        selectedCategory === 'INSTITUTION' ? '機構資料' :
+                                            '詳細資料 (Details)'}
                             </h3>
                         </div>
 
