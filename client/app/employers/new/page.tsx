@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Building, User, Building2 } from 'lucide-react';
 import { getEmployerBreadcrumbs } from '@/lib/breadcrumbs';
 import { toast } from 'sonner';
+import { apiPost } from '@/lib/api';
 
 /**
  * Category Selection Modal Component
@@ -73,37 +74,28 @@ export default function NewEmployerPage() {
     };
 
     const handleSubmit = async (data: any) => {
-        const res = await fetch('/api/employers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || '系統錯誤');
-        }
-
-        const newEmp = await res.json();
-
-        // Analyze Data Health
         try {
-            const healthRes = await fetch(`/api/compliance/employers/${newEmp.id}/analyze`, {
-                method: 'POST'
-            });
-            const health = await healthRes.json();
+            const newEmp = await apiPost('/api/employers', data);
 
-            if (!health.isReady) {
-                toast.warning(`系統成功儲存！但請注意以下缺漏：\n${health.alerts.join('\n')}`);
-            } else {
+            // Analyze Data Health
+            try {
+                const health = await apiPost(`/api/compliance/employers/${newEmp.id}/analyze`, {});
+
+                if (!health.isReady) {
+                    toast.warning(`系統成功儲存！但請注意以下缺漏：\n${health.alerts.join('\n')}`);
+                } else {
+                    toast.success('新增成功');
+                }
+            } catch (e) {
+                console.error('Analysis failed', e);
                 toast.success('新增成功');
             }
-        } catch (e) {
-            console.error('Analysis failed', e);
-            toast.success('新增成功');
-        }
 
-        router.push(`/employers/${newEmp.id}`);
+            router.push(`/employers/${newEmp.id}`);
+        } catch (error: any) {
+            toast.error(error.message || '系統錯誤');
+            throw error;
+        }
     };
 
     const handleCancel = () => {
