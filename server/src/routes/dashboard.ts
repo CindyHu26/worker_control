@@ -11,46 +11,72 @@ router.get('/stats', async (req, res) => {
         const now = getTaiwanToday();
         const startOfMonth = getTaiwanMonthStart(now.getFullYear(), now.getMonth() + 1);
 
-        const totalActiveWorkers = await prisma.deployment.count({
-            where: {
-                status: 'active',
-                serviceStatus: 'active_service'
-            }
-        });
+        let totalActiveWorkers = 0;
+        let newEntriesThisMonth = 0;
+        let birthdaysThisMonth = 0;
+        let activeRecruitment = 0;
 
-        const newEntriesThisMonth = await prisma.deployment.count({
-            where: {
-                entryDate: {
-                    gte: startOfMonth
+        // Query 1: Active workers
+        try {
+            totalActiveWorkers = await prisma.deployment.count({
+                where: {
+                    status: 'active',
+                    serviceStatus: 'active_service'
                 }
-            }
-        });
+            });
+        } catch (err) {
+            console.error('[Stats] Error counting active workers:', err);
+        }
 
-        // Birthday count using Postgres SQL
-        const currentMonth = now.getMonth() + 1;
-        const birthdaysResult = await prisma.$queryRaw<[{ count: bigint }]>`
-            SELECT COUNT(*) as count
-            FROM workers w
-            WHERE EXTRACT(MONTH FROM w.dob) = ${currentMonth}
-            AND EXISTS (
-                SELECT 1 FROM deployments d 
-                WHERE d.worker_id = w.id 
-                AND d.status = 'active'
-            )
-        `;
+        // Query 2: New entries this month
+        try {
+            newEntriesThisMonth = await prisma.deployment.count({
+                where: {
+                    entryDate: {
+                        gte: startOfMonth
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('[Stats] Error counting new entries:', err);
+        }
 
-        const activeRecruitmentResult = await prisma.$queryRaw<[{ count: bigint }]>`
-            SELECT COUNT(*) as count
-            FROM employer_recruitment_letters
-            WHERE expiry_date >= ${now}
-            AND used_quota < approved_quota
-        `;
+        // Query 3: Birthday count
+        try {
+            const currentMonth = now.getMonth() + 1;
+            const birthdaysResult = await prisma.$queryRaw<[{ count: bigint }]>`
+                SELECT COUNT(*) as count
+                FROM workers w
+                WHERE EXTRACT(MONTH FROM w.dob) = ${currentMonth}
+                AND EXISTS (
+                    SELECT 1 FROM deployments d 
+                    WHERE d.worker_id = w.id 
+                    AND d.status = 'active'
+                )
+            `;
+            birthdaysThisMonth = Number(birthdaysResult[0].count);
+        } catch (err) {
+            console.error('[Stats] Error counting birthdays:', err);
+        }
+
+        // Query 4: Active recruitment letters
+        try {
+            const activeRecruitmentResult = await prisma.$queryRaw<[{ count: bigint }]>`
+                SELECT COUNT(*) as count
+                FROM employer_recruitment_letters
+                WHERE expiry_date >= ${now}
+                AND used_quota < approved_quota
+            `;
+            activeRecruitment = Number(activeRecruitmentResult[0].count);
+        } catch (err) {
+            console.error('[Stats] Error counting active recruitment:', err);
+        }
 
         res.json({
             totalActiveWorkers,
             newEntriesThisMonth,
-            birthdaysThisMonth: Number(birthdaysResult[0].count),
-            activeRecruitment: Number(activeRecruitmentResult[0].count),
+            birthdaysThisMonth,
+            activeRecruitment,
             pendingDocuments: 0
         });
     } catch (error) {

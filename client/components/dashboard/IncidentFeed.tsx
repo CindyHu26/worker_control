@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { ShieldAlert, AlertTriangle, X } from 'lucide-react';
 import CommentSystem from '../common/CommentSystem';
+import { apiGet } from '@/lib/api';
 
 interface Incident {
     id: string;
@@ -21,14 +22,15 @@ export default function IncidentFeed() {
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
     useEffect(() => {
-        fetch('http://localhost:3001/api/dashboard/incidents')
-            .then(res => res.json())
+        apiGet<Incident[]>('/api/dashboard/incidents')
             .then(data => {
-                setIncidents(data);
+                // Ensure data is an array
+                setIncidents(Array.isArray(data) ? data : []);
                 setLoading(false);
             })
             .catch(err => {
-                console.error(err);
+                console.error('Failed to load incidents:', err);
+                setIncidents([]);
                 setLoading(false);
             });
     }, []);

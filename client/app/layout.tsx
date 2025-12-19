@@ -21,7 +21,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="zh-TW" suppressHydrationWarning>
-            <body className={`${inter.className} bg-gray-50 flex h-screen`}>
+            <body className={`${inter.className} bg-gray-50 flex h-screen`} suppressHydrationWarning>
                 <Providers>
                     {/* Sidebar */}
                     <Sidebar />

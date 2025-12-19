@@ -194,7 +194,7 @@ model InternalUser {
 
 model Employer {
   id            String  @id @default(uuid()) @db.Uuid
-  taxId         String  @unique @map("tax_id") @db.VarChar(20)
+  taxId         String? @unique @map("tax_id") @db.VarChar(20)
   companyName   String  @map("company_name") @db.VarChar(100)
   companyNameEn String? @map("company_name_en") @db.VarChar(100)
 

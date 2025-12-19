@@ -65,10 +65,17 @@ const createEmployerSchema = z.object({
     avgDomesticWorkers: z.coerce.number().optional(),
 
     // 3K5 & Compliance
-    allocationRate: z.enum(['0.10', '0.15', '0.20', '0.25', '0.30', '0.35', '0.40']).optional(),
+    // Loosen validation to accept string or number
+    allocationRate: z.union([z.string(), z.number()]).optional(),
     isExtra: z.boolean().optional(),
+    baseRate: z.string().optional(),
+    extraRate: z.string().optional(),
     complianceStandard: z.string().optional(),
     zeroFeeEffectiveDate: z.string().optional(),
+
+    // Add category for frontend compatibility
+    category: z.string().optional(),
+    isCorporate: z.boolean().optional(),
 
     // Individual Fields
     responsiblePersonIdNo: z.string().optional(),
@@ -155,9 +162,14 @@ router.post('/', async (req, res) => {
         // Validate and parse request body with Zod
         const validatedData = createEmployerSchema.parse(req.body);
 
+        // Determine Employer Type
         const {
-            companyName,
             taxId,
+            companyName,
+            factoryRegistrationNo,
+            industryType,
+            category: frontendCategory, // Get category from flattened body if present
+            isCorporate: explicitIsCorporate, // Explicit flag from frontend
             responsiblePerson,
             phoneNumber,
             address,
@@ -165,8 +177,6 @@ router.post('/', async (req, res) => {
             faxNumber,
             email,
             // Corporate Fields
-            factoryRegistrationNo,
-            industryType,
             industryCode,
             factoryAddress,
             laborInsuranceNo,
@@ -205,7 +215,12 @@ router.post('/', async (req, res) => {
         }
 
         // Infer Type
-        const isCorporate = !!(factoryRegistrationNo || industryType || laborInsuranceNo || institutionCode);
+        const isCorporate = explicitIsCorporate || !!(
+            factoryRegistrationNo ||
+            industryType ||
+            frontendCategory ||
+            (taxId && taxId.length === 8)
+        );
         const isIndividual = !!(responsiblePersonIdNo || responsiblePersonSpouse || patientName || taxId?.length === 10);
 
         // Transactional Create with Nested Recruitment Letters
@@ -227,6 +242,7 @@ router.post('/', async (req, res) => {
                 allocationRate: allocationRate ? Number(allocationRate) : undefined,
                 complianceStandard: complianceStandard || 'NONE',
                 zeroFeeEffectiveDate: zeroFeeEffectiveDate ? new Date(zeroFeeEffectiveDate) : undefined,
+                industryAttributes: validatedData.isExtra ? { isExtra: true } : undefined,
             };
 
             if (isCorporate) {
@@ -242,9 +258,6 @@ router.post('/', async (req, res) => {
                         faxNumber,
                         institutionCode,
                         bedCount: bedCount,
-                        industryAttributes: {
-                            isExtra: validatedData.isExtra || false
-                        }
                     }
                 };
             } else if (isIndividual) {

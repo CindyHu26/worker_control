@@ -21,12 +21,14 @@ export default function AlertFeed() {
     useEffect(() => {
         apiGet<Alert[]>('/api/dashboard/alerts')
             .then(data => {
-                setAlerts(data);
+                // Ensure data is an array
+                setAlerts(Array.isArray(data) ? data : []);
                 setLoading(false);
             })
             .catch(err => {
                 console.error('Failed to load alerts:', err);
                 setError(err.message);
+                setAlerts([]);
                 setLoading(false);
             });
     }, []);

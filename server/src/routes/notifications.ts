@@ -9,11 +9,16 @@ const router = Router();
 const getUserId = async (req: AuthRequest) => {
     if (req.user?.id) return req.user.id;
 
-    // Fallback for development if needed
-    const user = await prisma.internalUser.findFirst({
-        where: { role: 'admin' }
-    });
-    return user?.id;
+    // Fallback for development with error handling
+    try {
+        const user = await prisma.internalUser.findFirst({
+            where: { role: 'admin' }
+        });
+        return user?.id;
+    } catch (error) {
+        console.error('[getUserId] Error fetching user:', error);
+        return null;
+    }
 };
 
 // GET /api/notifications

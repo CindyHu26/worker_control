@@ -125,7 +125,13 @@ export default function EmployerForm({
             category: 'MANUFACTURING',
             companyName: '',
             taxId: '',
-            complianceStandard: 'NONE'
+            complianceStandard: 'NONE',
+            baseRate: '',
+            extraRate: '',
+            allocationRate: '',
+            isExtra: false,
+            address: '',
+            invoiceAddress: ''
         }) as EmployerFormData
     });
 
@@ -280,7 +286,15 @@ export default function EmployerForm({
 
     const onSubmitForm: SubmitHandler<EmployerFormData> = async (data) => {
         try {
-            await onSubmit(data);
+            // Map category to industryType for backend compatibility
+            const payload = {
+                ...data,
+                industryType: data.category,
+                // Ensure allocationRate is a string to avoid format issues
+                allocationRate: data.allocationRate ? String(data.allocationRate) : undefined
+            };
+
+            await onSubmit(payload);
             toast.success(isEditMode ? '更新成功' : '建立成功');
         } catch (error: any) {
             toast.error(error.message || '操作失敗');
@@ -326,10 +340,11 @@ export default function EmployerForm({
                         />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2 space-y-2">
-                                <Label className="required">雇主類型 (Employer Category)</Label>
+                                <Label htmlFor="category" className="required">雇主類型 (Employer Category)</Label>
                                 <Select
                                     value={formData.category}
                                     onValueChange={(val) => setValue('category', val)}
+                                    name="category"
                                 >
                                     <SelectTrigger className="bg-gray-50/50">
                                         <SelectValue placeholder="請選擇類型" />
@@ -351,6 +366,7 @@ export default function EmployerForm({
                                         {...register('taxId')}
                                         placeholder="例如: 84149961"
                                         className="font-mono bg-gray-50/50"
+                                        autoComplete="off"
                                     />
                                     <Button type="button" variant="outline" size="sm" className="h-10 text-blue-600 border-blue-100 hover:bg-blue-50">
                                         <Globe className="h-4 w-4 mr-1" /> 帶入
@@ -366,6 +382,7 @@ export default function EmployerForm({
                                     {...register('companyName')}
                                     placeholder="公司全名"
                                     className="bg-gray-50/50"
+                                    autoComplete="organization"
                                 />
                                 {errors.companyName && <p className="text-xs text-red-500">{errors.companyName.message}</p>}
                             </div>
@@ -416,6 +433,7 @@ export default function EmployerForm({
                                     id="responsiblePerson"
                                     {...register('responsiblePerson')}
                                     className="bg-gray-50/50"
+                                    autoComplete="name"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -425,6 +443,7 @@ export default function EmployerForm({
                                     {...register('responsiblePersonIdNo')}
                                     placeholder="A123456789"
                                     className="font-mono bg-gray-50/50"
+                                    autoComplete="off"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -434,6 +453,7 @@ export default function EmployerForm({
                                     type="date"
                                     {...register('responsiblePersonDob')}
                                     className="bg-gray-50/50"
+                                    autoComplete="bday"
                                 />
                             </div>
                         </div>
@@ -455,6 +475,7 @@ export default function EmployerForm({
                                     placeholder="請輸入公司營業登記地址"
                                     rows={2}
                                     className="bg-gray-50/50"
+                                    autoComplete="street-address"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -474,6 +495,7 @@ export default function EmployerForm({
                                         id="contactPerson"
                                         {...register('contactPerson')}
                                         className="bg-gray-50/50"
+                                        autoComplete="name"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -486,6 +508,7 @@ export default function EmployerForm({
                                             id="contactPhone"
                                             {...register('contactPhone')}
                                             className="bg-gray-50/50"
+                                            autoComplete="tel"
                                         />
                                     </div>
                                 </div>
@@ -542,10 +565,11 @@ export default function EmployerForm({
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs text-gray-500">工業局核定級別 (Base Grade)</Label>
+                                            <Label htmlFor="baseRate" className="text-xs text-gray-500">工業局核定級別 (Base Grade)</Label>
                                             <Select
                                                 value={baseRate}
                                                 onValueChange={(val) => setValue('baseRate', val)}
+                                                name="baseRate"
                                             >
                                                 <SelectTrigger className="bg-white border-blue-100 focus:ring-blue-500">
                                                     <SelectValue placeholder="選擇級別" />
@@ -559,11 +583,12 @@ export default function EmployerForm({
                                         </div>
 
                                         <div className={cn("space-y-2 transition-opacity", !isExtraApplied && "opacity-50 pointer-events-none")}>
-                                            <Label className="text-xs text-gray-500">Extra 案比率 (Extra Rate)</Label>
+                                            <Label htmlFor="extraRate" className="text-xs text-gray-500">Extra 案比率 (Extra Rate)</Label>
                                             <Select
                                                 value={extraRate}
                                                 onValueChange={(val) => setValue('extraRate', val)}
                                                 disabled={!isExtraApplied}
+                                                name="extraRate"
                                             >
                                                 <SelectTrigger className="bg-white border-blue-100 focus:ring-blue-500">
                                                     <SelectValue placeholder="選擇比率" />

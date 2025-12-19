@@ -22,6 +22,11 @@ export default function Sidebar() {
     const [hoveredItem, setHoveredItem] = useState<{ label: string; top: number } | null>(null);
     const pathname = usePathname();
 
+    // Hide Sidebar on login page
+    if (pathname === '/login') {
+        return null;
+    }
+
     const navItems = [
         { href: '/', label: '儀表板', subLabel: 'Dashboard', icon: LayoutDashboard },
         { href: '/crm/board', label: '業務開發', subLabel: 'CRM', icon: Briefcase }, // Updated Icon
