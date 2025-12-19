@@ -37,6 +37,45 @@ router.get('/check-duplicate/:taxId', async (req, res) => {
     }
 });
 
+// Zod Schema for Employer Creation with Type Coercion
+const createEmployerSchema = z.object({
+    companyName: z.string().min(1, "公司名稱必填"),
+    taxId: z.string().optional(),
+    responsiblePerson: z.string().optional(),
+    phoneNumber: z.string().optional(),
+    address: z.string().optional(),
+    faxNumber: z.string().optional(),
+    email: z.string().optional(),
+
+    // Corporate Fields with type coercion
+    factoryRegistrationNo: z.string().optional(),
+    industryType: z.string().optional(),
+    laborInsuranceNo: z.string().optional(),
+    healthInsuranceUnitNo: z.string().optional(),
+    institutionCode: z.string().optional(),
+    bedCount: z.coerce.number().optional(), // Type coercion for numeric field
+
+    // Individual Fields
+    responsiblePersonIdNo: z.string().optional(),
+    responsiblePersonDob: z.string().optional(),
+    responsiblePersonSpouse: z.string().optional(),
+    responsiblePersonFather: z.string().optional(),
+    responsiblePersonMother: z.string().optional(),
+
+    // Home Care Fields
+    patientName: z.string().optional(),
+    patientIdNo: z.string().optional(),
+    careAddress: z.string().optional(),
+    relationship: z.string().optional(),
+
+    // Initial Recruitment Letters (optional array)
+    initialRecruitmentLetters: z.array(z.object({
+        letterNumber: z.string().min(1, "函文號必填"),
+        issueDate: z.coerce.date(), // Type coercion for date
+        expiryDate: z.coerce.date(), // Type coercion for date
+        approvedQuota: z.coerce.number().min(1, "核准名額必須大於0"), // Type coercion for number
+    })).optional(),
+});
 
 // GET /api/employers
 router.get('/', async (req, res) => {
@@ -98,6 +137,9 @@ router.get('/', async (req, res) => {
 // Create Employer
 router.post('/', async (req, res) => {
     try {
+        // Validate and parse request body with Zod
+        const validatedData = createEmployerSchema.parse(req.body);
+
         const {
             companyName,
             taxId,
@@ -123,12 +165,10 @@ router.post('/', async (req, res) => {
             patientName,
             patientIdNo,
             careAddress,
-            relationship
-        } = req.body;
-
-        if (!companyName) {
-            return res.status(400).json({ error: 'Company name is required' });
-        }
+            relationship,
+            // Initial Recruitment Letters
+            initialRecruitmentLetters
+        } = validatedData;
 
         // Check uniqueness if taxId is provided
         if (taxId) {
@@ -136,7 +176,7 @@ router.post('/', async (req, res) => {
                 where: { taxId }
             });
             if (existing) {
-                return res.status(400).json({ error: 'Tax ID / ID Number already exists' });
+                return res.status(400).json({ message: 'Tax ID / ID Number already exists' });
             }
         }
 
@@ -144,11 +184,11 @@ router.post('/', async (req, res) => {
         const isCorporate = !!(factoryRegistrationNo || industryType || laborInsuranceNo || institutionCode);
         const isIndividual = !!(responsiblePersonIdNo || responsiblePersonSpouse || patientName || taxId?.length === 10);
 
-        // Transactional Create
+        // Transactional Create with Nested Recruitment Letters
         const newEmployer = await prisma.$transaction(async (tx) => {
             const data: any = {
                 companyName: String(companyName),
-                taxId: String(taxId),
+                taxId: taxId ? String(taxId) : undefined,
                 responsiblePerson: responsiblePerson ? String(responsiblePerson) : undefined,
                 phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
                 address: address ? String(address) : undefined,
@@ -164,7 +204,7 @@ router.post('/', async (req, res) => {
                         healthInsuranceUnitNo,
                         faxNumber,
                         institutionCode,
-                        bedCount: bedCount ? Number(bedCount) : undefined
+                        bedCount: bedCount // Already coerced to number by Zod
                     }
                 };
             } else if (isIndividual) {
@@ -183,8 +223,24 @@ router.post('/', async (req, res) => {
                 };
             }
 
+            // Add nested recruitment letters if provided
+            if (initialRecruitmentLetters && initialRecruitmentLetters.length > 0) {
+                data.recruitmentLetters = {
+                    create: initialRecruitmentLetters.map(letter => ({
+                        letterNumber: letter.letterNumber,
+                        issueDate: letter.issueDate, // Already coerced to Date by Zod
+                        expiryDate: letter.expiryDate, // Already coerced to Date by Zod
+                        approvedQuota: letter.approvedQuota, // Already coerced to number by Zod
+                        usedQuota: 0 // Initial used is 0
+                    }))
+                };
+            }
+
             const emp = await tx.employer.create({
-                data
+                data,
+                include: {
+                    recruitmentLetters: true // Include created letters in response
+                }
             });
 
             return emp;
@@ -192,8 +248,19 @@ router.post('/', async (req, res) => {
 
         res.status(201).json(newEmployer);
     } catch (error) {
+        // Handle Zod validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                message: "資料驗證失敗",
+                errors: error.issues.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
         console.error('Create Employer Error:', error);
-        res.status(500).json({ error: 'Failed to create employer' });
+        res.status(500).json({ message: 'Failed to create employer', error: String(error) });
     }
 });
 

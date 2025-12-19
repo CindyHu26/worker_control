@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,7 +17,7 @@ import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, Alert
 import { toast } from 'sonner';
 
 // Validation Schema
-const employerSchema = z.object({
+const baseSchema = z.object({
     companyName: z.string().min(1, '雇主/公司名稱為必填'),
     taxId: z.string().optional().or(z.literal('')),
     phoneNumber: z.string().optional(),
@@ -57,7 +57,17 @@ const employerSchema = z.object({
     companyNameEn: z.string().optional(),
     addressEn: z.string().optional(),
     responsiblePersonEn: z.string().optional(),
-}).superRefine((data, ctx) => {
+
+    // Initial Recruitment Letters (optional)
+    initialRecruitmentLetters: z.array(z.object({
+        letterNumber: z.string().min(1, '函文號必填'),
+        issueDate: z.string().min(1, '發文日期必填'),
+        expiryDate: z.string().min(1, '到期日期必填'),
+        approvedQuota: z.number().min(1, '核准名額必須大於0'),
+    })).optional(),
+});
+
+const employerSchema = baseSchema.superRefine((data, ctx) => {
     if (data.category === 'HOME_CARE') {
         if (data.taxId && !isValidNationalID(data.taxId)) {
             ctx.addIssue({
@@ -83,7 +93,7 @@ const employerSchema = z.object({
     }
 });
 
-type EmployerFormData = z.infer<typeof employerSchema>;
+type EmployerFormData = z.infer<typeof baseSchema>;
 
 interface EmployerFormProps {
     initialData?: Partial<EmployerFormData>;
@@ -113,12 +123,12 @@ export default function EmployerForm({
         watch
     } = useForm<EmployerFormData>({
         resolver: zodResolver(employerSchema),
-        defaultValues: initialData || {
+        defaultValues: (initialData || {
             category: 'MANUFACTURING',
             companyName: '',
             taxId: '',
             complianceStandard: 'NONE'
-        }
+        }) as EmployerFormData
     });
 
     const [taxIdStatus, setTaxIdStatus] = useState<{ loading: boolean; error: string | null }>({
@@ -157,7 +167,7 @@ export default function EmployerForm({
         return () => clearTimeout(timer);
     }, [taxIdValue, isEditMode]);
 
-    const onSubmitForm = async (data: EmployerFormData) => {
+    const onSubmitForm: SubmitHandler<EmployerFormData> = async (data) => {
         try {
             await onSubmit(data);
             toast.success(isEditMode ? '更新成功' : '建立成功');
