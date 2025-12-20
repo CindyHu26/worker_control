@@ -69,7 +69,8 @@ router.post('/', async (req, res) => {
                     jobType: jobType || 'general',
                     status: 'active',
                     serviceStatus: 'active_service',
-                    sourceType: 'direct_hiring'
+                    sourceType: 'direct_hiring',
+                    factoryId: req.body.factoryId // Optional factory assignment
                 }
             });
 
@@ -113,6 +114,9 @@ router.patch('/:id', async (req, res) => {
                 visaApplicationDate: data.visaApplicationDate ? new Date(data.visaApplicationDate) : undefined,
                 visaLetterNo: data.visaLetterNo,
                 visaNumber: data.visaNumber,
+
+                // Factory Location
+                factoryId: data.factoryId,
 
                 // Flight Info
                 flightNumber: data.flightNumber,

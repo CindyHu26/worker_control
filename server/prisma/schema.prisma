@@ -303,6 +303,10 @@ model EmployerFactory {
   foreignCount Int? @default(0) // 該廠外勞人數
 
   createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  deployments Deployment[] 
+
 
   @@map("employer_factories")
 }
@@ -523,6 +527,10 @@ model Deployment {
   // Termination Information
   terminationReason String? @map("termination_reason") @db.VarChar(50)
   terminationNotes  String? @map("termination_notes") @db.Text
+
+  // [New] Specific Factory Location
+  factoryId         String?          @map("factory_id") @db.Uuid
+  factory           EmployerFactory? @relation(fields: [factoryId], references: [id])
 
   worker            Worker                     @relation(fields: [workerId], references: [id])
   employer          Employer                   @relation(fields: [employerId], references: [id])

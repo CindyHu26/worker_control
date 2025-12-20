@@ -68,6 +68,7 @@ const baseSchema = z.object({
 
     // Factories (Array)
     factories: z.array(z.object({
+        id: z.string().optional(), // ✅ Preserve ID for updates
         name: z.string().min(1, '廠區名稱必填'),
         factoryRegNo: z.string().optional(),
         address: z.string().optional(),
