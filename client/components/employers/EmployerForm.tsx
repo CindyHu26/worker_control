@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { EmployerSidebar } from './EmployerSidebar';
 import { INDUSTRIES, ALLOCATION_RATES, BASE_RATES, EXTRA_RATES } from '@/lib/leadConstants';
 
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Validation Schema
 const baseSchema = z.object({
@@ -298,7 +298,7 @@ export default function EmployerForm({
                 }))
             };
 
-            await onSubmit(payload);
+            await onSubmit(payload as any);
             toast.success(isEditMode ? '更新成功' : '建立成功');
         } catch (error: any) {
             toast.error(error.message || '操作失敗');
@@ -309,6 +309,20 @@ export default function EmployerForm({
         if (checked) {
             setValue('invoiceAddress', watch('address'), { shouldValidate: true });
             toast.success('已複製發票地址');
+        }
+    };
+
+    const copyAddressToTax = (checked: boolean) => {
+        if (checked) {
+            setValue('taxAddress', watch('address'), { shouldValidate: true });
+            toast.success('已複製稅籍地址');
+        }
+    };
+
+    const copyAddressToHealth = (checked: boolean) => {
+        if (checked) {
+            setValue('healthBillAddress', watch('address'), { shouldValidate: true });
+            toast.success('已複製健保帳單地址');
         }
     };
 
@@ -509,12 +523,20 @@ export default function EmployerForm({
                                         </div>
                                         <div className="space-y-2">
                                             <Label>稅籍地址 (Tax Address)</Label>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Checkbox id="copyTax" onCheckedChange={copyAddressToTax} />
+                                                <label htmlFor="copyTax" className="text-xs text-gray-500">同登記地址</label>
+                                            </div>
                                             <Input {...register('taxAddress')} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div className="md:col-span-2 space-y-2">
                                             <Label>健保帳單地址</Label>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Checkbox id="copyHealth" onCheckedChange={copyAddressToHealth} />
+                                                <label htmlFor="copyHealth" className="text-xs text-gray-500">同登記地址</label>
+                                            </div>
                                             <Input {...register('healthBillAddress')} />
                                         </div>
                                         <div className="space-y-2">
@@ -668,7 +690,7 @@ export default function EmployerForm({
                                         <div className="flex-1 space-y-4">
                                             <Label className="required">核配比率 (Allocation Rate)</Label>
                                             <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
-                                                <Checkbox id="isExtra" onCheckedChange={(c) => setValue('isExtra', c as boolean)} checked={formData.isExtra} />
+                                                <Checkbox id="isExtra" onCheckedChange={(c: boolean) => setValue('isExtra', c)} checked={formData.isExtra} />
                                                 <Label htmlFor="isExtra" className="cursor-pointer text-blue-800">申請 Extra 案 (附加就業安定費)</Label>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">

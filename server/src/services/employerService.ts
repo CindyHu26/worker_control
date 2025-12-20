@@ -393,6 +393,8 @@ export const getEmployerSummary = async (id: string) => {
         basic: {
             id: employer.id,
             name: employer.companyName,
+            shortName: employer.shortName || '',
+            code: employer.code || '',
             taxId: employer.taxId,
             responsiblePerson: employer.responsiblePerson || '',
             phone: employer.phoneNumber || '',

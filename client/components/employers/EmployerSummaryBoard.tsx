@@ -15,8 +15,10 @@ export default function EmployerSummaryBoard({ data }: { data: any }) {
                 <div className="flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-blue-600" />
                     <CardTitle className="text-lg">
-                        {data.basic.name}
-                        <span className="ml-2 text-sm font-normal text-slate-500">({data.basic.taxId})</span>
+                        {data.basic.shortName || data.basic.name}
+                        <span className="ml-2 text-sm font-normal text-slate-500">
+                            ({data.basic.code ? `${data.basic.code} / ` : ''}{data.basic.taxId})
+                        </span>
                     </CardTitle>
                 </div>
                 {/* 右上角直接顯示最關鍵的數字：在台人數 */}
