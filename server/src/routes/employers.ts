@@ -39,7 +39,7 @@ router.get('/check-duplicate/:taxId', async (req, res) => {
 
 // Zod Schema for Employer Creation with Type Coercion
 const createEmployerSchema = z.object({
-    companyName: z.string().min(1, "公司名稱必填"),
+    companyName: z.string().optional(),
     companyNameEn: z.string().optional(),
 
     // New Fields
@@ -202,8 +202,40 @@ router.get('/', async (req, res) => {
             })
         ]);
 
+        // 4. [關鍵修正] 資料格式轉換 (Mapping)
+        const formattedData = employers.map(emp => ({
+            id: emp.id,
+            // 如果是自然人且沒填公司名，回退顯示負責人姓名
+            companyName: emp.companyName || emp.responsiblePerson || '未命名',
+            taxId: emp.taxId,
+            responsiblePerson: emp.responsiblePerson,
+            phoneNumber: emp.phoneNumber,
+
+            // 轉換 IndividualInfo -> homeCareInfo (前端用的欄位)
+            homeCareInfo: emp.individualInfo ? {
+                patients: [{
+                    name: emp.individualInfo.patientName || '',
+                    careAddress: emp.individualInfo.careAddress || ''
+                }]
+            } : undefined,
+
+            // 轉換 CorporateInfo -> institutionInfo (前端用的欄位)
+            institutionInfo: emp.corporateInfo ? {
+                institutionCode: emp.corporateInfo.institutionCode,
+                bedCount: emp.corporateInfo.bedCount
+            } : undefined,
+
+            code: emp.code,
+            shortName: emp.shortName,
+            address: emp.address,
+            email: emp.email,
+            createdAt: emp.createdAt,
+
+            _count: emp._count
+        }));
+
         res.json({
-            data: employers,
+            data: formattedData,
             meta: {
                 total,
                 page: pageNum,
@@ -307,7 +339,7 @@ router.post('/', async (req, res) => {
         // Transactional Create with Nested Recruitment Letters
         const newEmployer = await prisma.$transaction(async (tx) => {
             const data: any = {
-                companyName: String(companyName),
+                companyName: companyName ? String(companyName) : (responsiblePerson || '未命名雇主'),
                 companyNameEn: validatedData.companyNameEn,
                 taxId: taxId ? String(taxId) : undefined,
 

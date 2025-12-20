@@ -41,8 +41,14 @@ export async function updateEmployer(id: string, data: any) {
         ...coreData
     } = data;
 
+    // [新增] 自動補全邏輯
+    const finalCompanyName = coreData.companyName || coreData.responsiblePerson || '未命名雇主';
+
     // Prepare updates
-    const coreUpdate: any = { ...coreData };
+    const coreUpdate: any = {
+        ...coreData,
+        companyName: finalCompanyName // 強制賦值
+    };
     if (code !== undefined) coreUpdate.code = code;
     if (shortName !== undefined) coreUpdate.shortName = shortName;
     if (referrer !== undefined) coreUpdate.referrer = referrer;

@@ -1,0 +1,47 @@
+{
+  "id": "edef39e3-7ac7-4cd2-8af8-8f48d1405d32",
+  "code": "TEST-EMP-UNIQUE-001",
+  "name": "TEST-COMPANYA",
+  "individualInfo": null,
+  "factories": [
+    {
+      "id": "dba83f25-badd-4ac2-86b5-4c3625bffbbd",
+      "employerId": "edef39e3-7ac7-4cd2-8af8-8f48d1405d32",
+      "name": "一廠",
+      "factoryRegNo": "",
+      "address": "",
+      "addressEn": null,
+      "zipCode": null,
+      "cityCode": null,
+      "laborCount": 0,
+      "foreignCount": 0,
+      "createdAt": "2025-12-20T15:07:14.698Z"
+    },
+    {
+      "id": "69562c78-e3c4-4b51-9c77-d874aad5bcc9",
+      "employerId": "edef39e3-7ac7-4cd2-8af8-8f48d1405d32",
+      "name": "二廠",
+      "factoryRegNo": "",
+      "address": "",
+      "addressEn": null,
+      "zipCode": null,
+      "cityCode": null,
+      "laborCount": 0,
+      "foreignCount": 0,
+      "createdAt": "2025-12-20T15:07:14.698Z"
+    },
+    {
+      "id": "8b46cbbf-4f93-46d0-991d-90f6711bf7dc",
+      "employerId": "edef39e3-7ac7-4cd2-8af8-8f48d1405d32",
+      "name": "第 3 廠",
+      "factoryRegNo": "",
+      "address": "",
+      "addressEn": null,
+      "zipCode": null,
+      "cityCode": null,
+      "laborCount": 0,
+      "foreignCount": 0,
+      "createdAt": "2025-12-20T15:07:14.698Z"
+    }
+  ]
+}
