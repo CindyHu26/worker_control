@@ -57,11 +57,32 @@ export async function updateEmployer(id: string, data: any) {
 
     const updates: any = { ...coreUpdate };
 
-    // Update Factories
+    // Update Factories (Improved Logic)
     if (factories && Array.isArray(factories)) {
-        updates.factories = {
-            deleteMany: {}, // Delete all existing and replace
-            create: factories.map((f: any) => ({
+        // Separate factories with IDs (existing) from those without (new)
+        const existingFactories = factories.filter((f: any) => f.id);
+        const newFactories = factories.filter((f: any) => !f.id);
+
+        // Get IDs that still exist in the frontend payload
+        const existingIds = existingFactories.map((f: any) => f.id);
+
+        // Build update operations
+        const factoryUpdates: any = {};
+
+        // Delete factories that are no longer in the payload
+        if (existingIds.length > 0) {
+            factoryUpdates.deleteMany = {
+                employerId: id,
+                id: { notIn: existingIds }
+            };
+        } else {
+            // If no existing IDs, delete all (user removed all factories)
+            factoryUpdates.deleteMany = { employerId: id };
+        }
+
+        // Create new factories
+        if (newFactories.length > 0) {
+            factoryUpdates.create = newFactories.map((f: any) => ({
                 name: f.name,
                 factoryRegNo: f.factoryRegNo,
                 address: f.address,
@@ -70,8 +91,14 @@ export async function updateEmployer(id: string, data: any) {
                 cityCode: f.cityCode,
                 laborCount: f.laborCount ? Number(f.laborCount) : 0,
                 foreignCount: f.foreignCount ? Number(f.foreignCount) : 0
-            }))
-        };
+            }));
+        }
+
+        // Update existing factories (requires transaction with individual updates)
+        // Note: Prisma's nested writes don't support update arrays elegantly
+        // We'll handle this in a transaction after the main update
+        updates.factories = factoryUpdates;
+        updates._existingFactoriesToUpdate = existingFactories; // Pass for transaction handling
     }
 
     // If Corporate fields are present
@@ -140,14 +167,49 @@ export async function updateEmployer(id: string, data: any) {
         }
     }
 
-    return prisma.employer.update({
-        where: { id },
-        data: updates,
-        include: {
-            corporateInfo: true,
-            individualInfo: true,
-            factories: true
+    // Extract existing factories to update separately
+    const existingFactoriesToUpdate = updates._existingFactoriesToUpdate || [];
+    delete updates._existingFactoriesToUpdate; // Remove from updates object
+
+    // Use transaction to handle factory updates properly
+    return prisma.$transaction(async (tx) => {
+        // 1. Update employer with delete/create operations for factories
+        const updatedEmployer = await tx.employer.update({
+            where: { id },
+            data: updates,
+            include: {
+                corporateInfo: true,
+                individualInfo: true,
+                factories: true
+            }
+        });
+
+        // 2. Update existing factories individually (preserves IDs)
+        for (const factory of existingFactoriesToUpdate) {
+            await tx.employerFactory.update({
+                where: { id: factory.id },
+                data: {
+                    name: factory.name,
+                    factoryRegNo: factory.factoryRegNo,
+                    address: factory.address,
+                    addressEn: factory.addressEn,
+                    zipCode: factory.zipCode,
+                    cityCode: factory.cityCode,
+                    laborCount: factory.laborCount ? Number(factory.laborCount) : 0,
+                    foreignCount: factory.foreignCount ? Number(factory.foreignCount) : 0
+                }
+            });
         }
+
+        // 3. Return updated employer with fresh factory data
+        return tx.employer.findUnique({
+            where: { id },
+            include: {
+                corporateInfo: true,
+                individualInfo: true,
+                factories: true
+            }
+        });
     });
 }
 

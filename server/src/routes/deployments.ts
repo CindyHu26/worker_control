@@ -161,9 +161,9 @@ router.post('/:id/terminate', async (req, res) => {
             data: {
                 status: newStatus,
                 serviceStatus: newServiceStatus,
-                endDate: new Date(endDate)
-                // terminationReason: reason, // Schema missing field
-                // terminationNotes: notes    // Schema missing field
+                endDate: new Date(endDate),
+                terminationReason: reason,
+                terminationNotes: notes
             }
         });
 
