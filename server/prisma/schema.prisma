@@ -193,7 +193,11 @@ model InternalUser {
 }
 
 model Employer {
-  id            String  @id @default(uuid()) @db.Uuid
+  id        String  @id @default(uuid()) @db.Uuid
+  // [Added] Business ID
+  code      String? @unique @db.VarChar(20) // 雇主編號
+  shortName String? @map("short_name") @db.VarChar(50) // 雇主簡稱
+
   taxId         String? @unique @map("tax_id") @db.VarChar(20)
   companyName   String  @map("company_name") @db.VarChar(100)
   companyNameEn String? @map("company_name_en") @db.VarChar(100)
@@ -201,14 +205,24 @@ model Employer {
   // Responsible Person (Common leader name, or for Individual it is the Employer)
   responsiblePerson String? @map("responsible_person") @db.VarChar(50)
 
-  address            String? @db.Text
-  addressEn          String? @map("address_en") @db.Text
-  invoiceAddress     String? @map("invoice_address") @db.Text
-  phoneNumber        String? @map("phone_number") @db.VarChar(20)
-  email              String? @db.VarChar(100)
+  address        String? @db.Text
+  addressEn      String? @map("address_en") @db.Text
+  invoiceAddress String? @map("invoice_address") @db.Text
+
+  // [Added] Other Addresses
+  taxAddress        String? @map("tax_address") @db.Text // 稅籍地址
+  healthBillAddress String? @map("health_bill_address") @db.Text // 健保帳單地址
+  healthBillZip     String? @map("health_bill_zip") @db.VarChar(10) // 健保郵遞區號
+
+  phoneNumber String? @map("phone_number") @db.VarChar(20)
+  email       String? @db.VarChar(100)
 
   contactPerson String? @map("contact_person") @db.VarChar(50)
   contactPhone  String? @map("contact_phone") @db.VarChar(20)
+
+  // [Added] Internal Management
+  referrer      String?   @db.VarChar(50) // 介紹人
+  terminateDate DateTime? @map("terminate_date") @db.Date // 終止委任日期
 
   // Relations to Details
   corporateInfo  CorporateInfo?
@@ -221,6 +235,7 @@ model Employer {
   incidents          Incident[]
   serviceAssignments ServiceAssignment[]
   jobOrders          JobOrder[]
+  factories          EmployerFactory[] // [Added] Factories
 
   createdBy     String?       @map("created_by") @db.Uuid
   updatedBy     String?       @map("updated_by") @db.Uuid
@@ -269,6 +284,27 @@ model Lead {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("leads")
+}
+
+model EmployerFactory {
+  id         String   @id @default(uuid()) @db.Uuid
+  employerId String   @map("employer_id") @db.Uuid
+  employer   Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  name         String  @map("name") @db.VarChar(100) // 廠名 (如：一廠)
+  factoryRegNo String? @map("factory_reg_no") @db.VarChar(50) // 該廠的工廠登記證
+
+  address   String? @db.Text
+  addressEn String? @map("address_en") @db.Text
+  zipCode   String? @map("zip_code") @db.VarChar(10)
+  cityCode  String? @map("city_code") @db.VarChar(10)
+
+  laborCount   Int? @default(0) // 該廠本勞人數
+  foreignCount Int? @default(0) // 該廠外勞人數
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("employer_factories")
 }
 
 model EmployerLaborCount {
@@ -322,9 +358,20 @@ model IndividualInfo {
   responsiblePersonMother String?   @map("responsible_person_mother_name") @db.VarChar(50)
   responsiblePersonSpouse String?   @map("responsible_person_spouse") @db.VarChar(50)
 
-  idIssueDate    DateTime? @map("id_issue_date") @db.Date
-  idIssuePlace   String?   @map("id_issue_place") @db.VarChar(50)
-  militaryStatus String?   @map("military_status") @db.VarChar(20)
+  // [Added] Detailed Individual Info
+  englishName  String? @map("english_name") @db.VarChar(100) // 負責人英文名
+  birthPlace   String? @map("birth_place") @db.VarChar(50)
+  birthPlaceEn String? @map("birth_place_en") @db.VarChar(100)
+
+  // 戶籍地址
+  residenceAddress  String? @map("residence_address") @db.Text
+  residenceZip      String? @map("residence_zip") @db.VarChar(10)
+  residenceCityCode String? @map("residence_city_code") @db.VarChar(10)
+
+  idIssueDate      DateTime? @map("id_issue_date") @db.Date
+  idIssuePlace     String?   @map("id_issue_place") @db.VarChar(50)
+  militaryStatus   String?   @map("military_status") @db.VarChar(20)
+  militaryStatusEn String?   @map("military_status_en") @db.VarChar(50)
 
   // Home Care Specifics
   patientName  String? @map("patient_name") @db.VarChar(50)
@@ -750,13 +797,13 @@ model Attachment {
 }
 
 model Hospital {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code       String?  @unique @db.VarChar(50)
-  name       String   @db.VarChar(255)
-  city       String?  @db.VarChar(50)
-  country    String?  @db.VarChar(50)
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String?   @unique @db.VarChar(50)
+  name       String    @db.VarChar(255)
+  city       String?   @db.VarChar(50)
+  country    String?   @db.VarChar(50)
   validUntil DateTime? @map("valid_until") @db.Date
-  
+
   isGeneral  Boolean @default(false) @map("is_general")
   isXray     Boolean @default(false) @map("is_xray")
   isOverseas Boolean @default(false) @map("is_overseas")

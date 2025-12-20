@@ -41,6 +41,15 @@ router.get('/check-duplicate/:taxId', async (req, res) => {
 const createEmployerSchema = z.object({
     companyName: z.string().min(1, "公司名稱必填"),
     companyNameEn: z.string().optional(),
+
+    // New Fields
+    code: z.string().optional(),
+    shortName: z.string().optional(),
+    referrer: z.string().optional(),
+    taxAddress: z.string().optional(),
+    healthBillAddress: z.string().optional(),
+    healthBillZip: z.string().optional(),
+
     taxId: z.string().optional(),
     responsiblePerson: z.string().optional(),
     phoneNumber: z.string().optional(),
@@ -59,7 +68,9 @@ const createEmployerSchema = z.object({
     factoryAddress: z.string().optional(),
     capital: z.coerce.number().optional(),
     laborInsuranceNo: z.string().optional(),
+    laborInsuranceId: z.string().optional(), // New
     healthInsuranceUnitNo: z.string().optional(),
+    healthInsuranceId: z.string().optional(), // New
     institutionCode: z.string().optional(),
     bedCount: z.coerce.number().optional(),
     avgDomesticWorkers: z.coerce.number().optional(),
@@ -83,12 +94,36 @@ const createEmployerSchema = z.object({
     responsiblePersonSpouse: z.string().optional(),
     responsiblePersonFather: z.string().optional(),
     responsiblePersonMother: z.string().optional(),
+    // New Individual Fields
+    englishName: z.string().optional(),
+    birthPlace: z.string().optional(),
+    birthPlaceEn: z.string().optional(),
+    residenceAddress: z.string().optional(),
+    residenceZip: z.string().optional(),
+    residenceCityCode: z.string().optional(),
+    militaryStatus: z.string().optional(),
+    militaryStatusEn: z.string().optional(),
+    idIssueDate: z.string().optional(),
+    idIssuePlace: z.string().optional(),
+
 
     // Home Care Fields
     patientName: z.string().optional(),
     patientIdNo: z.string().optional(),
     careAddress: z.string().optional(),
     relationship: z.string().optional(),
+
+    // Factories
+    factories: z.array(z.object({
+        name: z.string(),
+        factoryRegNo: z.string().optional(),
+        address: z.string().optional(),
+        addressEn: z.string().optional(),
+        zipCode: z.string().optional(),
+        cityCode: z.string().optional(),
+        laborCount: z.coerce.number().optional(),
+        foreignCount: z.coerce.number().optional()
+    })).optional(),
 
     // Initial Recruitment Letters (optional array)
     initialRecruitmentLetters: z.array(z.object({
@@ -102,25 +137,51 @@ const createEmployerSchema = z.object({
 // GET /api/employers
 router.get('/', async (req, res) => {
     try {
-        const { q, page = '1', limit = '10', type } = req.query; // type can be 'corporate' or 'individual'
+        // 1. 接收 category 參數
+        const { q, page = '1', limit = '10', type, category } = req.query;
 
         const pageNum = parseInt(page as string);
         const limitNum = parseInt(limit as string);
         const skip = (pageNum - 1) * limitNum;
 
         const whereClause: any = {};
+
+        // 2. 實作類別篩選邏輯 (Category Filter)
+        if (category && category !== 'ALL') {
+            if (category === 'MANUFACTURING') {
+                // 製造業：篩選 corporateInfo 裡的 industryType
+                whereClause.corporateInfo = {
+                    industryType: 'MANUFACTURING'
+                };
+            } else if (category === 'HOME_CARE') {
+                // 家庭看護：通常對應 Individual 雇主，或是有 patientName 的
+                whereClause.individualInfo = {
+                    isNot: null
+                };
+            } else if (category === 'INSTITUTION') {
+                // 機構：篩選 corporateInfo 裡的 industryType 為 INSTITUTION
+                whereClause.corporateInfo = {
+                    industryType: 'INSTITUTION'
+                };
+            }
+        }
+
+        // 3. 處理既有的 type 參數 (向下相容)
         if (type === 'corporate') {
             whereClause.corporateInfo = { isNot: null };
         } else if (type === 'individual') {
             whereClause.individualInfo = { isNot: null };
         }
 
+        // 4. 關鍵字搜尋 (維持不變)
         if (q) {
             const keyword = q as string;
             whereClause.OR = [
                 { companyName: { contains: keyword, mode: 'insensitive' } },
                 { taxId: { contains: keyword } },
-                { responsiblePerson: { contains: keyword } }
+                { responsiblePerson: { contains: keyword } },
+                { code: { contains: keyword } }, // Added code search
+                { shortName: { contains: keyword, mode: 'insensitive' } } // Added shortName search
             ];
         }
 
@@ -130,14 +191,14 @@ router.get('/', async (req, res) => {
                 where: whereClause,
                 include: {
                     corporateInfo: true,
-                    individualInfo: true,
+                    individualInfo: true, // 確保前端能讀到個人/家庭看護資訊
                     _count: {
                         select: { deployments: { where: { status: 'active' } } }
                     }
                 },
                 skip,
                 take: limitNum,
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' } // 確保最新的在最上面
             })
         ]);
 
@@ -176,11 +237,16 @@ router.post('/', async (req, res) => {
             invoiceAddress,
             faxNumber,
             email,
+            // New Core Fields
+            code, shortName, referrer, taxAddress, healthBillAddress, healthBillZip,
+
             // Corporate Fields
             industryCode,
             factoryAddress,
             laborInsuranceNo,
+            laborInsuranceId,
             healthInsuranceUnitNo,
+            healthInsuranceId,
             institutionCode,
             bedCount,
             // 3K5 & Compliance
@@ -193,6 +259,10 @@ router.post('/', async (req, res) => {
             responsiblePersonSpouse,
             responsiblePersonFather,
             responsiblePersonMother,
+            // New Individual Fields
+            englishName, birthPlace, birthPlaceEn, residenceAddress, residenceZip, residenceCityCode,
+            militaryStatus, militaryStatusEn, idIssueDate, idIssuePlace,
+
             // Home Care Fields
             patientName,
             patientIdNo,
@@ -200,6 +270,8 @@ router.post('/', async (req, res) => {
             relationship,
             // Manufacturing Specific
             avgDomesticWorkers,
+            // Factories
+            factories,
             // Initial Recruitment Letters
             initialRecruitmentLetters
         } = validatedData;
@@ -211,6 +283,15 @@ router.post('/', async (req, res) => {
             });
             if (existing) {
                 return res.status(400).json({ message: 'Tax ID / ID Number already exists' });
+            }
+        }
+
+        if (code) {
+            const existing = await prisma.employer.findUnique({
+                where: { code }
+            });
+            if (existing) {
+                return res.status(400).json({ message: 'Employer Code already exists' });
             }
         }
 
@@ -229,6 +310,10 @@ router.post('/', async (req, res) => {
                 companyName: String(companyName),
                 companyNameEn: validatedData.companyNameEn,
                 taxId: taxId ? String(taxId) : undefined,
+
+                // New Core
+                code, shortName, referrer, taxAddress, healthBillAddress, healthBillZip,
+
                 responsiblePerson: responsiblePerson ? String(responsiblePerson) : undefined,
                 phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
                 address: address ? String(address) : undefined,
@@ -254,7 +339,9 @@ router.post('/', async (req, res) => {
                         factoryAddress,
                         capital: validatedData.capital ? Number(validatedData.capital) : undefined,
                         laborInsuranceNo,
+                        laborInsuranceId,
                         healthInsuranceUnitNo,
+                        healthInsuranceId,
                         faxNumber,
                         institutionCode,
                         bedCount: bedCount,
@@ -268,11 +355,32 @@ router.post('/', async (req, res) => {
                         responsiblePersonFather,
                         responsiblePersonMother,
                         responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
+                        englishName, birthPlace, birthPlaceEn, residenceAddress, residenceZip, residenceCityCode,
+                        militaryStatus, militaryStatusEn,
+                        idIssueDate: idIssueDate ? new Date(idIssueDate) : undefined,
+                        idIssuePlace,
+
                         patientName,
                         patientIdNo,
                         careAddress,
                         relationship
                     }
+                };
+            }
+
+            // Add factories
+            if (factories && factories.length > 0) {
+                data.factories = {
+                    create: factories.map(f => ({
+                        name: f.name,
+                        factoryRegNo: f.factoryRegNo,
+                        address: f.address,
+                        addressEn: f.addressEn,
+                        zipCode: f.zipCode,
+                        cityCode: f.cityCode,
+                        laborCount: f.laborCount,
+                        foreignCount: f.foreignCount
+                    }))
                 };
             }
 
@@ -292,7 +400,8 @@ router.post('/', async (req, res) => {
             const emp = await tx.employer.create({
                 data,
                 include: {
-                    recruitmentLetters: true
+                    recruitmentLetters: true,
+                    factories: true
                 }
             });
 

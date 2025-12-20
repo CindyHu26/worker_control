@@ -26,26 +26,56 @@ export async function updateEmployer(id: string, data: any) {
         factoryRegistrationNo, industryCode, industryType, factoryAddress, factoryAddressEn,
         capital,
         laborInsuranceNo, laborInsuranceId, healthInsuranceUnitNo, healthInsuranceId, faxNumber,
+        institutionCode, bedCount,
         // Individual fields
         patientName, hospitalCertNo, careAddress, relationship,
         responsiblePersonDob, responsiblePersonIdNo, responsiblePersonFather, responsiblePersonMother, responsiblePersonSpouse,
         idIssueDate, idIssuePlace, militaryStatus,
+        englishName, birthPlace, birthPlaceEn, residenceAddress, residenceZip, residenceCityCode,
+        militaryStatusEn,
         // New Core fields
+        code, shortName, referrer, terminateDate,
         companyNameEn, addressEn, contactPerson, contactPhone,
+        taxAddress, healthBillAddress, healthBillZip,
+        factories, // Array of factory objects
         ...coreData
     } = data;
 
     // Prepare updates
     const coreUpdate: any = { ...coreData };
+    if (code !== undefined) coreUpdate.code = code;
+    if (shortName !== undefined) coreUpdate.shortName = shortName;
+    if (referrer !== undefined) coreUpdate.referrer = referrer;
+    if (terminateDate !== undefined) coreUpdate.terminateDate = terminateDate ? new Date(terminateDate) : null;
     if (companyNameEn !== undefined) coreUpdate.companyNameEn = companyNameEn;
     if (addressEn !== undefined) coreUpdate.addressEn = addressEn;
     if (contactPerson !== undefined) coreUpdate.contactPerson = contactPerson;
     if (contactPhone !== undefined) coreUpdate.contactPhone = contactPhone;
+    if (taxAddress !== undefined) coreUpdate.taxAddress = taxAddress;
+    if (healthBillAddress !== undefined) coreUpdate.healthBillAddress = healthBillAddress;
+    if (healthBillZip !== undefined) coreUpdate.healthBillZip = healthBillZip;
 
     const updates: any = { ...coreUpdate };
 
+    // Update Factories
+    if (factories && Array.isArray(factories)) {
+        updates.factories = {
+            deleteMany: {}, // Delete all existing and replace
+            create: factories.map((f: any) => ({
+                name: f.name,
+                factoryRegNo: f.factoryRegNo,
+                address: f.address,
+                addressEn: f.addressEn,
+                zipCode: f.zipCode,
+                cityCode: f.cityCode,
+                laborCount: f.laborCount ? Number(f.laborCount) : 0,
+                foreignCount: f.foreignCount ? Number(f.foreignCount) : 0
+            }))
+        };
+    }
+
     // If Corporate fields are present
-    if (factoryRegistrationNo || industryType || industryCode || capital !== undefined || laborInsuranceNo || healthInsuranceUnitNo) {
+    if (factoryRegistrationNo || industryType || industryCode || capital !== undefined || laborInsuranceNo || healthInsuranceUnitNo || institutionCode) {
         updates.corporateInfo = {
             upsert: {
                 create: {
@@ -58,6 +88,8 @@ export async function updateEmployer(id: string, data: any) {
                     healthInsuranceUnitNo,
                     healthInsuranceId,
                     faxNumber,
+                    institutionCode,
+                    bedCount: bedCount ? Number(bedCount) : undefined,
                 },
                 update: {
                     factoryRegistrationNo,
@@ -68,44 +100,42 @@ export async function updateEmployer(id: string, data: any) {
                     laborInsuranceId,
                     healthInsuranceUnitNo,
                     healthInsuranceId,
-                    faxNumber
+                    faxNumber,
+                    institutionCode,
+                    bedCount: bedCount ? Number(bedCount) : undefined,
                 }
             }
         };
     }
 
     // If Individual fields are present
-    if (responsiblePersonIdNo || responsiblePersonSpouse || responsiblePersonFather || patientName) {
+    if (responsiblePersonIdNo || responsiblePersonSpouse || responsiblePersonFather || patientName || englishName) {
+        const indUpdateData = {
+            responsiblePersonIdNo,
+            responsiblePersonSpouse,
+            responsiblePersonFather,
+            responsiblePersonMother,
+            responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
+            idIssueDate: idIssueDate ? new Date(idIssueDate) : undefined,
+            idIssuePlace,
+            militaryStatus,
+            militaryStatusEn,
+            patientName,
+            patientIdNo: data.patientIdNo,
+            careAddress,
+            relationship,
+            englishName,
+            birthPlace,
+            birthPlaceEn,
+            residenceAddress,
+            residenceZip,
+            residenceCityCode
+        };
+
         updates.individualInfo = {
             upsert: {
-                create: {
-                    responsiblePersonIdNo,
-                    responsiblePersonSpouse,
-                    responsiblePersonFather,
-                    responsiblePersonMother,
-                    responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
-                    idIssueDate: idIssueDate ? new Date(idIssueDate) : undefined,
-                    idIssuePlace,
-                    militaryStatus,
-                    patientName,
-                    patientIdNo: data.patientIdNo,
-                    careAddress,
-                    relationship
-                },
-                update: {
-                    responsiblePersonIdNo,
-                    responsiblePersonSpouse,
-                    responsiblePersonFather,
-                    responsiblePersonMother,
-                    responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
-                    idIssueDate: idIssueDate ? new Date(idIssueDate) : undefined,
-                    idIssuePlace,
-                    militaryStatus,
-                    patientName,
-                    patientIdNo: data.patientIdNo,
-                    careAddress,
-                    relationship
-                }
+                create: indUpdateData,
+                update: indUpdateData
             }
         }
     }
@@ -115,7 +145,8 @@ export async function updateEmployer(id: string, data: any) {
         data: updates,
         include: {
             corporateInfo: true,
-            individualInfo: true
+            individualInfo: true,
+            factories: true
         }
     });
 }
