@@ -14,10 +14,12 @@ import { Textarea } from '@/components/ui/textarea';
 import FormSection from '@/components/layout/FormSection';
 import ComplianceSelector from '@/components/employers/ComplianceSelector';
 import { isValidGUINumber, isValidNationalID } from '@/utils/validation';
-import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, AlertTriangle, AlertCircle, Phone, MapPin, Plus, Trash2, Briefcase } from 'lucide-react';
+import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, AlertTriangle, AlertCircle, Phone, MapPin, Plus, Trash2, Briefcase, Languages } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmployerSidebar } from './EmployerSidebar';
 import { INDUSTRIES, ALLOCATION_RATES, BASE_RATES, EXTRA_RATES } from '@/lib/leadConstants';
+import { TAIWAN_CITIES } from '@/data/taiwan-cities';
+import { toPinyin, translateCityDistrict } from '@/utils/translationUtils';
 
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -179,6 +181,41 @@ export default function EmployerForm({
         }) as EmployerFormData
     });
 
+    // Populate City/District from initial data
+    useEffect(() => {
+        if (initialData?.address) {
+            let foundCity = '';
+            let foundDist = '';
+            // Try to find city
+            for (const city of Object.keys(TAIWAN_CITIES)) {
+                if (initialData.address.startsWith(city)) {
+                    foundCity = city;
+                    setSelectedCity(city);
+                    const remaining = initialData.address.slice(city.length);
+                    // Try to find district
+                    const districts = TAIWAN_CITIES[city];
+                    for (const dist of districts) {
+                        if (remaining.startsWith(dist)) {
+                            foundDist = dist;
+                            setSelectedDistrict(dist);
+                            break;
+                        }
+                    }
+                    if (foundCity) break;
+                }
+            }
+
+            // Strip the city and district from the displayed address field
+            if (foundCity) {
+                let remaining = initialData.address.slice(foundCity.length);
+                if (foundDist) {
+                    remaining = remaining.slice(foundDist.length);
+                }
+                setValue('address', remaining);
+            }
+        }
+    }, [initialData, setValue]);
+
     const { fields: factoryFields, append: appendFactory, remove: removeFactory } = useFieldArray({
         control,
         name: "factories"
@@ -202,6 +239,27 @@ export default function EmployerForm({
             setValue('extraRate', '0.00');
         }
     }, [isExtraApplied]);
+
+    // City District State
+    const [selectedCity, setSelectedCity] = useState('');
+    const [selectedDistrict, setSelectedDistrict] = useState('');
+
+    const handleCityChange = (city: string) => {
+        setSelectedCity(city);
+        setSelectedDistrict('');
+    };
+
+    const handleAddressTranslate = () => {
+        const addressDetail = watch('address');
+        if (selectedCity && selectedDistrict && addressDetail) {
+            const { cityEn, districtEn } = translateCityDistrict(selectedCity, selectedDistrict);
+            // Simple concatenation for now, user can edit
+            // Ideally we should structure AddressEn similarly or just append
+            const fullAddressEn = `${toPinyin(addressDetail)}, ${districtEn}, ${cityEn}, Taiwan (R.O.C.)`;
+            setValue('addressEn', fullAddressEn);
+        }
+    };
+
 
     // Calculate Total Allocation Rate
     useEffect(() => {
@@ -289,6 +347,8 @@ export default function EmployerForm({
             const payload = {
                 ...data,
                 industryType: data.category,
+                // Combine address parts
+                address: selectedCity || selectedDistrict ? `${selectedCity}${selectedDistrict}${data.address || ''}` : data.address,
                 allocationRate: data.allocationRate ? String(data.allocationRate) : undefined,
                 // Ensure factories have numeric conversion if needed
                 factories: data.factories?.map(f => ({
@@ -389,12 +449,10 @@ export default function EmployerForm({
                                         <Input {...register('shortName')} placeholder="用於列表顯示" />
                                     </div>
 
+
                                     <div className="space-y-2">
                                         <Label htmlFor="taxId" className="required">統一編號 (TAX ID)</Label>
-                                        <div className="flex gap-2">
-                                            <Input {...register('taxId')} placeholder="8碼統編" />
-                                            <Button type="button" variant="outline" size="sm"><Globe className="h-4 w-4" /> 帶入</Button>
-                                        </div>
+                                        <Input {...register('taxId')} placeholder="8碼統編" />
                                         {errors.taxId && <p className="text-red-500 text-xs">{errors.taxId.message}</p>}
                                         {taxIdStatus.error && <p className="text-amber-500 text-xs">{taxIdStatus.error}</p>}
                                     </div>
@@ -414,7 +472,21 @@ export default function EmployerForm({
                                     </div>
                                     <div className="md:col-span-2">
                                         <Label htmlFor="companyNameEn">英文名稱 (English Name) - 勞動契約用</Label>
-                                        <Input {...register('companyNameEn')} placeholder="Official English Name" />
+                                        <div className="flex gap-2">
+                                            <Input {...register('companyNameEn')} placeholder="Official English Name" />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    const chinese = watch('companyName');
+                                                    if (chinese) {
+                                                        setValue('companyNameEn', toPinyin(chinese));
+                                                    }
+                                                }}
+                                            >
+                                                <Languages className="h-4 w-4 mr-1" /> 翻譯
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -506,11 +578,42 @@ export default function EmployerForm({
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label className="required">公司登記地址 (Registered Address)</Label>
-                                        <Input {...register('address')} />
+                                        <div className="grid grid-cols-12 gap-2 mb-2">
+                                            <div className="col-span-12 md:col-span-3">
+                                                <Select value={selectedCity} onValueChange={handleCityChange}>
+                                                    <SelectTrigger><SelectValue placeholder="縣市" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {Object.keys(TAIWAN_CITIES).map(city => (
+                                                            <SelectItem key={city} value={city}>{city}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="col-span-12 md:col-span-3">
+                                                <Select value={selectedDistrict} onValueChange={setSelectedDistrict} disabled={!selectedCity}>
+                                                    <SelectTrigger><SelectValue placeholder="鄉鎮市區" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {selectedCity && TAIWAN_CITIES[selectedCity]?.map(dist => (
+                                                            <SelectItem key={dist} value={dist}>{dist}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="col-span-12 md:col-span-6">
+                                                <Input {...register('address')} placeholder="路街巷弄號樓 (不含縣市/區)" />
+                                            </div>
+                                        </div>
                                     </div>
+
+
                                     <div className="space-y-2">
                                         <Label>英文地址 (English Address)</Label>
-                                        <Input {...register('addressEn')} />
+                                        <div className="flex gap-2">
+                                            <Input {...register('addressEn')} />
+                                            <Button type="button" variant="outline" onClick={handleAddressTranslate}>
+                                                <Languages className="h-4 w-4 mr-1" /> 翻譯
+                                            </Button>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">

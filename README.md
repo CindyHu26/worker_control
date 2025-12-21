@@ -39,7 +39,7 @@
     # 寫入預設資料 (Admin User)
     npm run db:seed
     ```
-    > **預設帳號**: `admin` / **密碼**: `change_me`
+    > **預設帳號**: `admin` / **密碼**: `password123`
 
 4.  **啟動服務**:
     ```bash

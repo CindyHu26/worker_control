@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Building2, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import SearchToolbar from '@/components/SearchToolbar';
+import { apiGet } from '@/lib/api';
 
 interface Employer {
     id: string;
@@ -46,14 +47,14 @@ export default function EmployersPage() {
             }
             const query = new URLSearchParams(params);
 
-            const res = await fetch(`http://localhost:3001/api/employers?${query}`);
-            if (res.ok) {
-                const { data, meta } = await res.json();
-                setEmployers(data);
-                setMeta(meta);
-            }
+            // Use apiGet wrapper to handle Authentication (Cookie Token)
+            const result = await apiGet<{ data: Employer[], meta: any }>(`/api/employers?${query}`);
+
+            setEmployers(result.data);
+            setMeta(result.meta);
         } catch (error) {
             console.error('Failed to fetch employers:', error);
+            // Optional: Handle 401 specifically if needed, but wrapper throws error
         } finally {
             setLoading(false);
         }

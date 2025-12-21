@@ -12,7 +12,17 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
     const token = authHeader && authHeader.split(' ')[1];
 
     // Debug: Check what token was received
-    // console.log('Checking Token:', token); 
+    /*
+    console.log('--- Auth Middleware ---');
+    console.log('Headers:', JSON.stringify(req.headers));
+    console.log('Auth Header:', authHeader);
+    console.log('Token:', token); 
+    */
+    const fs = require('fs');
+    const path = require('path');
+    const logPath = path.join(process.cwd(), 'auth_debug.log');
+    const logData = `[${new Date().toISOString()}] Headers: ${JSON.stringify(req.headers)}\nAuth: ${authHeader}\nToken: ${token}\n\n`;
+    try { fs.appendFileSync(logPath, logData); } catch (e) { }
 
     if (!token) {
         return res.status(401).json({ message: 'Unauthorized: No token provided' });

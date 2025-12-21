@@ -20,8 +20,8 @@ interface FetchOptions extends RequestInit {
 export async function apiFetch(url: string, options: FetchOptions = {}): Promise<Response> {
     const { skipAuth = false, headers = {}, ...restOptions } = options;
 
-    // Prepend BASE_URL if url starts with /
-    const fullUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : url;
+    // Use relative path to leverage Next.js proxy (avoids CORS and port issues)
+    const fullUrl = url;
 
     // Get token from cookies
     const token = Cookies.get('token');
