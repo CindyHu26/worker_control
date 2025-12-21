@@ -477,6 +477,8 @@ router.post('/:id/recruitment-letters', async (req, res) => {
         const { id } = req.params; // Employer ID
         const body = req.body;
 
+        console.log('Creating recruitment letter with data:', JSON.stringify(body, null, 2));
+
         const newLetter = await prisma.employerRecruitmentLetter.create({
             data: {
                 employerId: id,
@@ -486,36 +488,37 @@ router.post('/:id/recruitment-letters', async (req, res) => {
                 approvedQuota: Number(body.approvedQuota),
                 usedQuota: 0, // Initial used is 0
 
-                // New Fields
-                submissionDate: body.submissionDate ? new Date(body.submissionDate) : null,
-                laborMinistryReceiptDate: body.laborMinistryReceiptDate ? new Date(body.laborMinistryReceiptDate) : null,
+                // New Fields - handle empty strings
+                submissionDate: body.submissionDate && body.submissionDate !== '' ? new Date(body.submissionDate) : null,
+                laborMinistryReceiptDate: body.laborMinistryReceiptDate && body.laborMinistryReceiptDate !== '' ? new Date(body.laborMinistryReceiptDate) : null,
 
-                issueUnit: body.issueUnit,
-                issueWord: body.issueWord,
-                caseNumber: body.caseNumber,
+                issueUnit: body.issueUnit || null,
+                issueWord: body.issueWord || null,
+                caseNumber: body.caseNumber || null,
 
-                workAddress: body.workAddress,
-                jobType: body.jobType,
-                jobTitle: body.jobTitle,
-                industryCode: body.industryCode,
+                workAddress: body.workAddress || null,
+                jobType: body.jobType || null,
+                jobTitle: body.jobTitle || null,
+                industryCode: body.industryCode || null,
 
-                projectCode: body.projectCode,
-                industrialBureauRef: body.industrialBureauRef,
+                projectCode: body.projectCode || null,
+                industrialBureauRef: body.industrialBureauRef || null,
 
                 quotaMale: body.quotaMale ? Number(body.quotaMale) : 0,
                 quotaFemale: body.quotaFemale ? Number(body.quotaFemale) : 0,
 
-                recruitmentType: body.recruitmentType,
-                nationality: body.nationality,
+                recruitmentType: body.recruitmentType || null,
+                nationality: body.nationality || null,
                 canCirculate: body.canCirculate !== undefined ? body.canCirculate : true,
-                remarks: body.remarks
+                remarks: body.remarks || null
             }
         });
 
         res.json(newLetter);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to create recruitment letter' });
+    } catch (error: any) {
+        console.error('Error creating recruitment letter:', error);
+        console.error('Request body was:', JSON.stringify(req.body, null, 2));
+        res.status(500).json({ error: 'Failed to create recruitment letter', details: error.message });
     }
 });
 
@@ -538,32 +541,32 @@ router.put('/:id/recruitment-letters/:letterId', async (req, res) => {
             where: { id: letterId },
             data: {
                 letterNumber: body.letterNumber,
-                issueDate: body.issueDate ? new Date(body.issueDate) : undefined,
-                expiryDate: body.expiryDate ? new Date(body.expiryDate) : undefined,
+                issueDate: body.issueDate && body.issueDate !== '' ? new Date(body.issueDate) : undefined,
+                expiryDate: body.expiryDate && body.expiryDate !== '' ? new Date(body.expiryDate) : undefined,
                 approvedQuota: body.approvedQuota ? Number(body.approvedQuota) : undefined,
 
-                submissionDate: body.submissionDate ? new Date(body.submissionDate) : null,
-                laborMinistryReceiptDate: body.laborMinistryReceiptDate ? new Date(body.laborMinistryReceiptDate) : null,
+                submissionDate: body.submissionDate && body.submissionDate !== '' ? new Date(body.submissionDate) : null,
+                laborMinistryReceiptDate: body.laborMinistryReceiptDate && body.laborMinistryReceiptDate !== '' ? new Date(body.laborMinistryReceiptDate) : null,
 
-                issueUnit: body.issueUnit,
-                issueWord: body.issueWord,
-                caseNumber: body.caseNumber,
+                issueUnit: body.issueUnit || null,
+                issueWord: body.issueWord || null,
+                caseNumber: body.caseNumber || null,
 
-                workAddress: body.workAddress,
-                jobType: body.jobType,
-                jobTitle: body.jobTitle,
-                industryCode: body.industryCode,
+                workAddress: body.workAddress || null,
+                jobType: body.jobType || null,
+                jobTitle: body.jobTitle || null,
+                industryCode: body.industryCode || null,
 
-                projectCode: body.projectCode,
-                industrialBureauRef: body.industrialBureauRef,
+                projectCode: body.projectCode || null,
+                industrialBureauRef: body.industrialBureauRef || null,
 
                 quotaMale: body.quotaMale ? Number(body.quotaMale) : 0,
                 quotaFemale: body.quotaFemale ? Number(body.quotaFemale) : 0,
 
-                recruitmentType: body.recruitmentType,
-                nationality: body.nationality,
+                recruitmentType: body.recruitmentType || null,
+                nationality: body.nationality || null,
                 canCirculate: body.canCirculate,
-                remarks: body.remarks
+                remarks: body.remarks || null
             }
         });
 
@@ -648,6 +651,54 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
         console.error('Update Employer Error:', error);
         res.status(500).json({ error: 'Failed to update employer' });
+    }
+});
+
+// DELETE /api/employers/:id
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if employer exists
+        const employer = await prisma.employer.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: {
+                        deployments: true,
+                        recruitmentLetters: true
+                    }
+                }
+            }
+        });
+
+        if (!employer) {
+            return res.status(404).json({ error: 'Employer not found' });
+        }
+
+        // Prevent deletion if there are active deployments
+        const activeDeployments = await prisma.deployment.count({
+            where: {
+                employerId: id,
+                status: { in: ['active', 'pending'] }
+            }
+        });
+
+        if (activeDeployments > 0) {
+            return res.status(400).json({
+                error: `Cannot delete employer with ${activeDeployments} active deployment(s). Please terminate all deployments first.`
+            });
+        }
+
+        // Delete employer (cascade will handle related records)
+        await prisma.employer.delete({
+            where: { id }
+        });
+
+        res.json({ success: true, message: 'Employer deleted successfully' });
+    } catch (error) {
+        console.error('Delete Employer Error:', error);
+        res.status(500).json({ error: 'Failed to delete employer' });
     }
 });
 

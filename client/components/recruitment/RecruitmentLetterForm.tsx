@@ -80,7 +80,7 @@ export function RecruitmentLetterForm({ initialData, employerId, onSubmit, onCan
                 {/* 1. Critical Dates */}
                 <div className="bg-blue-50 p-4 rounded-md grid grid-cols-1 md:grid-cols-3 gap-4 border border-blue-100">
                     <div>
-                        <label className="block text-sm font-bold text-blue-900 mb-1">送件日期 (Submission Date)</label>
+                        <label className="block text-sm font-bold text-blue-900 mb-1">送件日期 (Submission Date) <span className="text-xs font-normal text-gray-500">(西元/AD)</span></label>
                         <input
                             type="date"
                             className="block w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -90,7 +90,7 @@ export function RecruitmentLetterForm({ initialData, employerId, onSubmit, onCan
                         <p className="text-xs text-blue-600 mt-1">※ 行政送件時填寫 (Fill when submitted)</p>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">勞動部收文日期 (Receipt Date)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">勞動部收文日期 (Receipt Date) <span className="text-xs font-normal text-gray-500">(西元/AD)</span></label>
                         <input
                             type="date"
                             className="block w-full rounded-md border-gray-300 shadow-sm"
@@ -99,7 +99,7 @@ export function RecruitmentLetterForm({ initialData, employerId, onSubmit, onCan
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">發文日期 (Issue Date)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">發文日期 (Issue Date) <span className="text-xs font-normal text-gray-500">(西元/AD)</span></label>
                         <input
                             type="date"
                             className="block w-full rounded-md border-gray-300 shadow-sm"
@@ -211,7 +211,7 @@ export function RecruitmentLetterForm({ initialData, employerId, onSubmit, onCan
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">招募效期 (Expiry Date)</label>
+                        <label className="block text-sm font-medium text-gray-700">招募效期 (Expiry Date) <span className="text-xs font-normal text-gray-500">(西元/AD)</span></label>
                         <input
                             type="date"
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
@@ -254,7 +254,7 @@ export function RecruitmentLetterForm({ initialData, employerId, onSubmit, onCan
             </form>
 
             {/* 4. Attachment Manager (Edit Mode Only) */}
-            {isEditMode && (
+            {isEditMode ? (
                 <div className="mt-8 pt-6 border-t border-gray-200">
                     <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <FileText size={20} />
@@ -268,10 +268,17 @@ export function RecruitmentLetterForm({ initialData, employerId, onSubmit, onCan
                         />
                     </div>
                 </div>
-            )}
-            {!isEditMode && (
-                <div className="mt-4 p-4 bg-yellow-50 text-yellow-700 text-sm rounded border border-yellow-200 text-center">
-                    請先儲存基本資料，即可開始上傳掃描檔。 (Save first to upload files)
+            ) : (
+                <div className="mt-6 border-2 border-dashed border-yellow-300 bg-yellow-50 p-6 rounded-lg text-center text-yellow-800">
+                    <div className="flex flex-col items-center justify-center">
+                        <Save className="w-8 h-8 mb-2 opacity-50" />
+                        <p className="font-bold text-lg">尚未取得系統案號 (Not Saved)</p>
+                        <p className="text-sm mt-2 max-w-md">
+                            為了確保資料正確，請先填寫上方欄位並點擊「儲存招募函」。
+                            <br />
+                            (Please save the form first to retrieve System ID/Letter ID for uploading files.)
+                        </p>
+                    </div>
                 </div>
             )}
         </div>

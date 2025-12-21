@@ -10,9 +10,17 @@ export const quotaService = {
      * @param tx Prisma Transaction Client
      */
     async checkQuotaAvailability(letterId: string, workerGender: string | null | undefined, tx: any) {
-        const db = tx || prisma;
+        // enforce transaction context
+        if (!tx) throw new Error('Transaction context required for quota check');
 
-        const letter = await db.employerRecruitmentLetter.findUnique({
+        // LOCK the letter row to prevent race conditions
+        // This ensures no other transaction can read/update this letter until this one finishes
+        await tx.$executeRawUnsafe(
+            `SELECT 1 FROM "employer_recruitment_letters" WHERE id = $1 FOR UPDATE`,
+            letterId
+        );
+
+        const letter = await tx.employerRecruitmentLetter.findUnique({
             where: { id: letterId }
         });
 
@@ -28,7 +36,7 @@ export const quotaService = {
             ? { in: ['active', 'pending'] }
             : undefined; // undefined means all statuses
 
-        const currentUsage = await db.deployment.count({
+        const currentUsage = await tx.deployment.count({
             where: {
                 recruitmentLetterId: letterId,
                 status: statusFilter
@@ -43,7 +51,7 @@ export const quotaService = {
         if (letter.quotaMale > 0 || letter.quotaFemale > 0) {
             // Note: Prisma Enum for Gender is lowercase 'male'/'female'
             if (workerGender === 'male' && letter.quotaMale > 0) {
-                const maleUsage = await db.deployment.count({
+                const maleUsage = await tx.deployment.count({
                     where: {
                         recruitmentLetterId: letterId,
                         status: statusFilter,
@@ -54,7 +62,7 @@ export const quotaService = {
                     throw new Error('男性名額已滿 (Male Quota Exceeded)');
                 }
             } else if (workerGender === 'female' && letter.quotaFemale > 0) {
-                const femaleUsage = await db.deployment.count({
+                const femaleUsage = await tx.deployment.count({
                     where: {
                         recruitmentLetterId: letterId,
                         status: statusFilter,

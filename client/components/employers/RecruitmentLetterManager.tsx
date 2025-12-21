@@ -4,6 +4,7 @@ import { FileText, Plus, Trash2, Calendar, Download, Upload, Pencil } from 'luci
 import { apiGet, apiPost, apiDelete, apiPut } from '@/lib/api';
 import ExcelJS from 'exceljs';
 import { RecruitmentLetterForm } from '@/components/recruitment/RecruitmentLetterForm';
+import { RecruitmentTypeMap } from '@/utils/maps';
 
 interface RecruitmentLetter {
     id: string;
@@ -84,6 +85,9 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
             fetchLetters();
         } catch (error) {
             console.error(error);
+            // alert('刪除失敗，可能尚有使用中的名額');
+            // The API now returns a JSON error message instead of throwing immediately if handled well,
+            // but apiDelete might throw. Let's rely on global error handling or console log.
         }
     };
 
@@ -217,87 +221,94 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
                 </div>
             </div>
 
-            <div className="p-6">
-                {letters.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 bg-gray-50 rounded border border-dashed border-gray-300">
-                        尚無招募函資料。請點擊「新增」建立或「匯入 Excel」。
-                    </div>
-                ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {letters.map(letter => {
-                            const available = letter.approvedQuota - letter.usedQuota;
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                函文號碼 / 發文日期
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                招募類型
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                已用 / 核准名額
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                失效日期
+                            </th>
+                            <th scope="col" className="relative px-6 py-3">
+                                <span className="sr-only">操作</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {letters.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                    尚無招募函資料。請點擊「新增招募函」建立。
+                                </td>
+                            </tr>
+                        ) : letters.map(letter => {
                             const isExpired = new Date(letter.expiryDate) < new Date();
-                            const isFull = available <= 0;
 
                             return (
-                                <div key={letter.id} className={`relative p-4 rounded-lg border ${isExpired ? 'bg-gray-50 border-gray-200 opacity-75' : 'bg-white border-blue-100 shadow-sm hover:shadow-md transition-shadow'}`}>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="flex flex-col">
-                                            <h4 className="font-bold text-gray-800 text-sm truncate pr-2 cursor-pointer hover:text-blue-600"
-                                                title="點擊編輯"
-                                                onClick={() => {
-                                                    setSelectedLetter(letter);
-                                                    setViewMode('edit');
-                                                }}
-                                            >
-                                                {letter.letterNumber}
-                                            </h4>
-                                            {letter.recruitmentType && (
-                                                <span className="text-xs text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded w-fit mt-1">
-                                                    {letter.recruitmentType}
-                                                </span>
-                                            )}
+                                <tr key={letter.id} className={`${isExpired ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}`}>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="font-medium text-gray-900 cursor-pointer hover:text-blue-600"
+                                            title="點擊編輯"
+                                            onClick={() => {
+                                                setSelectedLetter(letter);
+                                                setViewMode('edit');
+                                            }}
+                                        >
+                                            {letter.letterNumber}
                                         </div>
-                                        <div className="flex gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedLetter(letter);
-                                                    setViewMode('edit');
-                                                }}
-                                                className="text-gray-400 hover:text-blue-500 transition-colors p-1"
-                                                title="編輯"
-                                            >
-                                                <Pencil className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(letter.id)}
-                                                className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                                                title="刪除"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center text-xs text-gray-500 mb-3 gap-2">
-                                        <Calendar className="w-3 h-3" />
-                                        <span>{format(new Date(letter.issueDate), 'yyyy-MM-dd')} ~ {format(new Date(letter.expiryDate), 'yyyy-MM-dd')}</span>
-                                    </div>
-
-                                    <div className="bg-gray-100 rounded-full h-2.5 mb-2 overflow-hidden">
-                                        <div
-                                            className={`h-2.5 rounded-full ${isExpired ? 'bg-gray-400' : isFull ? 'bg-red-500' : 'bg-blue-500'}`}
-                                            style={{ width: `${Math.min((letter.usedQuota / letter.approvedQuota) * 100, 100)}%` }}
-                                        ></div>
-                                    </div>
-
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-gray-600">已用: {letter.usedQuota} / {letter.approvedQuota}</span>
-                                        <span className={`font-bold ${isExpired ? 'text-gray-500' : isFull ? 'text-red-600' : 'text-blue-600'}`}>
-                                            剩餘: {available}
+                                        <div className="text-sm text-gray-500">{letter.issueDate.split('T')[0]}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                            {RecruitmentTypeMap[letter.recruitmentType || ''] || letter.recruitmentType || '一般'}
                                         </span>
-                                    </div>
-
-                                    {isExpired && (
-                                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -rotate-12 border-2 border-red-500 text-red-500 font-bold px-2 text-lg rounded opacity-30 select-none pointer-events-none">
-                                            EXPIRED
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">
+                                            {letter.usedQuota} / {letter.approvedQuota}
                                         </div>
-                                    )}
-                                </div>
+                                        <div className="w-24 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                                            <div
+                                                className={`h-full ${letter.usedQuota >= letter.approvedQuota ? 'bg-red-500' : 'bg-green-500'
+                                                    }`}
+                                                style={{ width: `${Math.min(100, (letter.usedQuota / letter.approvedQuota) * 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {letter.expiryDate.split('T')[0]}
+                                        {isExpired && <span className="ml-2 text-xs text-red-500 font-bold">(Ex)</span>}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <button
+                                            onClick={() => {
+                                                setSelectedLetter(letter);
+                                                setViewMode('edit');
+                                            }}
+                                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(letter.id)}
+                                            className="text-red-600 hover:text-red-900"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </td>
+                                </tr>
                             );
                         })}
-                    </div>
-                )}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
