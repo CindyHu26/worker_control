@@ -35,10 +35,12 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
 
     const [importing, setImporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [employer, setEmployer] = useState<any>(null);
 
     const fetchLetters = async () => {
         try {
             const data = await apiGet<any>(`/api/employers/${employerId}`);
+            setEmployer(data);
             // Sort by issueDate desc
             const sorted = (data.recruitmentLetters || []).sort((a: any, b: any) =>
                 new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()
@@ -55,28 +57,8 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
         fetchLetters();
     }, [employerId]);
 
-    const handleFormSubmit = async (data: any) => {
-        try {
-            if (data.id) {
-                // Update
-                await apiPut(`/api/employers/${employerId}/recruitment-letters/${data.id}`, data);
-                // Keep in edit mode or go back? Usually go back or stay.
-                // Let's reload list but stay in edit mode to acknowledge success
-                alert('更新成功');
-            } else {
-                // Create
-                const res = await apiPost(`/api/employers/${employerId}/recruitment-letters`, data);
-                // Switch to edit mode with the new ID to allow attachments
-                setSelectedLetter(res as any);
-                setViewMode('edit');
-                alert('新增成功，現在可以上傳檔案了');
-            }
-            fetchLetters();
-        } catch (error) {
-            console.error(error);
-            alert('儲存失敗 (Error saving letter)');
-        }
-    };
+    // Form submission is handled by the component
+
 
     const handleDelete = async (id: string) => {
         if (!confirm('確定要刪除此招募函嗎？')) return;
@@ -155,8 +137,13 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
         return (
             <RecruitmentLetterForm
                 employerId={employerId}
+                employer={employer}
                 initialData={viewMode === 'edit' ? selectedLetter : undefined}
-                onSubmit={handleFormSubmit}
+                onSuccess={() => {
+                    fetchLetters();
+                    setViewMode('list');
+                    setSelectedLetter(undefined);
+                }}
                 onCancel={() => {
                     setViewMode('list');
                     setSelectedLetter(undefined);

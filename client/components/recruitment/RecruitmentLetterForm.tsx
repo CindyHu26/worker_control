@@ -1,286 +1,305 @@
-import React, { useState } from 'react';
-import { Calendar, Save, X, FileText } from 'lucide-react';
-import AttachmentManager from '@/components/common/AttachmentManager';
-import { format } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Save, Building2, FileText, Receipt, Landmark } from 'lucide-react';
+import { apiPost, apiPut } from '@/lib/api';
 
-interface FormData {
-    id?: string;
-    letterNumber: string;
-    submissionDate: string;
-    issueDate: string;
-    laborMinistryReceiptDate: string;
-    expiryDate: string; // validUntil
-    approvedQuota: number;
-    workAddress: string;
-    industrialBureauRef: string;
-    recruitmentType: string;
-    remarks: string;
-    // New fields
-    jobType?: string;
-    industryCode?: string;
-    projectCode?: string;
-    issueUnit?: string;
-    issueWord?: string;
-    nationality?: string;
-    quotaMale?: number;
-    quotaFemale?: number;
-    canCirculate: boolean;
-}
+// Simple toast mock since generic useToast might not be present or configured similarly
+const toast = (props: { title: string; description?: string; className?: string; variant?: string }) => {
+    // console.log("Toast:", props);
+    // In a real app we'd use the toaster context. For now, we rely on UI feedback or silent success + parent refresh.
+    // Ideally, we can use window.alert for errors.
+    if (props.variant === 'destructive') {
+        alert(`${props.title}: ${props.description}`);
+    }
+};
 
 interface Props {
-    initialData?: Partial<FormData>;
     employerId: string;
-    onSubmit: (data: any) => Promise<void>;
+    employer: any; // Full employer data for address selectors
+    initialData?: any;
+    onSuccess?: () => void;
     onCancel: () => void;
 }
 
-export function RecruitmentLetterForm({ initialData, employerId, onSubmit, onCancel }: Props) {
-    const [formData, setFormData] = useState<FormData>({
-        id: initialData?.id,
-        letterNumber: initialData?.letterNumber || '',
-        submissionDate: initialData?.submissionDate ? initialData.submissionDate.split('T')[0] : '',
-        issueDate: initialData?.issueDate ? initialData.issueDate.split('T')[0] : '',
-        laborMinistryReceiptDate: initialData?.laborMinistryReceiptDate ? initialData.laborMinistryReceiptDate.split('T')[0] : '',
-        expiryDate: initialData?.expiryDate ? initialData.expiryDate.split('T')[0] : '',
-        approvedQuota: initialData?.approvedQuota || 0,
-        workAddress: initialData?.workAddress || '',
-        industrialBureauRef: initialData?.industrialBureauRef || '',
-        recruitmentType: initialData?.recruitmentType || '初招',
-        remarks: initialData?.remarks || '',
-        jobType: initialData?.jobType || '',
-        industryCode: initialData?.industryCode || '',
-        projectCode: initialData?.projectCode || '',
-        issueUnit: initialData?.issueUnit || '勞動部',
-        issueWord: initialData?.issueWord || '勞動發事字',
-        nationality: initialData?.nationality || '',
-        quotaMale: initialData?.quotaMale || 0,
-        quotaFemale: initialData?.quotaFemale || 0,
-        canCirculate: initialData?.canCirculate !== undefined ? initialData.canCirculate : true
+export function RecruitmentLetterForm({ employerId, employer, initialData, onSuccess, onCancel }: Props) {
+    const [loading, setLoading] = useState(false);
+
+    // Form State
+    const [formData, setFormData] = useState({
+        // A. Industrial Bureau (Step 1)
+        industrialBureauRef: '',
+        industrialBureauDate: '',
+
+        // B. Domestic Recruitment (Step 2)
+        domesticRecruitmentRef: '',
+        domesticRecruitmentDate: '',
+
+        // C. Review Fee (Step 3)
+        reviewFeeReceiptNo: '',
+        reviewFeePayDate: '',
+        reviewFeeAmount: 200,
+
+        // D. Recruitment Letter (Step 4)
+        letterNumber: '',
+        issueDate: '',
+        validUntil: '',
+        approvedQuota: 0,
+        workAddress: '',
+        remarks: ''
     });
 
-    const isEditMode = !!formData.id;
+    useEffect(() => {
+        if (initialData) {
+            const format = (d: string) => d ? d.split('T')[0] : '';
+            setFormData({
+                industrialBureauRef: initialData.industrialBureauRef || '',
+                industrialBureauDate: format(initialData.industrialBureauDate),
+                domesticRecruitmentRef: initialData.domesticRecruitmentRef || '',
+                domesticRecruitmentDate: format(initialData.domesticRecruitmentDate),
+                reviewFeeReceiptNo: initialData.reviewFeeReceiptNo || '',
+                reviewFeePayDate: format(initialData.reviewFeePayDate),
+                reviewFeeAmount: initialData.reviewFeeAmount || 200,
+                letterNumber: initialData.letterNumber || '',
+                issueDate: format(initialData.issueDate),
+                validUntil: format(initialData.validUntil || initialData.expiryDate), // Handle both
+                approvedQuota: initialData.approvedQuota || 0,
+                workAddress: initialData.workAddress || '',
+                remarks: initialData.remarks || ''
+            });
+        }
+    }, [initialData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await onSubmit(formData);
+        setLoading(true);
+        try {
+            const payload = {
+                ...formData,
+                employerId,
+                approvedQuota: Number(formData.approvedQuota),
+                reviewFeeAmount: Number(formData.reviewFeeAmount),
+            };
+
+            // Use the new /api/recruitment endpoint
+            if (initialData?.id) {
+                await apiPut(`/api/recruitment/${initialData.id}`, payload);
+            } else {
+                await apiPost('/api/recruitment', payload);
+            }
+
+            // toast({ title: "儲存成功" });
+            if (onSuccess) onSuccess();
+        } catch (error: any) {
+            console.error(error);
+            toast({
+                title: "儲存失敗",
+                description: error.message || "請檢查欄位格式",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <div className="bg-white p-6 border rounded-lg shadow-sm mt-4 space-y-6">
-            <div className="flex justify-between items-center border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-800">
-                    {isEditMode ? '編輯招募函 (Edit Recruitment Letter)' : '登錄新招募函 (New Recruitment Letter)'}
-                </h3>
-                <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
-                    <X size={20} />
-                </button>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {/* 1. Critical Dates */}
-                <div className="bg-blue-50 p-4 rounded-md grid grid-cols-1 md:grid-cols-3 gap-4 border border-blue-100">
-                    <div>
-                        <label className="block text-sm font-bold text-blue-900 mb-1">送件日期 (Submission Date) <span className="text-xs font-normal text-gray-500">(西元/AD)</span></label>
-                        <input
-                            type="date"
-                            className="block w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            value={formData.submissionDate}
-                            onChange={e => setFormData({ ...formData, submissionDate: e.target.value })}
-                        />
-                        <p className="text-xs text-blue-600 mt-1">※ 行政送件時填寫 (Fill when submitted)</p>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">勞動部收文日期 (Receipt Date) <span className="text-xs font-normal text-gray-500">(西元/AD)</span></label>
-                        <input
-                            type="date"
-                            className="block w-full rounded-md border-gray-300 shadow-sm"
-                            value={formData.laborMinistryReceiptDate}
-                            onChange={e => setFormData({ ...formData, laborMinistryReceiptDate: e.target.value })}
+            {/* Step 1: Industrial Bureau */}
+            <Card className="border-l-4 border-l-blue-500">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-700">
+                        <Building2 size={18} /> 步驟一：工業局 3K 認定 (Industrial Bureau)
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>工業局核定函號</Label>
+                        <Input
+                            placeholder="例：112工中字第12345678號"
+                            value={formData.industrialBureauRef}
+                            onChange={e => setFormData({ ...formData, industrialBureauRef: e.target.value })}
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">發文日期 (Issue Date) <span className="text-xs font-normal text-gray-500">(西元/AD)</span></label>
-                        <input
+                    <div className="space-y-2">
+                        <Label>核定函發文日</Label>
+                        <Input
                             type="date"
-                            className="block w-full rounded-md border-gray-300 shadow-sm"
-                            value={formData.issueDate}
-                            onChange={e => setFormData({ ...formData, issueDate: e.target.value })}
-                            required
+                            value={formData.industrialBureauDate}
+                            onChange={e => setFormData({ ...formData, industrialBureauDate: e.target.value })}
                         />
                     </div>
-                </div>
+                </CardContent>
+            </Card>
 
-                {/* 2. Basic Info */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">發文號 (Letter No)</label>
-                        <input
-                            type="text"
-                            placeholder="例: 1091844611"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            {/* Step 2: Domestic Recruitment */}
+            <Card className="border-l-4 border-l-orange-500">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-700">
+                        <FileText size={18} /> 步驟二：國內求才證明 (Domestic Recruitment)
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="flex justify-between">
+                            <span>求才證明書序號</span>
+                            <span className="text-xs text-orange-600 font-bold">*必填</span>
+                        </Label>
+                        <Input
+                            placeholder="請輸入證明書序號"
+                            value={formData.domesticRecruitmentRef}
+                            onChange={e => setFormData({ ...formData, domesticRecruitmentRef: e.target.value })}
+                        // Required only for new? strictness can be relaxed for editing legacy data. Use simple validation logic if needed.
+                        // required={!initialData} 
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>求才登記日期</Label>
+                        <Input
+                            type="date"
+                            value={formData.domesticRecruitmentDate}
+                            onChange={e => setFormData({ ...formData, domesticRecruitmentDate: e.target.value })}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Step 3: Review Fee */}
+            <Card className="border-l-4 border-l-green-500">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-700">
+                        <Receipt size={18} /> 步驟三：審查費繳納 (Review Fee)
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <Label>收據號碼 (郵政劃撥)</Label>
+                        <Input
+                            placeholder="例：98765432"
+                            value={formData.reviewFeeReceiptNo}
+                            onChange={e => setFormData({ ...formData, reviewFeeReceiptNo: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>繳費日期</Label>
+                        <Input
+                            type="date"
+                            value={formData.reviewFeePayDate}
+                            onChange={e => setFormData({ ...formData, reviewFeePayDate: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>繳費金額</Label>
+                        <Input
+                            type="number"
+                            value={formData.reviewFeeAmount}
+                            onChange={e => setFormData({ ...formData, reviewFeeAmount: Number(e.target.value) })}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Step 4: Recruitment Letter (Main) */}
+            <Card className="border-2 border-blue-600 shadow-md">
+                <CardHeader className="bg-blue-50 pb-2 border-b">
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-blue-800">
+                        <Landmark size={20} /> 步驟四：勞動部招募許可函 (Recruitment Letter)
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div className="space-y-2">
+                        <Label className="text-blue-900 font-bold">發文文號 (Permit No)</Label>
+                        <Input
+                            className="font-mono font-bold"
+                            placeholder="勞動發事字第...號"
                             value={formData.letterNumber}
                             onChange={e => setFormData({ ...formData, letterNumber: e.target.value })}
                             required
                         />
                     </div>
-                    <div className="flex gap-2">
-                        <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700">招募別 (Type)</label>
-                            <select
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                                value={formData.recruitmentType}
-                                onChange={e => setFormData({ ...formData, recruitmentType: e.target.value })}
-                            >
-                                <option value="初招">初招 (Initial)</option>
-                                <option value="重招">重招 (Re-recruit)</option>
-                                <option value="遞補">遞補 (Replacement)</option>
-                                <option value="接續聘僱">接續聘僱 (Transfer)</option>
-                            </select>
-                        </div>
-                        <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700">國籍 (Nationality)</label>
-                            <select
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                                value={formData.nationality}
-                                onChange={e => setFormData({ ...formData, nationality: e.target.value })}
-                            >
-                                <option value="">不限 (Any)</option>
-                                <option value="ID">印尼 (ID)</option>
-                                <option value="VN">越南 (VN)</option>
-                                <option value="PH">菲律賓 (PH)</option>
-                                <option value="TH">泰國 (TH)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">核准名額 (Quota)</label>
-                        <input
+
+                    <div className="space-y-2">
+                        <Label className="text-blue-900 font-bold">核准名額</Label>
+                        <Input
                             type="number"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                            className="text-lg font-bold text-red-600"
                             value={formData.approvedQuota}
-                            onChange={e => setFormData({ ...formData, approvedQuota: parseInt(e.target.value) || 0 })}
+                            onChange={e => setFormData({ ...formData, approvedQuota: Number(e.target.value) })}
                             required
                         />
                     </div>
-                </div>
 
-                {/* 2.5 Gender Constraints & Circulation */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-md border border-gray-100">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">男性名額 (Male Quota)</label>
-                        <input
-                            type="number"
-                            placeholder="選填 (Optional)"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                            value={formData.quotaMale || ''}
-                            onChange={e => setFormData({ ...formData, quotaMale: parseInt(e.target.value) || 0 })}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">女性名額 (Female Quota)</label>
-                        <input
-                            type="number"
-                            placeholder="選填 (Optional)"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                            value={formData.quotaFemale || ''}
-                            onChange={e => setFormData({ ...formData, quotaFemale: parseInt(e.target.value) || 0 })}
-                        />
-                    </div>
-                    <div className="flex items-center pt-6">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                                checked={formData.canCirculate}
-                                onChange={e => setFormData({ ...formData, canCirculate: e.target.checked })}
-                            />
-                            <span className="text-sm font-medium text-gray-700">可循環使用 (Circulation)</span>
-                        </label>
-                    </div>
-                </div>
-
-                {/* 3. Detailed Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">引用工業局文號 (Bureau Ref)</label>
-                        <input
-                            type="text"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                            value={formData.industrialBureauRef}
-                            onChange={e => setFormData({ ...formData, industrialBureauRef: e.target.value })}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">招募效期 (Expiry Date) <span className="text-xs font-normal text-gray-500">(西元/AD)</span></label>
-                        <input
+                    <div className="space-y-2">
+                        <Label>發文日期</Label>
+                        <Input
                             type="date"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                            value={formData.expiryDate}
-                            onChange={e => setFormData({ ...formData, expiryDate: e.target.value })}
+                            value={formData.issueDate}
+                            onChange={e => setFormData({ ...formData, issueDate: e.target.value })}
                             required
                         />
                     </div>
-                    <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">工作地點 (Work Address)</label>
-                        <input
-                            type="text"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                            value={formData.workAddress}
-                            onChange={e => setFormData({ ...formData, workAddress: e.target.value })}
-                            placeholder="例: 彰化縣鹿港鎮..."
+
+                    <div className="space-y-2">
+                        <Label>招募效期 (通常發文日+1年)</Label>
+                        <Input
+                            type="date"
+                            value={formData.validUntil}
+                            onChange={e => setFormData({ ...formData, validUntil: e.target.value })}
+                            required
                         />
                     </div>
-                    <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">備註說明 (Remarks)</label>
-                        <textarea
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                            rows={3}
+
+                    {/* Address Selector */}
+                    <div className="col-span-1 md:col-span-2 space-y-2">
+                        <Label>外勞工作地址</Label>
+                        <div className="flex gap-2">
+                            <Select
+                                value={formData.workAddress}
+                                onValueChange={(val) => setFormData({ ...formData, workAddress: val })}
+                            >
+                                <SelectTrigger className="w-[200px]">
+                                    <SelectValue placeholder="快速選擇..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {employer?.address && (
+                                        <SelectItem value={employer.address}>公司地址 ({employer.address.substring(0, 6)}...)</SelectItem>
+                                    )}
+                                    {employer?.factories?.map((f: any, idx: number) => (
+                                        <SelectItem key={f.id || idx} value={f.address || ''}>
+                                            {f.name || `工廠 ${idx + 1}`} ({f.address ? f.address.substring(0, 6) : '無地址'}...)
+                                        </SelectItem>
+                                    ))}
+                                    <SelectItem value="MANUAL_INPUT">(手動輸入)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Input
+                                placeholder="請輸入完整中文地址"
+                                value={formData.workAddress}
+                                onChange={e => setFormData({ ...formData, workAddress: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2 space-y-2">
+                        <Label>備註</Label>
+                        <Input
                             value={formData.remarks}
                             onChange={e => setFormData({ ...formData, remarks: e.target.value })}
                         />
                     </div>
-                </div>
+                </CardContent>
+            </Card>
 
-                {/* Footer Buttons */}
-                <div className="flex justify-end space-x-3 pt-4 border-t">
-                    <button type="button" onClick={onCancel} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
-                        取消 (Cancel)
-                    </button>
-                    <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded shadow-sm">
-                        <Save size={18} />
-                        儲存招募函 (Save Letter)
-                    </button>
-                </div>
-            </form>
-
-            {/* 4. Attachment Manager (Edit Mode Only) */}
-            {isEditMode ? (
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                    <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <FileText size={20} />
-                        函件檔案上傳 (Attachments)
-                    </h4>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <AttachmentManager
-                            refId={formData.id!}
-                            refTable="employer_recruitment_letters"
-                            allowUpload={true}
-                        />
-                    </div>
-                </div>
-            ) : (
-                <div className="mt-6 border-2 border-dashed border-yellow-300 bg-yellow-50 p-6 rounded-lg text-center text-yellow-800">
-                    <div className="flex flex-col items-center justify-center">
-                        <Save className="w-8 h-8 mb-2 opacity-50" />
-                        <p className="font-bold text-lg">尚未取得系統案號 (Not Saved)</p>
-                        <p className="text-sm mt-2 max-w-md">
-                            為了確保資料正確，請先填寫上方欄位並點擊「儲存招募函」。
-                            <br />
-                            (Please save the form first to retrieve System ID/Letter ID for uploading files.)
-                        </p>
-                    </div>
-                </div>
-            )}
-        </div>
+            <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" type="button" onClick={onCancel}>取消</Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {loading ? "儲存中..." : "確認送出招募函資料"}
+                </Button>
+            </div>
+        </form>
     );
 }

@@ -612,6 +612,7 @@ router.get('/:id', async (req, res) => {
                 include: {
                     corporateInfo: true,
                     individualInfo: true,
+                    factories: true,
                     recruitmentLetters: {
                         orderBy: { issueDate: 'desc' },
                         include: {

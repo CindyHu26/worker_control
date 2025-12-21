@@ -444,12 +444,34 @@ model EmployerRecruitmentLetter {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employerId    String   @map("employer_id") @db.Uuid
   
-  // --- Core Letter Info ---
-  letterNumber  String   @unique @map("letter_number") @db.VarChar(50) // 發文號碼
+  // --- 1. 最終產出 (招募函本身) ---
+  letterNumber  String   @unique @map("letter_number") @db.VarChar(50) // 發文號碼 (勞動發事字...)
   issueDate     DateTime @map("issue_date") @db.Date // 發文日期
-  expiryDate    DateTime @map("expiry_date") @db.Date // 招募效期 (通常是發文日+1年)
+  expiryDate    DateTime @map("expiry_date") @db.Date // 招募效期
+  validUntil    DateTime @map("valid_until") @db.Date @default(now()) // 有效期限 (通常同 expiryDate) - Added default to avoid migration issue on existing rows if any
+
+  // --- 2. 步驟一：工業局核定 (Industrial Bureau) ---
+  // 證明你是3K產業，並核定級別 (A+, A, B, C, D)
+  industrialBureauRef   String?  @map("industrial_bureau_ref") @db.VarChar(50) // 工業局核定函號
+  industrialBureauDate  DateTime? @map("industrial_bureau_date") @db.Date // 工業局發文日
+  industryTier          String?   @map("industry_tier") @db.VarChar(10) // 核定級別 (e.g., "B級")
+
+  // --- 3. 步驟二：國內求才 (Domestic Recruitment) ---
+  // 必須先去公立就業服務站求才，拿到「求才證明書」
+  domesticRecruitmentRef String? @map("domestic_recruitment_ref") @db.VarChar(50) // [新] 求才證明書序號
+  domesticRecruitmentDate DateTime? @map("domestic_recruitment_date") @db.Date // [新] 求才登記日/證明書發文日
   
-  // [New] Submission & Receipt
+  // --- 4. 步驟三：規費繳納 (Review Fee) ---
+  // 申請招募許可前，要去郵局劃撥審查費
+  reviewFeeReceiptNo     String? @map("review_fee_receipt_no") @db.VarChar(50) // [新] 審查費收據號碼 (郵政劃撥單號)
+  reviewFeePayDate       DateTime? @map("review_fee_pay_date") @db.Date // [新] 繳費日期
+  reviewFeeAmount        Int     @default(200) @map("review_fee_amount") // 金額 (通常每人200元)
+
+  // --- 5. 名額與計算 ---
+  approvedQuota Int      @default(0) @map("approved_quota") // 核准名額 (總計)
+  usedQuota     Int      @default(0) @map("used_quota")     // 已用名額 (快取)
+  
+  // Legacy / Details
   submissionDate         DateTime? @map("submission_date") @db.Date // 送件日 (行政填寫)
   laborMinistryReceiptDate DateTime? @map("labor_ministry_receipt_date") @db.Date // 勞動部收文日期
   
@@ -471,11 +493,9 @@ model EmployerRecruitmentLetter {
 
   // Project / Bureau Info
   projectCode   String?  @map("project_code") @db.VarChar(50) // 專案代號 (e.g., x1-03...)
-  industrialBureauRef String? @map("industrial_bureau_ref") @db.VarChar(50) // 引用工業局文號
+  // industrialBureauRef removed as it is defined above
   
-  // Quota Management
-  approvedQuota Int      @default(0) @map("approved_quota") // 核准名額 (總計)
-  usedQuota     Int      @default(0) @map("used_quota")     // 已用名額 (快取)
+  // Quota Management - Moved to top
   
   // Gender Constraints (Legacy support)
   quotaMale     Int      @default(0) @map("quota_male")
@@ -871,4 +891,71 @@ model Hospital {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("hospitals")
+}
+
+// Tax Configuration (Annual Parameters)
+model TaxConfig {
+  id                            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  year                          Int      @unique
+  minWage                       Int      @map("min_wage")
+  minWageThresholdMultiplier    Float    @default(1.5) @map("min_wage_threshold_multiplier")
+  standardDeduction             Int      @map("standard_deduction")
+  salaryDeduction               Int      @map("salary_deduction")
+  personalExemption             Int      @map("personal_exemption")
+  taxRateResident               Float    @map("tax_rate_resident")
+  nonResidentLowRate            Float    @map("non_resident_low_rate")
+  nonResidentHighRate           Float    @map("non_resident_high_rate")
+  effectiveDate                 DateTime @map("effective_date") @db.Date
+  notes                         String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("tax_configs")
+}
+
+// Fee Items (Official Fees by Nationality)
+model FeeItem {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String  @db.VarChar(255)
+  defaultAmount Int     @map("default_amount")
+  category      String  @db.VarChar(50) // 'official_fee', 'service_fee', etc.
+  nationality   String? @db.VarChar(10) // Null = applies to all
+  description   String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("fee_items")
+}
+
+// Insurance Tiers (Labor + Health Insurance Rates by Salary Grade)
+model InsuranceTier {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  grade     Int    @unique
+  minSalary Int    @map("min_salary")
+  maxSalary Int    @map("max_salary")
+  laborFee  Int    @map("labor_fee")
+  healthFee Int    @map("health_fee")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("insurance_tiers")
+}
+
+// Document Templates (Contracts, Forms, etc.)
+model DocumentTemplate {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(255)
+  category    String   @db.VarChar(100) // 'entry_packet', 'contract', 'permit_app', etc.
+  filePath    String   @map("file_path") @db.Text
+  nationality String?  @db.VarChar(10) // Null = applies to all
+  isActive    Boolean  @default(true) @map("is_active")
+  description String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("document_templates")
 }

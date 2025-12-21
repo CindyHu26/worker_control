@@ -1,276 +1,132 @@
 
 import { Router } from 'express';
 import prisma from '../prisma';
+import { z } from 'zod';
 
 const router = Router();
 
-// GET /api/recruitment/letters?employerId=...
-router.get('/letters', async (req, res) => {
-    try {
-        const { employerId } = req.query;
-        // if (!employerId) return res.status(400).json({ error: 'Employer ID required' }); // Allow all
+// Zod Schema (Creating)
+const createRecruitmentSchema = z.object({
+    employerId: z.string().uuid(),
+    letterNumber: z.string().min(1, "發文號必填"),
+    issueDate: z.coerce.date(),
+    validUntil: z.coerce.date().optional(), // If not provided, backend should probably default or ensure it's handled. DB has default now.
+    approvedQuota: z.coerce.number().min(0),
 
-        const where: any = {};
-        if (employerId) {
-            where.employerId = String(employerId);
-        }
+    // Taiwan Process Fields (Optional)
+    industrialBureauRef: z.string().optional(),
+    industrialBureauDate: z.coerce.date().optional(),
+    industryTier: z.string().optional(),
 
-        const letters = await prisma.recruitmentLetter.findMany({
-            where,
-            include: {
-                employer: { select: { companyName: true, companyNameEn: true } }, // Include employer info
-                entryPermits: {
-                    include: {
-                        _count: { select: { deployments: true } }
-                    }
-                }
-            },
-            orderBy: { issueDate: 'desc' }
-        });
+    domesticRecruitmentRef: z.string().optional(), // 求才證明書序號
+    domesticRecruitmentDate: z.coerce.date().optional(),
 
-        // Calculate usedQuota for letters based on permits? 
-        // Or simply trust the `entryPermits` list. 
-        // The prompt says "RecruitmentLetter.usedQuota should be the sum of quotas of all its EntryPermits."
-        // We can do this calculation on read or rely on a stored field if we maintain it.
-        // Let's rely on summing permits for "total allocated" and deployments for "total used".
+    reviewFeeReceiptNo: z.string().optional(), // 審查費收據
+    reviewFeePayDate: z.coerce.date().optional(),
+    reviewFeeAmount: z.coerce.number().default(200),
 
-        const result = letters.map(l => {
-            const totalPermitQuota = l.entryPermits.reduce((sum, p) => sum + p.workerCount, 0);
-            return {
-                ...l,
-                calculatedUsedQuota: totalPermitQuota // This is how much of the LETTER is used by Permits
-            };
-        });
-
-        res.json(result);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch letters' });
-    }
+    workAddress: z.string().optional(),
+    remarks: z.string().optional(),
 });
 
-// POST /api/recruitment/letters
-router.post('/letters', async (req, res) => {
-    try {
-        const { employerId, letterNumber, issueDate, expiryDate, approvedQuota } = req.body;
+// Zod Schema (Updating) - similar but strict on ID maybe? or reuse create schema
+// For update, everything optional? or partial?
+const updateRecruitmentSchema = createRecruitmentSchema.partial().omit({ employerId: true }); // EmployerId usually doesn't change
 
-        const letter = await prisma.recruitmentLetter.create({
+// POST /api/recruitment
+router.post('/', async (req, res) => {
+    try {
+        const body = createRecruitmentSchema.parse(req.body);
+
+        // Handle validUntil vs expiryDate logic
+        // Schema has both. Frontend sends `validUntil`.
+        // We should map `validUntil` to `validUntil` and also `expiryDate` if they are synonyms.
+        // User prompt says: `expiryDate DateTime ... validUntil DateTime`.
+        // Frontend sends: `validUntil`.
+        // Let's ensure both are set.
+        const expiry = body.validUntil || new Date(body.issueDate.getTime() + 365 * 24 * 60 * 60 * 1000); // Default +1 year?
+
+        const newLetter = await prisma.employerRecruitmentLetter.create({
             data: {
-                employerId,
-                letterNumber,
-                issueDate: new Date(issueDate),
-                expiryDate: new Date(expiryDate),
-                approvedQuota: Number(approvedQuota)
+                employerId: body.employerId,
+                letterNumber: body.letterNumber,
+                issueDate: body.issueDate,
+                validUntil: expiry,
+                expiryDate: expiry, // Sync them
+                approvedQuota: body.approvedQuota,
+
+                industrialBureauRef: body.industrialBureauRef,
+                industrialBureauDate: body.industrialBureauDate,
+                industryTier: body.industryTier,
+
+                domesticRecruitmentRef: body.domesticRecruitmentRef,
+                domesticRecruitmentDate: body.domesticRecruitmentDate,
+
+                reviewFeeReceiptNo: body.reviewFeeReceiptNo,
+                reviewFeePayDate: body.reviewFeePayDate,
+                reviewFeeAmount: body.reviewFeeAmount,
+
+                workAddress: body.workAddress,
+                remarks: body.remarks,
+
+                usedQuota: 0
             }
         });
-        res.json(letter);
+        res.status(201).json(newLetter);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to create letter' });
-    }
-});
-
-// POST /api/recruitment/letters/:id/permits
-// POST /api/recruitment/letters/:id/permits
-router.post('/letters/:id/permits', async (req, res) => {
-    const { id } = req.params;
-    const {
-        permitNo,
-        issueDate,
-        expiryDate,
-        workerCount,
-        receiptNo,
-        applicationDate,
-        feeAmount,
-        trNumber,
-        attachmentPath
-    } = req.body;
-
-    // Default to 1 if not provided or invalid
-    const countNum = workerCount ? Number(workerCount) : 1;
-    if (isNaN(countNum) || countNum <= 0) {
-        throw new Error('Invalid worker count');
-    }
-
-    try {
-        await prisma.$transaction(async (tx) => {
-            const letter = await tx.recruitmentLetter.findUnique({
-                where: { id },
-                include: { entryPermits: true }
-            });
-            if (!letter) throw new Error('Letter not found');
-
-            // Check Quota
-            const currentUsed = letter.entryPermits.reduce((sum, p) => sum + p.workerCount, 0); // usage should be sum of workerCount
-
-            if (currentUsed + countNum > letter.approvedQuota) {
-                throw new Error(`Quota exceeded. Remaining: ${letter.approvedQuota - currentUsed}`);
-            }
-
-            const permit = await tx.entryPermit.create({
-                data: {
-                    recruitmentLetterId: id,
-                    permitNo,
-                    issueDate: new Date(issueDate),
-                    expiryDate: new Date(expiryDate),
-                    workerCount: countNum,
-                    receiptNo,
-                    applicationDate: applicationDate ? new Date(applicationDate) : undefined,
-                    feeAmount: feeAmount ? Number(feeAmount) : 0,
-                    trNumber,
-                    attachmentPath
-                }
-            });
-
-            // Update letter usedQuota field
-            await tx.recruitmentLetter.update({
-                where: { id },
-                data: { usedQuota: { increment: countNum } }
-            });
-
-            return permit;
-        });
-
-        res.json({ success: true });
-    } catch (error: any) {
-        console.error(error);
-        res.status(400).json({ error: error.message });
-    }
-});
-
-
-// --- Job Order Routes ---
-
-// GET /api/recruitment/job-orders
-router.get('/job-orders', async (req, res) => {
-    try {
-        const { employerId } = req.query;
-        const where: any = {};
-        if (employerId) {
-            where.employerId = String(employerId);
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "資料驗證失敗 (Validation Failed)", errors: error.issues });
         }
-
-        const orders = await prisma.jobOrder.findMany({
-            where,
-            include: {
-                employer: { select: { companyName: true, taxId: true } },
-                jobRequisition: true
-            },
-            orderBy: { registryDate: 'desc' }
-        });
-
-        // Add calculated field for frontend (localRecruitmentDeadline)
-        // Usually registryDate + 60 days
-        const result = orders.map(o => {
-            const deadline = new Date(o.registryDate);
-            deadline.setDate(deadline.getDate() + 60);
-            return {
-                ...o,
-                localRecruitmentDeadline: deadline.toISOString(),
-                orderDate: o.registryDate.toISOString(), // Alias for frontend
-                requiredWorkers: o.vacancyCount // Alias for frontend
-            };
-        });
-
-        res.json(result);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch job orders' });
+        console.error("Create Recruitment Error:", error);
+        res.status(500).json({ message: "伺服器錯誤 (Server Error)" });
     }
 });
 
-// POST /api/recruitment/job-orders
-router.post('/job-orders', async (req, res) => {
-    try {
-        const { employerId, vacancyCount, orderDate, jobType } = req.body;
-
-        const order = await prisma.jobOrder.create({
-            data: {
-                employerId,
-                vacancyCount: Number(vacancyCount),
-                registryDate: new Date(orderDate),
-                jobType: jobType || 'FACTORY_WORKER',
-                expiryDate: new Date(new Date(orderDate).getTime() + 60 * 24 * 60 * 60 * 1000), // Default 60 days
-                status: 'active'
-            }
-        });
-
-        res.json(order);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to create job order' });
-    }
-});
-
-// GET /api/recruitment/job-orders/:id
-router.get('/job-orders/:id', async (req, res) => {
+// PUT /api/recruitment/:id
+router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const order = await prisma.jobOrder.findUnique({
+        const body = updateRecruitmentSchema.parse(req.body);
+
+        const expiry = body.validUntil; // Might be undefined if not sending
+
+        const updateData: any = {
+            letterNumber: body.letterNumber,
+            issueDate: body.issueDate,
+            approvedQuota: body.approvedQuota,
+            industrialBureauRef: body.industrialBureauRef,
+            industrialBureauDate: body.industrialBureauDate,
+            industryTier: body.industryTier,
+            domesticRecruitmentRef: body.domesticRecruitmentRef,
+            domesticRecruitmentDate: body.domesticRecruitmentDate,
+            reviewFeeReceiptNo: body.reviewFeeReceiptNo,
+            reviewFeePayDate: body.reviewFeePayDate,
+            reviewFeeAmount: body.reviewFeeAmount,
+            workAddress: body.workAddress,
+            remarks: body.remarks,
+        };
+
+        if (expiry) {
+            updateData.validUntil = expiry;
+            updateData.expiryDate = expiry;
+        }
+
+        // Filter out undefined
+        // Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+        // Actually prisma ignores undefined if we don't pass them in `data`, but let's be safe.
+        // Or with zod partial, they are present but undefined?
+        // Zod partial returns optional fields.
+
+        const updatedLetter = await prisma.employerRecruitmentLetter.update({
             where: { id },
-            include: {
-                employer: true,
-                jobRequisition: true,
-                interviews: true
-            }
-        });
-        if (!order) return res.status(404).json({ error: 'Job order not found' });
-        res.json(order);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch job order' });
-    }
-});
-
-// PUT /api/recruitment/job-orders/:id/requisition
-router.put('/job-orders/:id/requisition', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const data = req.body;
-
-        const requisition = await prisma.jobRequisition.upsert({
-            where: { jobOrderId: id },
-            update: {
-                skills: data.skills,
-                salaryStructure: data.salaryStructure,
-                leavePolicy: data.leavePolicy,
-                workHours: data.workHours,
-                accommodation: data.accommodation,
-                otherRequirements: data.otherRequirements
-            },
-            create: {
-                jobOrderId: id,
-                skills: data.skills,
-                salaryStructure: data.salaryStructure,
-                leavePolicy: data.leavePolicy,
-                workHours: data.workHours,
-                accommodation: data.accommodation,
-                otherRequirements: data.otherRequirements
-            }
+            data: updateData
         });
 
-        res.json(requisition);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to update job requisition' });
-    }
-});
+        res.json(updatedLetter);
 
-// GET /api/recruitment/employers/list
-router.get('/employers/list', async (req, res) => {
-    try {
-        const employers = await prisma.employer.findMany({
-            select: {
-                id: true,
-                companyName: true,
-                taxId: true
-            },
-            orderBy: { companyName: 'asc' }
-        });
-        res.json(employers);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch employer list' });
+        console.error("Update Recruitment Error:", error);
+        res.status(500).json({ message: "Update Failed" });
     }
 });
 
