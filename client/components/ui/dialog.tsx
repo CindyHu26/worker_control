@@ -94,6 +94,14 @@ export const DialogTitle = ({ children, className = "" }: { children: React.Reac
     )
 }
 
+export const DialogDescription = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => {
+    return (
+        <p className={`text-sm text-slate-500 dark:text-slate-400 ${className}`}>
+            {children}
+        </p>
+    )
+}
+
 export const DialogFooter = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => {
     return (
         <div className={`flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 ${className}`}>

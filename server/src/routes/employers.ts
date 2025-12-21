@@ -475,16 +475,40 @@ router.post('/', async (req, res) => {
 router.post('/:id/recruitment-letters', async (req, res) => {
     try {
         const { id } = req.params; // Employer ID
-        const { letterNumber, issueDate, expiryDate, approvedQuota } = req.body;
+        const body = req.body;
 
         const newLetter = await prisma.employerRecruitmentLetter.create({
             data: {
                 employerId: id,
-                letterNumber,
-                issueDate: new Date(issueDate),
-                expiryDate: new Date(expiryDate),
-                approvedQuota: Number(approvedQuota),
-                usedQuota: 0 // Initial used is 0
+                letterNumber: body.letterNumber,
+                issueDate: new Date(body.issueDate),
+                expiryDate: new Date(body.expiryDate),
+                approvedQuota: Number(body.approvedQuota),
+                usedQuota: 0, // Initial used is 0
+
+                // New Fields
+                submissionDate: body.submissionDate ? new Date(body.submissionDate) : null,
+                laborMinistryReceiptDate: body.laborMinistryReceiptDate ? new Date(body.laborMinistryReceiptDate) : null,
+
+                issueUnit: body.issueUnit,
+                issueWord: body.issueWord,
+                caseNumber: body.caseNumber,
+
+                workAddress: body.workAddress,
+                jobType: body.jobType,
+                jobTitle: body.jobTitle,
+                industryCode: body.industryCode,
+
+                projectCode: body.projectCode,
+                industrialBureauRef: body.industrialBureauRef,
+
+                quotaMale: body.quotaMale ? Number(body.quotaMale) : 0,
+                quotaFemale: body.quotaFemale ? Number(body.quotaFemale) : 0,
+
+                recruitmentType: body.recruitmentType,
+                nationality: body.nationality,
+                canCirculate: body.canCirculate !== undefined ? body.canCirculate : true,
+                remarks: body.remarks
             }
         });
 
@@ -495,10 +519,76 @@ router.post('/:id/recruitment-letters', async (req, res) => {
     }
 });
 
-// Delete Letter (Optional but good for management)
+// Update Recruitment Letter
+router.put('/:id/recruitment-letters/:letterId', async (req, res) => {
+    try {
+        const { id, letterId } = req.params;
+        const body = req.body;
+
+        // Verify ownership
+        const existing = await prisma.employerRecruitmentLetter.findUnique({
+            where: { id: letterId }
+        });
+
+        if (!existing || existing.employerId !== id) {
+            return res.status(404).json({ error: 'Recruitment Letter not found' });
+        }
+
+        const updatedLetter = await prisma.employerRecruitmentLetter.update({
+            where: { id: letterId },
+            data: {
+                letterNumber: body.letterNumber,
+                issueDate: body.issueDate ? new Date(body.issueDate) : undefined,
+                expiryDate: body.expiryDate ? new Date(body.expiryDate) : undefined,
+                approvedQuota: body.approvedQuota ? Number(body.approvedQuota) : undefined,
+
+                submissionDate: body.submissionDate ? new Date(body.submissionDate) : null,
+                laborMinistryReceiptDate: body.laborMinistryReceiptDate ? new Date(body.laborMinistryReceiptDate) : null,
+
+                issueUnit: body.issueUnit,
+                issueWord: body.issueWord,
+                caseNumber: body.caseNumber,
+
+                workAddress: body.workAddress,
+                jobType: body.jobType,
+                jobTitle: body.jobTitle,
+                industryCode: body.industryCode,
+
+                projectCode: body.projectCode,
+                industrialBureauRef: body.industrialBureauRef,
+
+                quotaMale: body.quotaMale ? Number(body.quotaMale) : 0,
+                quotaFemale: body.quotaFemale ? Number(body.quotaFemale) : 0,
+
+                recruitmentType: body.recruitmentType,
+                nationality: body.nationality,
+                canCirculate: body.canCirculate,
+                remarks: body.remarks
+            }
+        });
+
+        res.json(updatedLetter);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update recruitment letter' });
+    }
+});
+
+// Delete Letter
 router.delete('/:id/recruitment-letters/:letterId', async (req, res) => {
     try {
         const { letterId } = req.params;
+
+        // Check if cached usedQuota is > 0 (Soft check)
+        const letter = await prisma.employerRecruitmentLetter.findUnique({
+            where: { id: letterId },
+            include: { _count: { select: { deployments: true } } }
+        });
+
+        if (letter && letter._count.deployments > 0) {
+            return res.status(400).json({ error: 'Cannot delete letter with associated deployments.' });
+        }
+
         await prisma.employerRecruitmentLetter.delete({
             where: { id: letterId }
         });

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Download, Upload, Save, RefreshCw } from 'lucide-react';
+
 import ExcelJS from 'exceljs';
+import { apiGet, apiPost } from '@/lib/api';
 
 interface LaborCount {
     year: number;
@@ -15,14 +17,12 @@ export default function LaborCountManager({ employerId }: { employerId: string }
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Fetch data
+    // Fetch data
     const fetchCounts = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:3001/api/employers/${employerId}/labor-counts`);
-            if (res.ok) {
-                const data = await res.json();
-                setCounts(data);
-            }
+            const data = await apiGet<LaborCount[]>(`/api/employers/${employerId}/labor-counts`);
+            setCounts(data);
         } catch (error) {
             console.error(error);
         } finally {
@@ -84,26 +84,22 @@ export default function LaborCountManager({ employerId }: { employerId: string }
                 })).filter(r => r.year && r.month && !isNaN(r.count));
 
                 if (formattedData.length === 0) {
-                    alert('No valid data found. Please ensure columns are Year, Month, Count.');
+                    alert('未發現有效資料，請確認欄位為 Year, Month, Count');
                     return;
                 }
 
                 // Send to API
-                const res = await fetch(`http://localhost:3001/api/employers/${employerId}/labor-counts`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: formattedData })
-                });
-
+                // Send to API
+                const res = await apiPost(`/api/employers/${employerId}/labor-counts`, { data: formattedData });
                 if (res.ok) {
-                    alert(`Successfully imported ${formattedData.length} records.`);
+                    alert(`成功匯入 ${formattedData.length} 筆資料`);
                     fetchCounts();
                 } else {
-                    alert('Import failed.');
+                    alert('匯入失敗 (Import failed)');
                 }
             } catch (error) {
                 console.error(error);
-                alert('Error processing file.');
+                alert('處理檔案時發生錯誤 (Error processing file).');
             } finally {
                 setImporting(false);
                 if (fileInputRef.current) fileInputRef.current.value = '';
@@ -132,14 +128,14 @@ export default function LaborCountManager({ employerId }: { employerId: string }
                         勞保人數管理 (Labor Insurance Counts)
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">
-                        用於計算招募名額 (Based on average of previous 12 months)
+                        用於計算招募名額 (根據申請當月回推12個月之平均)
                     </p>
                 </div>
                 <div className="flex gap-2">
                     <button
                         onClick={fetchCounts}
                         className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"
-                        title="Refresh"
+                        title="重新整理 (Refresh)"
                     >
                         <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
                     </button>
@@ -150,29 +146,35 @@ export default function LaborCountManager({ employerId }: { employerId: string }
                                 const workbook = new ExcelJS.Workbook();
                                 const worksheet = workbook.addWorksheet('Template');
                                 worksheet.columns = [
-                                    { header: 'Year', key: 'year', width: 10 },
-                                    { header: 'Month', key: 'month', width: 10 },
-                                    { header: 'Count', key: 'count', width: 10 },
+                                    { header: 'Year (年份)', key: 'year', width: 15 },
+                                    { header: 'Month (月份)', key: 'month', width: 15 },
+                                    { header: 'Count (人數)', key: 'count', width: 15 },
                                 ];
-                                worksheet.addRow({ year: currentYear, month: 1, count: 5 });
-                                worksheet.addRow({ year: currentYear, month: 2, count: 5 });
+                                // Example data
+                                const thisYear = new Date().getFullYear();
+                                worksheet.addRow({ year: thisYear, month: 1, count: 5 });
+                                worksheet.addRow({ year: thisYear, month: 2, count: 5 });
 
                                 const buffer = await workbook.xlsx.writeBuffer();
                                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+                                // Create a download link and trigger it
                                 const url = window.URL.createObjectURL(blob);
                                 const anchor = document.createElement('a');
                                 anchor.href = url;
                                 anchor.download = 'labor_count_template.xlsx';
+                                document.body.appendChild(anchor);
                                 anchor.click();
+                                document.body.removeChild(anchor);
                                 window.URL.revokeObjectURL(url);
                             } catch (err) {
                                 console.error('Export failed', err);
-                                alert('Export failed');
+                                alert('下載範本失敗 (Export failed)');
                             }
                         }}
                         className="flex items-center gap-2 px-4 py-2 border rounded hover:bg-gray-50 text-sm"
                     >
-                        <Download size={16} /> 下載範本
+                        <Download size={16} /> 下載範本 (Template)
                     </button>
 
                     <button

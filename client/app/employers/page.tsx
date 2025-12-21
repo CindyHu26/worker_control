@@ -12,6 +12,9 @@ interface Employer {
     taxId: string;
     responsiblePerson: string;
     phoneNumber?: string;
+    category?: string;
+    // Basic fields
+    code?: string;
     homeCareInfo?: {
         patients: Array<{
             name: string;
@@ -79,31 +82,33 @@ export default function EmployersPage() {
             case 'HOME_CARE':
                 return (
                     <tr>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Employer Name</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Patient Name</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Care Address</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Active Workers</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Actions</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">雇主編號 (Code)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">雇主名稱 (Employer)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">被看護人 (Patient)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">看護地址 (Address)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">在職工人 (Active)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">操作 (Actions)</th>
                     </tr>
                 );
             case 'INSTITUTION':
                 return (
                     <tr>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Institution Name</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Code</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Beds</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Active Workers</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Actions</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">機構代碼 (Code)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">機構名稱 (Institution)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">床位數 (Beds)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">在職工人 (Active)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">操作 (Actions)</th>
                     </tr>
                 );
             default: // MANUFACTURING & ALL
                 return (
                     <tr>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Company Name</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Tax ID</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Representative</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Active Workers</th>
-                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">Actions</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">雇主編號 (Code)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">公司名稱 (Company)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">統一編號 (Tax ID)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">負責人 (Rep)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">在職工人 (Active)</th>
+                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm uppercase tracking-wider">操作 (Actions)</th>
                     </tr>
                 );
         }
@@ -116,22 +121,26 @@ export default function EmployersPage() {
                     href={`/employers/${emp.id}`}
                     className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline"
                 >
-                    View Details
+                    查看詳情 (Details)
                 </Link>
             </td>
         );
 
+        // Common Code Column
+        const codeCell = <td className="px-6 py-4 text-slate-600 font-mono text-sm">{emp.code || '-'}</td>;
+
         if (activeCategory === 'HOME_CARE') {
-            const patient = emp.homeCareInfo?.patients?.[0]; // Assuming 1st patient for list view
+            const patient = emp.homeCareInfo?.patients?.[0];
             return (
                 <tr key={emp.id} className="hover:bg-slate-50 transition duration-150">
+                    {codeCell}
                     <td className="px-6 py-4 font-bold text-slate-900">{emp.companyName || emp.responsiblePerson}</td>
                     <td className="px-6 py-4 text-slate-600">{patient?.name || '-'}</td>
                     <td className="px-6 py-4 text-slate-600 truncate max-w-xs">{patient?.careAddress || '-'}</td>
                     <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                             ${(emp._count?.deployments || 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                            {emp._count?.deployments || 0} Workers
+                            {emp._count?.deployments || 0}
                         </span>
                     </td>
                     {commonActions}
@@ -140,13 +149,13 @@ export default function EmployersPage() {
         } else if (activeCategory === 'INSTITUTION') {
             return (
                 <tr key={emp.id} className="hover:bg-slate-50 transition duration-150">
+                    <td className="px-6 py-4 text-slate-600 font-mono text-sm">{emp.institutionInfo?.institutionCode || emp.code || '-'}</td>
                     <td className="px-6 py-4 font-bold text-slate-900">{emp.companyName}</td>
-                    <td className="px-6 py-4 text-slate-600 font-mono">{emp.institutionInfo?.institutionCode || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{emp.institutionInfo?.bedCount || '-'}</td>
                     <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                             ${(emp._count?.deployments || 0) > 0 ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-600'}`}>
-                            {emp._count?.deployments || 0} Workers
+                            {emp._count?.deployments || 0}
                         </span>
                     </td>
                     {commonActions}
@@ -157,6 +166,7 @@ export default function EmployersPage() {
         // Manufacturing / Default
         return (
             <tr key={emp.id} className="hover:bg-slate-50 transition duration-150">
+                {codeCell}
                 <td className="px-6 py-4">
                     <div className="font-bold text-slate-900">{emp.companyName}</div>
                     {emp.phoneNumber && (
@@ -168,7 +178,7 @@ export default function EmployersPage() {
                 <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                         ${(emp._count?.deployments || 0) > 0 ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'}`}>
-                        {emp._count?.deployments || 0} Workers
+                        {emp._count?.deployments || 0}
                     </span>
                 </td>
                 {commonActions}
@@ -180,8 +190,8 @@ export default function EmployersPage() {
         <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">雇主資料 (Employers)</h1>
-                    <p className="text-slate-500 mt-2">Manage employer profiles and requirements.</p>
+                    <h1 className="text-3xl font-bold text-slate-900">雇主資料管理 (Employers)</h1>
+                    <p className="text-slate-500 mt-2">管理雇主檔案與需求 (Manage profiles and requirements)</p>
                 </div>
                 <Link
                     href="/employers/new"
@@ -212,12 +222,12 @@ export default function EmployersPage() {
 
             <SearchToolbar
                 onSearch={handleSearch}
-                placeholder="Search company, tax ID, representative..."
+                placeholder="搜尋公司名稱、統編、負責人..."
             />
 
             {!loading && (
                 <p className="text-sm text-slate-500 mb-4 ml-1">
-                    Found {meta.total} records
+                    共找到 {meta.total} 筆資料
                 </p>
             )}
 
@@ -230,7 +240,7 @@ export default function EmployersPage() {
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Building2 size={32} className="text-slate-400" />
                     </div>
-                    <h3 className="text-lg font-medium text-slate-900">No employers found</h3>
+                    <h3 className="text-lg font-medium text-slate-900">找不到符合條件的雇主</h3>
                 </div>
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -256,11 +266,11 @@ export default function EmployersPage() {
                             `}
                         >
                             <ChevronLeft size={16} />
-                            Previous
+                            上一頁 (Prev)
                         </button>
 
                         <span className="text-sm text-slate-600 font-medium">
-                            Page {meta.page} of {meta.totalPages}
+                            第 {meta.page} 頁，共 {meta.totalPages} 頁
                         </span>
 
                         <button
@@ -273,7 +283,7 @@ export default function EmployersPage() {
                                 }
                             `}
                         >
-                            Next
+                            下一頁 (Next)
                             <ChevronRight size={16} />
                         </button>
                     </div>

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, ArrowRight, X } from 'lucide-react';
+import { apiGet, apiPut } from '@/lib/api';
 
 interface EmployerReadinessDashboardProps {
     employerId: string;
@@ -14,18 +15,17 @@ export default function EmployerReadinessDashboard({ employerId }: EmployerReadi
     const [fixField, setFixField] = useState<string | null>(null);
     const [fixValue, setFixValue] = useState('');
 
-    const fetchReadiness = () => {
+    const fetchReadiness = async () => {
         setLoading(true);
-        fetch(`http://localhost:3001/api/compliance/employers/${employerId}/readiness`)
-            .then(res => res.json())
-            .then(data => {
-                setReadiness(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
+        try {
+            const data = await apiGet(`/api/compliance/employers/${employerId}/readiness`);
+            setReadiness(data);
+        } catch (err) {
+            console.error(err);
+            setReadiness(null); // Ensure readiness is null on error to prevent render crash
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -54,24 +54,16 @@ export default function EmployerReadinessDashboard({ employerId }: EmployerReadi
         }
 
         try {
-            const res = await fetch(`http://localhost:3001/api/employers/${employerId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [dbField]: fixValue })
-            });
+            await apiPut(`/api/employers/${employerId}`, { [dbField]: fixValue });
 
-            if (res.ok) {
-                alert('Fixed!');
-                setFixField(null);
-                setFixValue('');
-                fetchReadiness(); // Refresh status
-                window.location.reload(); // Refresh main page data too
-            } else {
-                alert('Update failed');
-            }
+            alert('Fixed!');
+            setFixField(null);
+            setFixValue('');
+            fetchReadiness(); // Refresh status
+            window.location.reload(); // Refresh main page data too
         } catch (error) {
             console.error(error);
-            alert('System error');
+            alert('Update failed');
         }
     };
 
@@ -89,7 +81,7 @@ export default function EmployerReadinessDashboard({ employerId }: EmployerReadi
                     </div>
                     <div>
                         <h3 className={`font-bold text-lg ${isReady ? 'text-green-800' : 'text-red-800'}`}>
-                            {isReady ? 'Ready to Recruit (符合招募資格)' : 'Missing Info (資料缺漏 - 無法送件)'}
+                            {isReady ? '符合招募資格 (Ready to Recruit)' : '資料缺漏 - 無法送件 (Missing Info)'}
                         </h3>
                         <div className="mt-2 space-y-2">
                             {readiness.missingFields.map((field: string, idx: number) => (
@@ -100,7 +92,7 @@ export default function EmployerReadinessDashboard({ employerId }: EmployerReadi
                                             onClick={() => { setFixField(field); setFixValue(''); }}
                                             className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded border border-red-200 font-bold flex items-center gap-1"
                                         >
-                                            Fix It <ArrowRight size={10} />
+                                            立即修正 (Fix It) <ArrowRight size={10} />
                                         </button>
                                     )}
                                 </div>

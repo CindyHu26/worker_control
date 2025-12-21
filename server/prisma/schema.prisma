@@ -443,19 +443,56 @@ model Worker {
 model EmployerRecruitmentLetter {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employerId    String   @map("employer_id") @db.Uuid
-  letterNumber  String   @unique @map("letter_number") @db.VarChar(50)
-  issueDate     DateTime @map("issue_date") @db.Date
-  expiryDate    DateTime @map("expiry_date") @db.Date
-  approvedQuota Int      @default(0) @map("approved_quota")
-  usedQuota     Int      @default(0) @map("used_quota")
+  
+  // --- Core Letter Info ---
+  letterNumber  String   @unique @map("letter_number") @db.VarChar(50) // 發文號碼
+  issueDate     DateTime @map("issue_date") @db.Date // 發文日期
+  expiryDate    DateTime @map("expiry_date") @db.Date // 招募效期 (通常是發文日+1年)
+  
+  // [New] Submission & Receipt
+  submissionDate         DateTime? @map("submission_date") @db.Date // 送件日 (行政填寫)
+  laborMinistryReceiptDate DateTime? @map("labor_ministry_receipt_date") @db.Date // 勞動部收文日期
+  
+  // --- Legacy / Details ---
+  issueUnit     String?  @default("勞動部") @map("issue_unit") @db.VarChar(50) // 發文單位
+  issueWord     String?  @default("勞動發事字") @map("issue_word") @db.VarChar(50) // 發文字
+  caseNumber    String?  @map("case_number") @db.VarChar(50) // 案號
 
-  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  // Hierarchy (for split letters)
+  parentLetterId String? @map("parent_letter_id") @db.Uuid 
+  parentLetter   EmployerRecruitmentLetter? @relation("LetterHierarchy", fields: [parentLetterId], references: [id])
+  childLetters   EmployerRecruitmentLetter[] @relation("LetterHierarchy")
+
+  // Work Location & Job Info
+  workAddress   String?  @map("work_address") @db.Text // 外勞工作地址
+  jobType       String?  @map("job_type") @db.VarChar(50) // 工種代碼 (e.g., 製造業勞工)
+  jobTitle      String?  @map("job_title") @db.VarChar(100) // 職務名稱 (e.g., 塑膠產品製造職員)
+  industryCode  String?  @map("industry_code") @db.VarChar(50) // 所屬行業別 (e.g., 22->塑膠製品)
+
+  // Project / Bureau Info
+  projectCode   String?  @map("project_code") @db.VarChar(50) // 專案代號 (e.g., x1-03...)
+  industrialBureauRef String? @map("industrial_bureau_ref") @db.VarChar(50) // 引用工業局文號
+  
+  // Quota Management
+  approvedQuota Int      @default(0) @map("approved_quota") // 核准名額 (總計)
+  usedQuota     Int      @default(0) @map("used_quota")     // 已用名額 (快取)
+  
+  // Gender Constraints (Legacy support)
+  quotaMale     Int      @default(0) @map("quota_male")
+  quotaFemale   Int      @default(0) @map("quota_female")
+
+  // Other Attributes
+  recruitmentType String? @map("recruitment_type") @db.VarChar(20) // 招募別 (初招/重招/遞補)
+  nationality     String? @map("nationality") @db.VarChar(20) // 指定國籍 (印尼/越南...)
+  canCirculate    Boolean @default(true) @map("can_circulate") // 可循環否
+  remarks         String? @db.Text // 備註說明
+
+  // Relations
+  employer    Employer     @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  deployments Deployment[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-
-  // Relations
-  deployments Deployment[]
 
   @@map("employer_recruitment_letters")
 }

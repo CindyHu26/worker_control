@@ -4,6 +4,8 @@ import prisma from '../prisma';
 
 const router = Router();
 
+import { quotaService } from '../services/quotaService';
+
 // POST /api/deployments
 router.post('/', async (req, res) => {
     try {
@@ -20,31 +22,27 @@ router.post('/', async (req, res) => {
         }
 
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Validate Recruitment Letter (If provided)
+            // 0. Fetch Worker to get Gender
+            const worker = await tx.worker.findUnique({
+                where: { id: workerId }
+            });
+            if (!worker) throw new Error('Worker not found');
+
+            // 1. Validate Recruitment Letter (Strict Check)
             if (recruitmentLetterId) {
-                const recruitmentLetter = await tx.employerRecruitmentLetter.findUnique({
+                // Determine effective used count based on policy
+                await quotaService.checkQuotaAvailability(recruitmentLetterId, worker.gender, tx);
+
+                // Verify employer ownership logic still applies inside check? 
+                // checkQuotaAvailability checks existence. 
+                // I should verify ownership here or add it to service. 
+                // Stick to checking ownership here.
+                const validLetter = await tx.employerRecruitmentLetter.findUnique({
                     where: { id: recruitmentLetterId }
                 });
-
-                if (!recruitmentLetter) {
-                    throw new Error('Recruitment Letter not found');
-                }
-
-                if (recruitmentLetter.employerId !== employerId) {
+                if (validLetter && validLetter.employerId !== employerId) {
                     throw new Error('Recruitment Letter does not belong to this employer');
                 }
-
-                if (recruitmentLetter.usedQuota >= recruitmentLetter.approvedQuota) {
-                    throw new Error('入國通知人數已滿 (Recruitment Letter Quota Exceeded)');
-                }
-
-                // Increment Usage
-                await tx.employerRecruitmentLetter.update({
-                    where: { id: recruitmentLetterId },
-                    data: {
-                        usedQuota: { increment: 1 }
-                    }
-                });
             }
 
             // 2. Validate Worker Availability (Double check)
@@ -64,13 +62,13 @@ router.post('/', async (req, res) => {
                 data: {
                     workerId,
                     employerId,
-                    recruitmentLetterId, // Updated field
+                    recruitmentLetterId,
                     startDate: new Date(startDate),
                     jobType: jobType || 'general',
                     status: 'active',
                     serviceStatus: 'active_service',
                     sourceType: 'direct_hiring',
-                    factoryId: req.body.factoryId // Optional factory assignment
+                    factoryId: req.body.factoryId
                 }
             });
 
@@ -78,6 +76,11 @@ router.post('/', async (req, res) => {
             await tx.workerTimeline.create({
                 data: { deploymentId: newDeployment.id }
             });
+
+            // 5. Update Recruitment Letter Cache
+            if (recruitmentLetterId) {
+                await quotaService.recalculateUsage(recruitmentLetterId, tx);
+            }
 
             return newDeployment;
         });
@@ -129,6 +132,11 @@ router.patch('/:id', async (req, res) => {
             }
         });
 
+        // If status changed and linked to a recruitment letter, recalculate quota usage
+        if (data.status && updatedDeployment.recruitmentLetterId) {
+            await quotaService.recalculateUsage(updatedDeployment.recruitmentLetterId, prisma);
+        }
+
         res.json(updatedDeployment);
     } catch (error: any) {
         console.error('Update Deployment Error:', error);
@@ -170,6 +178,11 @@ router.post('/:id/terminate', async (req, res) => {
                 terminationNotes: notes
             }
         });
+
+        // Recalculate usage if linked
+        if (updatedDeployment.recruitmentLetterId) {
+            await quotaService.recalculateUsage(updatedDeployment.recruitmentLetterId, prisma);
+        }
 
         res.json(updatedDeployment);
 
