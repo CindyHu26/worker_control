@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Save, Building2, FileText, Receipt, Landmark } from 'lucide-react';
-import { apiGet, apiPost, apiPut } from '@/lib/api';
+import { apiPost, apiPut } from '@/lib/api';
+import { toast } from 'sonner';
 
-// Simple toast mock since generic useToast might not be present or configured similarly
-const toast = (props: { title: string; description?: string; className?: string; variant?: string }) => {
-    // console.log("Toast:", props);
-    // In a real app we'd use the toaster context. For now, we rely on UI feedback or silent success + parent refresh.
-    // Ideally, we can use window.alert for errors.
-    if (props.variant === 'destructive') {
-        alert(`${props.title}: ${props.description}`);
-    }
-};
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 interface Props {
     employerId: string;
@@ -26,29 +20,18 @@ interface Props {
 }
 
 export function RecruitmentLetterForm({ employerId, employer, initialData, onSuccess, onCancel }: Props) {
-    const [industryRecognitions, setIndustryRecognitions] = useState<any[]>([]);
-    const [recruitmentProofs, setRecruitmentProofs] = useState<any[]>([]);
+    const { data: industryRecognitions } = useSWR(
+        employerId ? `/api/industry-recognitions?employerId=${employerId}` : null,
+        fetcher
+    );
+    const { data: recruitmentProofs } = useSWR(
+        employerId ? `/api/recruitment-proofs?employerId=${employerId}` : null,
+        fetcher
+    );
+
     const [selectedIndRec, setSelectedIndRec] = useState<string>('');
     const [selectedProof, setSelectedProof] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
-
-    useEffect(() => {
-        if (employerId) {
-            const fetchData = async () => {
-                try {
-                    const [resInd, resProof] = await Promise.all([
-                        apiGet(`/api/industry-recognitions?employerId=${employerId}`),
-                        apiGet(`/api/recruitment-proofs?employerId=${employerId}`)
-                    ]);
-                    setIndustryRecognitions(resInd as any[]);
-                    setRecruitmentProofs(resProof as any[]);
-                } catch (err) {
-                    console.error("Failed to fetch dependencies", err);
-                }
-            };
-            fetchData();
-        }
-    }, [employerId]);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -102,51 +85,41 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
 
     const handleIndRecChange = (id: string) => {
         setSelectedIndRec(id);
-        const item = industryRecognitions.find(x => x.id === id);
+        const item = industryRecognitions?.find((x: any) => x.id === id);
         if (item) {
             const remaining = item.approvedQuota - item.usedQuota;
-            // Calculate Quota based on Allocation Rate if available
-            // Formula: Labor Count * Allocation Rate.
-            // However, we don't have labor count directly here, usually it's input manually or fetched.
-            // For now, let's just use the remaining quota as a hint, or if we had labor count we'd calc.
-            // The request says: "System automatically calculates: Approved Quota Limit = Labor Count * 20%".
-            // Since we don't have Labor Count in this form's context (yet), we might skip the auto-calc of exact number
-            // OR if we want to be fancy, we fetch labor count.
-            // Given the prompt "Auto-fill fields... based on selected documents", let's at least fill tier/ref.
 
             setFormData(prev => ({
                 ...prev,
                 industrialBureauRef: item.bureauRefNumber,
                 industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
                 industryTier: item.tier,
-                // If we had allocationRate, we can maybe store it in a hidden field or just use it for display
+                // Automatically set expiry to issueDate + 3 years or custom logic?
+                // Also setting validUntil for letter? Maybe not.
             }));
 
             if (item.allocationRate) {
-                // Determine rate percentage
                 const rate = Number(item.allocationRate);
-                toast({
-                    title: "已選定核定函",
-                    description: `級別: ${item.tier} / 核配比率: ${(rate * 100).toFixed(0)}% / 剩餘名額: ${remaining}`,
-                });
+                toast.info(`已選定核定函：級別 ${item.tier} / 核配比率 ${(rate * 100).toFixed(0)}%`);
+                // If we had labor count, we could calc quota here.
             } else {
-                toast({
-                    title: "已選定核定函",
-                    description: `級別: ${item.tier} / 剩餘名額: ${remaining}`,
-                });
+                toast.info(`已選定核定函：級別 ${item.tier}`);
             }
         }
     };
 
     const handleProofChange = (id: string) => {
         setSelectedProof(id);
-        const item = recruitmentProofs.find(x => x.id === id);
+        const item = recruitmentProofs?.find((x: any) => x.id === id);
         if (item) {
             setFormData(prev => ({
                 ...prev,
                 domesticRecruitmentRef: item.receiptNumber,
-                domesticRecruitmentDate: item.issueDate ? item.issueDate.split('T')[0] : ''
+                domesticRecruitmentDate: item.issueDate ? item.issueDate.split('T')[0] : '',
+                reviewFeeReceiptNo: item.reviewFeeReceiptNo || prev.reviewFeeReceiptNo,
+                reviewFeePayDate: item.reviewFeePayDate ? item.reviewFeePayDate.split('T')[0] : prev.reviewFeePayDate
             }));
+            toast.info(`已選定求才證明：${item.receiptNumber}`);
         }
     };
 
@@ -170,20 +143,19 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                 await apiPost('/api/recruitment', payload);
             }
 
+            toast.success("招募函資料已儲存");
             if (onSuccess) onSuccess();
         } catch (error: any) {
             console.error(error);
-            // Extract nice message if possible
             const msg = error.response?.data?.message || error.message || "儲存失敗";
-            toast({
-                title: "儲存失敗",
-                description: msg,
-                variant: "destructive"
-            });
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
     };
+
+    const indRecList = industryRecognitions || [];
+    const proofList = recruitmentProofs || [];
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
@@ -198,15 +170,15 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>選擇工業局核定函 (選填)</Label>
-                        <Select value={selectedIndRec} onValueChange={handleIndRecChange} disabled={initialData?.id}>
+                        <Select value={selectedIndRec} onValueChange={handleIndRecChange} disabled={!!initialData?.id}>
                             <SelectTrigger>
                                 <SelectValue placeholder="請選擇現有核定函..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {industryRecognitions.map(item => {
+                                {indRecList.map((item: any) => {
                                     const bal = item.approvedQuota - item.usedQuota;
                                     return (
-                                        <SelectItem key={item.id} value={item.id} disabled={bal <= 0}>
+                                        <SelectItem key={item.id} value={item.id}>
                                             {item.bureauRefNumber} ({item.tier}級 / 餘額:{bal})
                                         </SelectItem>
                                     );
@@ -235,6 +207,15 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                             className={selectedIndRec ? "bg-gray-100" : ""}
                         />
                     </div>
+                    <div className="space-y-2">
+                        <Label>核定級別 (Tier)</Label>
+                        <Input
+                            value={formData.industryTier}
+                            readOnly
+                            className="bg-gray-100"
+                            placeholder="自動帶入"
+                        />
+                    </div>
                 </CardContent>
             </Card>
 
@@ -248,12 +229,12 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>選擇求才證明書 (選填)</Label>
-                        <Select value={selectedProof} onValueChange={handleProofChange} disabled={initialData?.id}>
+                        <Select value={selectedProof} onValueChange={handleProofChange} disabled={!!initialData?.id}>
                             <SelectTrigger>
                                 <SelectValue placeholder="請選擇有效之證明書..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {recruitmentProofs.map(item => (
+                                {proofList.map((item: any) => (
                                     <SelectItem key={item.id} value={item.id}>
                                         {item.receiptNumber} (發文:{item.issueDate?.split('T')[0]})
                                     </SelectItem>

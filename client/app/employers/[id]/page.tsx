@@ -8,6 +8,7 @@ import RecruitmentLetterManager from '@/components/employers/RecruitmentLetterMa
 import LaborCountManager from '@/components/employers/LaborCountManager';
 import EmployerReadinessDashboard from '@/components/employers/EmployerReadinessDashboard';
 import ContractList from '@/components/contracts/ContractList';
+import PrePermitManager from '@/components/employers/PrePermitManager';
 import { apiGet, apiDelete } from '@/lib/api';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -211,6 +212,9 @@ export default function EmployerDetailPage() {
 
                 {/* Labor Insurance Count Management */}
                 <LaborCountManager employerId={id} />
+
+                {/* Pre-Permit Management (Industry Recognitions & Recruitment Proofs) */}
+                <PrePermitManager employerId={id} />
 
                 {/* Recruitment Letter Management Section */}
                 <RecruitmentLetterManager employerId={id} />
