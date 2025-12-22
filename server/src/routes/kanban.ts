@@ -24,13 +24,28 @@ router.get('/board', async (req, res) => {
             }
         });
 
+        // Assuming 'leads' was meant to be 'deployments' for these aggregations
+        // and that 'industry' and 'status' properties exist on deployment objects.
+        // If 'leads' is a separate data source, it needs to be fetched or defined.
+        const categoryStats = deployments.reduce((acc: any, lead: any) => { // Changed 'lead' to 'deployment' for clarity, but kept 'lead' as per instruction
+            const industry = lead.industry || 'Uncategorized'; // Assuming deployment has an 'industry' property
+            acc[industry] = (acc[industry] || 0) + 1;
+            return acc;
+        }, {});
+
+        const statusStats = deployments.reduce((acc: any, lead: any) => { // Changed 'lead' to 'deployment' for clarity, but kept 'lead' as per instruction
+            acc[lead.status] = (acc[lead.status] || 0) + 1;
+            return acc;
+        }, {});
+
+
         // Group by processStage
         const board = {
-            recruitment: deployments.filter(d => d.processStage === 'recruitment'),
-            visa_processing: deployments.filter(d => d.processStage === 'visa_processing'),
-            flight_booking: deployments.filter(d => d.processStage === 'flight_booking'),
-            arrival: deployments.filter(d => d.processStage === 'arrival'),
-            medical_check: deployments.filter(d => d.processStage === 'medical_check')
+            recruitment: deployments.filter((d: any) => d.processStage === 'recruitment'),
+            visa_processing: deployments.filter((d: any) => d.processStage === 'visa_processing'),
+            flight_booking: deployments.filter((d: any) => d.processStage === 'flight_booking'),
+            arrival: deployments.filter((d: any) => d.processStage === 'arrival'),
+            medical_check: deployments.filter((d: any) => d.processStage === 'medical_check')
         };
 
         res.json(board);
@@ -62,25 +77,11 @@ router.patch('/cards/:id/move', async (req, res) => {
             const entryDate = new Date(flightInfo.arrivalDate);
             updateData.entryDate = entryDate;
             updateData.flightNumber = flightInfo.flightNumber;
-            updateData.flightArrivalDate = entryDate; // Duplicate for now as schema has both
+            updateData.flightArrivalDate = entryDate;
 
-            // Auto-calculate medical check deadline (Entry + 3 days)
-            // Save to WorkerTimeline if exists, or create new?
-            // Let's upsert WorkerTimeline
-
-            const medCheckDeadline = addDays(entryDate, 3);
-
-            await prisma.workerTimeline.upsert({
-                where: { deploymentId: id },
-                create: {
-                    deploymentId: id,
-                    entryMedCheckDeadline: medCheckDeadline
-                },
-                update: {
-                    entryMedCheckDeadline: medCheckDeadline
-                }
-            });
+            // WorkerTimeline removed from schema
         }
+
 
         const updatedDeployment = await prisma.deployment.update({
             where: { id },

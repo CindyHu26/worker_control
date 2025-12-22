@@ -19,14 +19,24 @@ const IndustryRecognitionSchema = z.object({
 
 // GET all for an employer
 router.get('/', async (req, res) => {
-  const { employerId } = req.query;
+  const { employerId, valid } = req.query;
   if (!employerId || typeof employerId !== 'string') {
     return res.status(400).json({ error: 'employerId is required' });
   }
 
   try {
+    const where: any = { employerId };
+
+    // Filter by validity (active and not expired)
+    if (valid === 'true') {
+      where.OR = [
+        { expiryDate: { gte: new Date() } },
+        { expiryDate: null } // Assume null means no expiry or handle as valid
+      ];
+    }
+
     const records = await prisma.industryRecognition.findMany({
-      where: { employerId },
+      where,
       orderBy: { issueDate: 'desc' },
       include: {
         recruitmentLetters: {

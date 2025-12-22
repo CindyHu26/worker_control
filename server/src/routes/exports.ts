@@ -56,7 +56,7 @@ router.get('/labor-insurance-enrollment', async (req, res) => {
         // Generate CSV
         // Columns: Employer, Worker Name, ID/ARC, DOB, Salary, Insurance Tier
         const headers = ['Employer', 'Worker Name', 'ARC/ID', 'Birthday', 'Basic Salary', 'Labor Insurance Amt'];
-        const rows = deployments.map(d => {
+        const rows = deployments.map((d: any) => {
             const worker = d.worker;
             const arc = worker.arcs[0]?.arcNumber || '';
             const passport = worker.passports[0]?.passportNumber || '';
@@ -69,7 +69,7 @@ router.get('/labor-insurance-enrollment', async (req, res) => {
                 idNo,
                 dob,
                 d.basicSalary || 0,
-                d.laborInsuranceAmt || 0
+                0 // d.laborInsuranceAmt missing from schema
             ].map(escapeCsv).join(',');
         });
 
@@ -132,7 +132,7 @@ router.get('/bank-payroll-transfer', async (req, res) => {
             // Body: 02 + ...
             // Simplified CSV for demo
 
-            const rows = deployments.map((d, index) => {
+            const rows = deployments.map((d: any, index: number) => {
                 const worker = d.worker;
                 const account = worker.bankAccountNo || '000000000000';
                 const money = Number(d.basicSalary || 0);
@@ -141,7 +141,7 @@ router.get('/bank-payroll-transfer', async (req, res) => {
                 // CTBC often uses fixed width, but here we provide CSV compatible for upload
                 // Format: RecipientAccount, Amount, Note
                 return `${account},${money},SALARY ${month}/${year} ${worker.englishName}`;
-            }).filter(r => r);
+            }).filter((r: any) => r);
 
             content = rows.join('\n');
             res.setHeader('Content-Disposition', `attachment; filename="CTBC_Payroll_${todayStr}.txt"`);
@@ -150,21 +150,21 @@ router.get('/bank-payroll-transfer', async (req, res) => {
             // E.Sun Format (Hypothetical Standard 808)
             // Often CSV
             const header = 'Recipient Account,Amount,Note,Email';
-            const rows = deployments.map(d => {
+            const rows = deployments.map((d: any) => {
                 const worker = d.worker;
                 const account = worker.bankAccountNo || '';
                 const money = Number(d.basicSalary || 0);
                 if (money <= 0) return null;
 
                 return `${account},${money},Salary ${month},`;
-            }).filter(r => r);
+            }).filter((r: any) => r);
 
             content = [header, ...rows].join('\n');
             res.setHeader('Content-Disposition', `attachment; filename="ESUN_Payroll_${todayStr}.csv"`);
         } else {
             // Default Generic
             const header = 'Bank Code,Recipient Account,Amount,Name';
-            const rows = deployments.map(d => {
+            const rows = deployments.map((d: any) => {
                 const worker = d.worker;
                 const account = worker.bankAccountNo || '';
                 const bankCode = worker.bankCode || '';

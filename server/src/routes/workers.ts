@@ -267,20 +267,20 @@ router.get('/:id', async (req, res) => {
                 deployments: {
                     include: {
                         employer: true,
-                        entryPermit: {
-                            include: {
-                                recruitmentLetter: true
-                            }
-                        },
-                        timelines: true, // WorkerTimeline
+                        // entryPermit: {
+                        //     include: {
+                        //         recruitmentLetter: true
+                        //     }
+                        // },
+                        // timelines: true, // WorkerTimeline removed
                         permitDetails: {
                             include: {
                                 permitDocument: true
                             }
                         },
-                        feeSchedules: {
-                            orderBy: { installmentNo: 'asc' }
-                        }
+                        // feeSchedules: {
+                        //     orderBy: { installmentNo: 'asc' }
+                        // }
                     },
                     orderBy: { startDate: 'desc' }
                 },
@@ -389,7 +389,7 @@ router.post('/full-entry', async (req, res) => {
                     lineId: body.lineId,
                     bankAccountNo: body.bankAccountNo,
                     bankCode: body.bankCode,
-                }
+                } as any
             });
 
             // 2. Create Passport (Current)
@@ -461,7 +461,7 @@ router.post('/', async (req, res) => {
                     dob: dob ? new Date(dob) : undefined,
                     mobilePhone,
                     category: 'general' // Default
-                }
+                } as any
             });
 
             // 2. Create Passport (Optional)
@@ -493,7 +493,7 @@ router.put('/:id', async (req, res) => {
     const body = req.body;
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             // 1. Update Worker Fields
             const updatedWorker = await tx.worker.update({
                 where: { id },
@@ -533,7 +533,7 @@ router.put('/:id', async (req, res) => {
                     bankAccountHolder: body.bankAccountHolder,
                     loanBank: body.loanBank,
                     loanAmount: body.loanAmount ? Number(body.loanAmount) : undefined,
-                }
+                } as any
             });
 
             // 2. Update Active/Pending Deployment Fields
@@ -567,28 +567,9 @@ router.put('/:id', async (req, res) => {
                     }
                 });
 
-                // Auto-Calculate Deadlines if entryDate is updated
+                // Schema for WorkerTimeline removed.
                 if (body.entryDate) {
-                    const entry = new Date(body.entryDate);
-                    const med6 = new Date(entry); med6.setMonth(med6.getMonth() + 6);
-                    const med18 = new Date(entry); med18.setMonth(med18.getMonth() + 18);
-                    const med30 = new Date(entry); med30.setMonth(med30.getMonth() + 30);
-
-                    // Upsert Timeline
-                    await tx.workerTimeline.upsert({
-                        where: { deploymentId: activeDeployment.id },
-                        update: {
-                            medCheck6moDeadline: med6,
-                            medCheck18moDeadline: med18,
-                            medCheck30moDeadline: med30
-                        },
-                        create: {
-                            deploymentId: activeDeployment.id,
-                            medCheck6moDeadline: med6,
-                            medCheck18moDeadline: med18,
-                            medCheck30moDeadline: med30
-                        }
-                    });
+                    // Timeline auto-calc disabled
                 }
             }
 
@@ -701,28 +682,7 @@ router.post('/:id/arrange-entry', async (req, res) => {
                 }
             });
 
-            // 3. Auto-Calculate Health Check Deadlines
-            // 6 months, 18 months, 30 months from entry date
-            const entry = new Date(flightArrivalDate);
-            const med6 = new Date(entry); med6.setMonth(med6.getMonth() + 6);
-            const med18 = new Date(entry); med18.setMonth(med18.getMonth() + 18);
-            const med30 = new Date(entry); med30.setMonth(med30.getMonth() + 30);
-
-            // Upsert Timeline
-            await tx.workerTimeline.upsert({
-                where: { deploymentId: currentDeployment.id },
-                update: {
-                    medCheck6moDeadline: med6,
-                    medCheck18moDeadline: med18,
-                    medCheck30moDeadline: med30
-                },
-                create: {
-                    deploymentId: currentDeployment.id,
-                    medCheck6moDeadline: med6,
-                    medCheck18moDeadline: med18,
-                    medCheck30moDeadline: med30
-                }
-            });
+            // Timeline auto-calc disabled due to removed schema
 
             return updatedDeployment;
         });
@@ -749,7 +709,7 @@ router.post('/:id/assign-team', async (req, res) => {
         if (adminId) roleMap['admin_staff'] = adminId;
         if (translatorId) roleMap['translator'] = translatorId;
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             const results: any = {};
 
             for (const [role, newUserId] of Object.entries(roleMap)) {
@@ -757,7 +717,7 @@ router.post('/:id/assign-team', async (req, res) => {
                 const activeAssignment = await tx.serviceAssignment.findFirst({
                     where: {
                         workerId: id,
-                        role: role,
+                        role: role as any,
                         endDate: null
                     }
                 });

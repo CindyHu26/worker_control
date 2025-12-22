@@ -129,6 +129,9 @@ router.get('/alerts', async (req, res) => {
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
         // 1. Fetch upcoming from WorkerTimeline
+        // 1. Fetch upcoming from WorkerTimeline (DISABLED - Model Removed)
+        const timelines: any[] = [];
+        /*
         const timelines = await prisma.workerTimeline.findMany({
             where: {
                 OR: [
@@ -150,6 +153,7 @@ router.get('/alerts', async (req, res) => {
             },
             take: 50
         });
+        */
 
         // 2. Fetch upcoming from direct HealthChecks
         const healthChecks = await prisma.healthCheck.findMany({

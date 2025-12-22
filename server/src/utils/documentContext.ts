@@ -59,8 +59,8 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
 
             // familyMembers: true, // Removed: Not in schema
             // emergencyContacts: true, // Removed: Not in schema
-        }
-    });
+        } as any
+    }) as any;
 
     if (!worker) {
         throw new Error(`Worker with ID ${workerId} not found`);
@@ -76,8 +76,8 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
     const foreignAgency = worker.foreignAgency || {} as any;
 
     // Document logic
-    const passport = worker.passports.find(p => p.isCurrent) || worker.passports[0];
-    const arc = worker.arcs.find(a => a.isCurrent) || worker.arcs[0];
+    const passport = worker.passports.find((p: any) => p.isCurrent) || worker.passports[0];
+    const arc = worker.arcs.find((a: any) => a.isCurrent) || worker.arcs[0];
 
     // Dormitory Retrieval
     const dormBed = worker.bed;
@@ -256,7 +256,7 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
         current_day: new Date().getDate(),
 
         // --- Loops / Lists ---
-        address_history_list: worker.addressHistory.map(addr => ({
+        address_history_list: worker.addressHistory.map((addr: any) => ({
             type: addr.addressType,
             address: addr.addressDetail,
             start_date: formatDate(addr.startDate),
@@ -378,12 +378,12 @@ export async function getDocumentContext(type: string, id: string) {
             // If ID is deploymentId, find the worker.
             // However, buildWorkerDocumentContext takes workerId.
             // We need to fetch deployment first to get workerId.
-            const deploy = await prisma.deployment.findUnique({ where: { id }, select: { workerId: true } });
+            const deploy = await (prisma as any).deployment.findUnique({ where: { id }, select: { workerId: true } });
             if (!deploy) throw new Error("Deployment not found");
             return await buildWorkerDocumentContext(deploy.workerId);
 
         case 'job_order':
-            const job = await prisma.jobOrder.findUnique({
+            const job = await (prisma as any).jobOrder.findUnique({
                 where: { id },
                 include: { employer: true }
             });
@@ -397,7 +397,7 @@ export async function getDocumentContext(type: string, id: string) {
             };
 
         case 'recruitment':
-            const letter = await prisma.employerRecruitmentLetter.findUnique({
+            const letter = await (prisma as any).employerRecruitmentLetter.findUnique({
                 where: { id },
                 include: { employer: true }
             });

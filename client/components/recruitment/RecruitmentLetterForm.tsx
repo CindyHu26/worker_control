@@ -89,20 +89,42 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
         if (item) {
             const remaining = item.approvedQuota - item.usedQuota;
 
-            setFormData(prev => ({
-                ...prev,
-                industrialBureauRef: item.bureauRefNumber,
-                industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
-                industryTier: item.tier,
-                // Automatically set expiry to issueDate + 3 years or custom logic?
-                // Also setting validUntil for letter? Maybe not.
-            }));
-
             if (item.allocationRate) {
                 const rate = Number(item.allocationRate);
-                toast.info(`已選定核定函：級別 ${item.tier} / 核配比率 ${(rate * 100).toFixed(0)}%`);
-                // If we had labor count, we could calc quota here.
+                let quotaInfo = `核配比率 ${(rate * 100).toFixed(0)}%`;
+
+                // Calculate quota from labor count
+                if (employer && employer.laborCounts && employer.laborCounts.length > 0) {
+                    const latestCount = employer.laborCounts[0]; // Assuming sorted by desc
+                    const calculatedQuota = Math.floor(latestCount.count * rate);
+
+                    setFormData(prev => ({
+                        ...prev,
+                        approvedQuota: calculatedQuota,
+                        // Update other fields
+                        industrialBureauRef: item.bureauRefNumber,
+                        industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
+                        industryTier: item.tier,
+                    }));
+                    quotaInfo += ` / 本勞 ${latestCount.count} 人 -> 可申請 ${calculatedQuota} 人`;
+                } else {
+                    setFormData(prev => ({
+                        ...prev,
+                        industrialBureauRef: item.bureauRefNumber,
+                        industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
+                        industryTier: item.tier,
+                    }));
+                    quotaInfo += ` (查無本勞人數，請手動計算)`;
+                }
+
+                toast.info(`已選定核定函：級別 ${item.tier} / ${quotaInfo}`);
             } else {
+                setFormData(prev => ({
+                    ...prev,
+                    industrialBureauRef: item.bureauRefNumber,
+                    industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
+                    industryTier: item.tier,
+                }));
                 toast.info(`已選定核定函：級別 ${item.tier}`);
             }
         }

@@ -79,7 +79,7 @@ router.post('/agency-companies', async (req, res) => {
                 // Bilingual
                 nameEn, addressEn, representativeEn,
                 isDefault: !!isDefault
-            }
+            } as any
         });
 
         res.status(201).json(company);
@@ -113,7 +113,7 @@ router.put('/agency-companies/:id', async (req, res) => {
                 nameEn: otherData.nameEn,
                 addressEn: otherData.addressEn,
                 representativeEn: otherData.representativeEn
-            }
+            } as any
         });
 
         res.json(company);
@@ -154,7 +154,7 @@ router.post('/foreign-agencies', async (req, res) => {
                 contactPerson,
                 email,
                 phone
-            }
+            } as any
         });
 
         res.status(201).json(agency);

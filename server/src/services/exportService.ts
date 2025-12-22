@@ -59,7 +59,7 @@ export const generateMolRegistrationCsv = async (workerIds: string[]): Promise<s
 
     // 2. Map Data to Rows
     // Header: 國籍,護照號碼,姓名,性別,入境日
-    const rows = workers.map(w => {
+    const rows = workers.map((w: any) => {
         const deployment = w.deployments[0];
         const passport = w.passports[0]; // Assuming passport info is needed
 

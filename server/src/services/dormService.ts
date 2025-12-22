@@ -3,7 +3,7 @@ import prisma from '../prisma';
 
 // Equipment Auto-Scheduling
 export const scheduleNextMaintenance = async (equipmentId: string, completionDate: Date) => {
-    const equipment = await prisma.dormEquipment.findUnique({ where: { id: equipmentId } });
+    const equipment = await (prisma as any).dormEquipment.findUnique({ where: { id: equipmentId } });
 
     if (!equipment || !equipment.maintenanceIntervalMonths) {
         return null; // No scheduling needed
@@ -14,7 +14,7 @@ export const scheduleNextMaintenance = async (equipmentId: string, completionDat
     nextDate.setMonth(nextDate.getMonth() + equipment.maintenanceIntervalMonths);
 
     // Update equipment
-    await prisma.dormEquipment.update({
+    await (prisma as any).dormEquipment.update({
         where: { id: equipmentId },
         data: {
             lastMaintenanceDate: completionDate,
@@ -53,7 +53,7 @@ export const batchCreateEquipment = async (
         });
     }
 
-    const result = await prisma.dormEquipment.createMany({
+    const result = await (prisma as any).dormEquipment.createMany({
         data: equipmentList
     });
 
@@ -67,7 +67,7 @@ export const getUnassignedWorkers = async (dormId: string) => {
         where: {
             dormitoryId: dormId,
             dormitoryBedId: null
-        },
+        } as any,
         include: {
             deployments: {
                 where: { status: 'active' },
@@ -101,12 +101,12 @@ export const updateRoomAssignment = async (
         data: {
             dormitoryBedId: bedId,
             // dataSource: source // TODO: Add this field to Worker model
-        }
+        } as any
     });
 
     // Update bed status
     if (bedId) {
-        await prisma.dormBed.update({
+        await (prisma as any).dormBed.update({
             where: { id: bedId },
             data: { status: 'occupied' }
         });
@@ -120,7 +120,7 @@ export const convertMaintenanceToExpense = async (
     maintenanceId: string,
     amortizationMonths: number = 12
 ) => {
-    const maintenance = await prisma.maintenanceLog.findUnique({
+    const maintenance = await (prisma as any).maintenanceLog.findUnique({
         where: { id: maintenanceId }
     });
 

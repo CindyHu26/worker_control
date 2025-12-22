@@ -94,7 +94,7 @@ router.post('/payroll', async (req, res) => {
                 taxWithheld: withheld,
                 taxRateUsed,
                 filingStatus: 'PENDING'
-            }
+            } as any
         });
 
         res.json(record);

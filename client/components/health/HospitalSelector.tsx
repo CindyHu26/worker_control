@@ -18,7 +18,7 @@ interface Hospital {
 interface HospitalSelectorProps {
     value: string; // Hospital Name
     onChange: (name: string) => void;
-    type?: 'general' | 'xray';
+    type?: 'general' | 'xray' | 'overseas';
     label?: string;
     required?: boolean;
     onSelect?: (hospital: Hospital) => void;

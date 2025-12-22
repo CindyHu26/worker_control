@@ -7,7 +7,7 @@ export const renewPassport = async (workerId: string, newPassportData: {
     expiryDate: Date | string,
     issuePlace?: string
 }) => {
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return await prisma.$transaction(async (tx: any) => {
         // 1. Archive current passport
         await tx.workerPassport.updateMany({
             where: { workerId, isCurrent: true },
@@ -54,7 +54,7 @@ export const renewArc = async (workerId: string, newArcData: {
     issueDate: Date | string,
     expiryDate: Date | string
 }) => {
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return await prisma.$transaction(async (tx: any) => {
         // 1. Archive current ARC
         await tx.workerArc.updateMany({
             where: { workerId, isCurrent: true },

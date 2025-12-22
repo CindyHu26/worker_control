@@ -9,17 +9,17 @@ export const detectUtilityAnomalies = async (dormId: string, meterId?: string) =
         where.meterId = meterId;
     } else {
         // Get all meters for this dorm
-        const rooms = await prisma.dormRoom.findMany({
+        const rooms = await (prisma as any).dormitoryRoom.findMany({
             where: { dormitoryId: dormId },
             select: { id: true }
         });
-        const roomIds = rooms.map(r => r.id);
+        const roomIds = rooms.map((r: any) => r.id);
         where.meter = {
             roomId: { in: roomIds }
         };
     }
 
-    const readings = await prisma.meterReading.findMany({
+    const readings = await (prisma as any).meterReading.findMany({
         where,
         include: { meter: true },
         orderBy: { readingDate: 'desc' },
@@ -32,7 +32,7 @@ export const detectUtilityAnomalies = async (dormId: string, meterId?: string) =
 
     // Group by meter
     const meterGroups = new Map<string, typeof readings>();
-    readings.forEach(r => {
+    readings.forEach((r: any) => {
         const key = r.meterId;
         if (!meterGroups.has(key)) meterGroups.set(key, []);
         meterGroups.get(key)?.push(r);
@@ -44,7 +44,7 @@ export const detectUtilityAnomalies = async (dormId: string, meterId?: string) =
         if (meterReadings.length < 4) continue;
 
         // IQR Method
-        const costs = meterReadings.map(r => Number(r.cost)).sort((a, b) => a - b);
+        const costs = meterReadings.map((r: any) => Number(r.cost)).sort((a: any, b: any) => a - b);
         const q1Index = Math.floor(costs.length * 0.25);
         const q3Index = Math.floor(costs.length * 0.75);
 
@@ -55,15 +55,16 @@ export const detectUtilityAnomalies = async (dormId: string, meterId?: string) =
         const lowerBound = Q1 - 1.5 * IQR;
 
         // Check each reading
-        meterReadings.forEach(reading => {
-            const cost = Number(reading.cost);
+        meterReadings.forEach((reading: any) => {
+            const r: any = reading;
+            const cost = Number(r.cost);
             if (cost > upperBound) {
                 anomalies.push({
                     type: 'IQR_HIGH',
-                    meterId: reading.meterId,
-                    meterName: reading.meter.meterName,
-                    readingId: reading.id,
-                    readingDate: reading.readingDate,
+                    meterId: r.meterId,
+                    meterName: r.meter?.meterName,
+                    readingId: r.id,
+                    readingDate: r.readingDate,
                     cost,
                     upperBound,
                     message: `Cost ${cost} exceeds upper bound ${upperBound.toFixed(2)}`
@@ -84,8 +85,8 @@ export const detectUtilityAnomalies = async (dormId: string, meterId?: string) =
 
         // YoY/MoM Comparison
         if (meterReadings.length >= 2) {
-            const latest = meterReadings[0];
-            const previous = meterReadings[1];
+            const latest: any = meterReadings[0];
+            const previous: any = meterReadings[1];
 
             const latestUsage = Number(latest.usage);
             const previousUsage = Number(previous.usage);
@@ -115,7 +116,7 @@ export const detectUtilityAnomalies = async (dormId: string, meterId?: string) =
 
 // Area Compliance Check
 export const checkAreaCompliance = async (dormId: string, standardPerPerson: number = 3.6) => {
-    const rooms = await prisma.dormRoom.findMany({
+    const rooms = await (prisma as any).dormitoryRoom.findMany({
         where: { dormitoryId: dormId },
         include: {
             beds: {
@@ -130,8 +131,9 @@ export const checkAreaCompliance = async (dormId: string, standardPerPerson: num
 
     const violations: any[] = [];
 
-    for (const room of rooms) {
-        const occupiedBeds = room.beds.filter(b => b.worker !== null);
+    for (const r of rooms) {
+        const room: any = r;
+        const occupiedBeds = room.beds.filter((b: any) => b.worker !== null);
         const occupantCount = occupiedBeds.length;
 
         if (occupantCount === 0) continue;
@@ -148,7 +150,7 @@ export const checkAreaCompliance = async (dormId: string, standardPerPerson: num
                 areaPerPerson: areaPerPerson.toFixed(2),
                 standard: standardPerPerson,
                 deficit: (standardPerPerson - areaPerPerson).toFixed(2),
-                occupants: occupiedBeds.map(b => ({
+                occupants: occupiedBeds.map((b: any) => ({
                     workerId: b.worker?.id,
                     name: b.worker?.chineseName || b.worker?.englishName
                 }))

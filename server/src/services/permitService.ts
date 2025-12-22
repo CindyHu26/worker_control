@@ -20,7 +20,7 @@ export const permitService = {
      * 會自動處理舊許可的狀態與法規檢核
      */
     async createPermit(data: CreatePermitInput) {
-        return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        return await prisma.$transaction(async (tx: any) => {
             const { deploymentId, type, issueDate, expiryDate, permitNumber } = data;
 
             // 1. 取得派遣與相關文件資訊
@@ -88,7 +88,7 @@ export const permitService = {
      * 取得該派遣的所有許可紀錄 (含歷史)
      */
     async getPermitHistory(deploymentId: string) {
-        return await prisma.employmentPermit.findMany({
+        return await (prisma as any).employmentPermit.findMany({
             where: { deploymentId },
             orderBy: { issueDate: 'desc' }
         });
@@ -99,7 +99,7 @@ export const permitService = {
      * 用於 Dashboard 通知
      */
     async checkPermitExpiry(deploymentId: string) {
-        const activePermit = await prisma.employmentPermit.findFirst({
+        const activePermit = await (prisma as any).employmentPermit.findFirst({
             where: { deploymentId, status: 'ACTIVE' }
         });
 

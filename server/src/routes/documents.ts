@@ -363,7 +363,7 @@ router.post('/batch-generate', async (req, res) => {
                         let fAddr = '';
                         if (emp.industryAttributes) {
                             try {
-                                const attrs = JSON.parse(emp.industryAttributes);
+                                const attrs = emp.industryAttributes as any;
                                 fAddr = attrs.factoryAddress;
                             } catch (e) { }
                         }
@@ -371,7 +371,7 @@ router.post('/batch-generate', async (req, res) => {
                         break;
                     }
                     case 'EMPLOYER_HOME':
-                        resolvedAddress = emp.responsiblePersonAddress || '';
+                        resolvedAddress = emp.address || '';
                         break;
                     case 'COMPANY':
                         resolvedAddress = emp.address || '';

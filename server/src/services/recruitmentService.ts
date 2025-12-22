@@ -8,7 +8,7 @@ export const recruitmentService = {
      * 這是流程的起點
      */
     async upsertJobOrder(employerId: string, data: any) {
-        return await prisma.jobOrder.upsert({
+        return await (prisma as any).jobOrder.upsert({
             where: { id: data.id || 'new' },
             create: {
                 employerId,
@@ -31,7 +31,7 @@ export const recruitmentService = {
     },
 
     async upsertJobRequisition(jobOrderId: string, data: any) {
-        return await prisma.jobRequisition.upsert({
+        return await (prisma as any).jobRequisition.upsert({
             where: { jobOrderId },
             update: {
                 skills: data.skills,
@@ -67,13 +67,13 @@ export const recruitmentService = {
         attachmentPath?: string;
     }) {
         // 檢查文號是否重複
-        const existing = await prisma.recruitmentLetter.findUnique({
+        const existing = await (prisma as any).recruitmentLetter.findUnique({
             where: { letterNumber: data.letterNumber }
         });
         if (existing) throw new Error(`招募函文號 ${data.letterNumber} 已存在`);
 
         // 建立招募函
-        const letter = await prisma.recruitmentLetter.create({
+        const letter = await (prisma as any).recruitmentLetter.create({
             data: {
                 employerId: data.employerId,
                 jobOrderId: data.jobOrderId || null,
@@ -89,7 +89,7 @@ export const recruitmentService = {
 
         // 如果有關聯求才單，將求才單狀態更新為「已完成」(Completed)
         if (data.jobOrderId) {
-            await prisma.jobOrder.update({
+            await (prisma as any).jobOrder.update({
                 where: { id: data.jobOrderId },
                 data: { status: 'completed' }
             });
@@ -104,7 +104,7 @@ export const recruitmentService = {
      */
     async getAvailableQuota(employerId: string) {
         // 找出所有「有效期限內」且「還有餘額」的招募函
-        const letters = await prisma.recruitmentLetter.findMany({
+        const letters = await (prisma as any).recruitmentLetter.findMany({
             where: {
                 employerId,
                 // validUntil: { gte: new Date() }, // 嚴格模式可打開這行
@@ -115,10 +115,10 @@ export const recruitmentService = {
             }
         });
 
-        return letters.map(letter => {
+        return letters.map((letter: any) => {
             // 實際已用額度 = 該招募函底下的「入國引進許可」總人數
             // 這裡做一個雙重確認 (Double Check)，不僅讀取 usedQuota 欄位，也實際加總
-            const actualUsed = letter.entryPermits.reduce((sum, p) => sum + p.workerCount, 0);
+            const actualUsed = letter.entryPermits.reduce((sum: any, p: any) => sum + p.workerCount, 0);
 
             const remaining = letter.approvedQuota - actualUsed - letter.revokedQuota;
 

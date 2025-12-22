@@ -307,6 +307,10 @@ router.get('/:id', async (req, res) => {
                     industryRecognitions: {
                         orderBy: { issueDate: 'desc' },
                         take: 1
+                    },
+                    laborCounts: {
+                        orderBy: { year: 'desc' }, // Get latest
+                        take: 1
                     }
                 }
             }),

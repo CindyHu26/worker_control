@@ -18,14 +18,20 @@ const RecruitmentProofSchema = z.object({
 
 // GET all for employer
 router.get('/', async (req, res) => {
-    const { employerId } = req.query;
+    const { employerId, valid } = req.query;
     if (!employerId || typeof employerId !== 'string') {
         return res.status(400).json({ error: 'employerId is required' });
     }
 
     try {
+        const where: any = { employerId };
+
+        if (valid === 'true') {
+            where.status = 'VALID';
+        }
+
         const records = await prisma.recruitmentProof.findMany({
-            where: { employerId },
+            where,
             orderBy: { issueDate: 'desc' },
             include: {
                 recruitmentLetters: {

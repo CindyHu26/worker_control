@@ -80,10 +80,10 @@ router.post('/', async (req, res, next) => {
                 }
             });
 
-            // 4. Initialize Worker Timeline
-            await tx.workerTimeline.create({
-                data: { deploymentId: newDeployment.id }
-            });
+            // 4. Initialize Worker Timeline - REMOVED (Legacy)
+            // await tx.workerTimeline.create({
+            //     data: { deploymentId: newDeployment.id }
+            // });
 
             // 5. Update Recruitment Letter Cache
             if (recruitmentLetterId) {

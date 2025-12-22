@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Badge } from "@/components/ui/card"; // 假設路徑
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge"; // 假設路徑
 
 // [新增] 定義資料型別
 interface JobOrder {
@@ -54,7 +55,10 @@ export function JobOrderSelector({ employerId, onSelectOrder }: Props) {
                                 <p className="text-sm text-gray-500">登記日: {order.registryDate as string}</p>
                                 <p className="text-sm mt-2">需求人數: <span className="font-bold text-blue-600">{order.vacancyCount} 人</span></p>
                             </div>
-                            <Badge variant={order.status === 'certificate_received' ? 'success' : 'warning'}>
+                            <Badge
+                                variant={order.status === 'certificate_received' ? 'default' : 'secondary'}
+                                className={order.status === 'certificate_received' ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'}
+                            >
                                 {order.status === 'certificate_received' ? '已有證明' : '公告中'}
                             </Badge>
                         </div>

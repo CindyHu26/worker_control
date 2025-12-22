@@ -123,22 +123,9 @@ export default function ImmigrationTracker({ workerId }: ImmigrationTrackerProps
                                 label="體檢醫院 (Hospital)"
                                 type="overseas"
                                 value={formData.healthCheckHospital?.name || ''}
-                                // TODO: HospitalSelector expects name string but usually we store ID.
-                                // But here we might want to store/display name. 
-                                // Actually API upsert logic expects healthCheckHospitalId. 
-                                // Need to handle selection mapping properly.
-                                // For now, let's assume HospitalSelector handles name search and we need to look up ID?
-                                // Simplified: Store hospital name in state for selector, separate logic for ID?
-                                // Wait, HospitalSelector `onChange` returns name.
-                                // If I need ID, I might need to update HospitalSelector to return object.
-                                // OR: Let's assume for this MVP we just need to ensure the user picks a valid one.
-                                // But backend needs ID. 
-                                // I will modify HospitalSelector to accept `onSelect` returning full object?
-                                // Let's keep it simple: Use HospitalSelector as is, but logic to find ID?
-                                // No, better to update HospitalSelector to support returning ID.
-                                // I will revisit HospitalSelector in next step if needed. 
-                                // For now, assuming I can just pass name? No, I need ID for relation.
-                                // Let's pause and mark task to update HospitalSelector.
+                                onChange={(name) => {
+                                    handleChange('healthCheckHospital', { ...formData.healthCheckHospital, name });
+                                }}
                                 onSelect={(h) => {
                                     handleChange('healthCheckHospitalId', h.id);
                                     handleChange('healthCheckHospital', { name: h.name, country: h.country });

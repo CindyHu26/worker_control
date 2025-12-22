@@ -45,7 +45,8 @@ export const analyzeDormHealth = async (dormId: string): Promise<HealthResult> =
     let hasRoomAreaMissing = false;
     let hasDensityViolation = false;
 
-    for (const room of dorm.rooms) {
+    for (const r of dorm.rooms) {
+        const room: any = r;
         // Missing Area
         if (!room.area) {
             if (!hasRoomAreaMissing) { // Group into one message

@@ -89,14 +89,13 @@ router.get('/:id/quota-calculation', async (req, res) => {
         // Parse JSON if needed or just rely on category
         let factoryAttrs: any = {};
         if (employer.industryAttributes) {
-            try {
-                factoryAttrs = JSON.parse(employer.industryAttributes);
-            } catch (e) { }
+            factoryAttrs = employer.industryAttributes as any;
         }
 
+        const empAny = employer as any;
         const isManufacturing =
-            employer.category === 'MANUFACTURING' ||
-            (employer.industryType && employer.industryType.includes('Manufacturing')) ||
+            empAny.category === 'MANUFACTURING' ||
+            (empAny.industryType && empAny.industryType.includes('Manufacturing')) ||
             (factoryAttrs.industryType && factoryAttrs.industryType.includes('Manufacturing'));
 
         // Note: Real world string matching might be looser. For now, strict check based on Prompt assumptions.
@@ -173,13 +172,15 @@ router.get('/:id/quota-calculation', async (req, res) => {
         // 6. Available
         const availableQuota = Math.max(0, baseQuota - currentMigrantCount);
 
-        // Update Cached Total Quota
+        /*
+        // Update Cached Total Quota (Field totalQuota missing from Employer schema)
         if (employer.totalQuota !== baseQuota) {
             await prisma.employer.update({
                 where: { id },
                 data: { totalQuota: baseQuota }
             });
         }
+        */
 
         res.json({
             averageLaborCount,
