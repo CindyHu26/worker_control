@@ -1,7 +1,7 @@
 
 import { Router } from 'express';
 import prisma from '../prisma';
-import { updateEmployer, getEmployerSummary } from '../services/employerService';
+import { updateEmployer, getEmployerSummary, createEmployer, searchEmployers, deleteEmployer } from '../services/employerService';
 import { z } from 'zod';
 
 const router = Router();
@@ -135,339 +135,23 @@ const createEmployerSchema = z.object({
 });
 
 // GET /api/employers
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
-        // 1. 接收 category 參數
-        const { q, page = '1', limit = '10', type, category } = req.query;
-
-        const pageNum = parseInt(page as string);
-        const limitNum = parseInt(limit as string);
-        const skip = (pageNum - 1) * limitNum;
-
-        const whereClause: any = {};
-
-        // 2. 實作類別篩選邏輯 (Category Filter)
-        if (category && category !== 'ALL') {
-            if (category === 'MANUFACTURING') {
-                // 製造業：篩選 corporateInfo 裡的 industryType
-                whereClause.corporateInfo = {
-                    industryType: 'MANUFACTURING'
-                };
-            } else if (category === 'HOME_CARE') {
-                // 家庭看護：通常對應 Individual 雇主，或是有 patientName 的
-                whereClause.individualInfo = {
-                    isNot: null
-                };
-            } else if (category === 'INSTITUTION') {
-                // 機構：篩選 corporateInfo 裡的 industryType 為 INSTITUTION
-                whereClause.corporateInfo = {
-                    industryType: 'INSTITUTION'
-                };
-            }
-        }
-
-        // 3. 處理既有的 type 參數 (向下相容)
-        if (type === 'corporate') {
-            whereClause.corporateInfo = { isNot: null };
-        } else if (type === 'individual') {
-            whereClause.individualInfo = { isNot: null };
-        }
-
-        // 4. 關鍵字搜尋 (維持不變)
-        if (q) {
-            const keyword = q as string;
-            whereClause.OR = [
-                { companyName: { contains: keyword, mode: 'insensitive' } },
-                { taxId: { contains: keyword } },
-                { responsiblePerson: { contains: keyword } },
-                { code: { contains: keyword } }, // Added code search
-                { shortName: { contains: keyword, mode: 'insensitive' } } // Added shortName search
-            ];
-        }
-
-        const [total, employers] = await Promise.all([
-            prisma.employer.count({ where: whereClause }),
-            prisma.employer.findMany({
-                where: whereClause,
-                include: {
-                    corporateInfo: true,
-                    individualInfo: true, // 確保前端能讀到個人/家庭看護資訊
-                    _count: {
-                        select: { deployments: { where: { status: 'active' } } }
-                    }
-                },
-                skip,
-                take: limitNum,
-                orderBy: { createdAt: 'desc' } // 確保最新的在最上面
-            })
-        ]);
-
-        // 4. [關鍵修正] 資料格式轉換 (Mapping)
-        const formattedData = employers.map(emp => ({
-            id: emp.id,
-            // 如果是自然人且沒填公司名，回退顯示負責人姓名
-            companyName: emp.companyName || emp.responsiblePerson || '未命名',
-            taxId: emp.taxId,
-            responsiblePerson: emp.responsiblePerson,
-            phoneNumber: emp.phoneNumber,
-
-            // 轉換 IndividualInfo -> homeCareInfo (前端用的欄位)
-            homeCareInfo: emp.individualInfo ? {
-                patients: [{
-                    name: emp.individualInfo.patientName || '',
-                    careAddress: emp.individualInfo.careAddress || ''
-                }]
-            } : undefined,
-
-            // 轉換 CorporateInfo -> institutionInfo (前端用的欄位)
-            institutionInfo: emp.corporateInfo ? {
-                institutionCode: emp.corporateInfo.institutionCode,
-                bedCount: emp.corporateInfo.bedCount
-            } : undefined,
-
-            code: emp.code,
-            shortName: emp.shortName,
-            address: emp.address,
-            email: emp.email,
-            createdAt: emp.createdAt,
-
-            _count: emp._count
-        }));
-
-        res.json({
-            data: formattedData,
-            meta: {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum)
-            }
-        });
+        const result = await searchEmployers(req.query as any);
+        res.json(result);
     } catch (error) {
-        console.error('Search Employers Error:', error);
-        res.status(500).json({ error: 'Failed to search employers' });
+        next(error);
     }
 });
 
+
 // Create Employer
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
     try {
-        // Validate and parse request body with Zod
-        const validatedData = createEmployerSchema.parse(req.body);
-
-        // Determine Employer Type
-        const {
-            taxId,
-            companyName,
-            factoryRegistrationNo,
-            industryType,
-            category: frontendCategory, // Get category from flattened body if present
-            isCorporate: explicitIsCorporate, // Explicit flag from frontend
-            responsiblePerson,
-            phoneNumber,
-            address,
-            invoiceAddress,
-            faxNumber,
-            email,
-            // New Core Fields
-            code, shortName, referrer, taxAddress, healthBillAddress, healthBillZip,
-
-            // Corporate Fields
-            industryCode,
-            factoryAddress,
-            laborInsuranceNo,
-            laborInsuranceId,
-            healthInsuranceUnitNo,
-            healthInsuranceId,
-            institutionCode,
-            bedCount,
-            // 3K5 & Compliance
-            allocationRate,
-            complianceStandard,
-            zeroFeeEffectiveDate,
-            // Individual Fields
-            responsiblePersonIdNo,
-            responsiblePersonDob,
-            responsiblePersonSpouse,
-            responsiblePersonFather,
-            responsiblePersonMother,
-            // New Individual Fields
-            englishName, birthPlace, birthPlaceEn, residenceAddress, residenceZip, residenceCityCode,
-            militaryStatus, militaryStatusEn, idIssueDate, idIssuePlace,
-
-            // Home Care Fields
-            patientName,
-            patientIdNo,
-            careAddress,
-            relationship,
-            // Manufacturing Specific
-            avgDomesticWorkers,
-            // Factories
-            factories,
-            // Initial Recruitment Letters
-            initialRecruitmentLetters
-        } = validatedData;
-
-        // Check uniqueness if taxId is provided
-        if (taxId) {
-            const existing = await prisma.employer.findUnique({
-                where: { taxId }
-            });
-            if (existing) {
-                return res.status(400).json({ message: 'Tax ID / ID Number already exists' });
-            }
-        }
-
-        if (code) {
-            const existing = await prisma.employer.findUnique({
-                where: { code }
-            });
-            if (existing) {
-                return res.status(400).json({ message: 'Employer Code already exists' });
-            }
-        }
-
-        // Infer Type
-        const isCorporate = explicitIsCorporate || !!(
-            factoryRegistrationNo ||
-            industryType ||
-            frontendCategory ||
-            (taxId && taxId.length === 8)
-        );
-        const isIndividual = !!(responsiblePersonIdNo || responsiblePersonSpouse || patientName || taxId?.length === 10);
-
-        // Transactional Create with Nested Recruitment Letters
-        const newEmployer = await prisma.$transaction(async (tx) => {
-            const data: any = {
-                companyName: companyName ? String(companyName) : (responsiblePerson || '未命名雇主'),
-                companyNameEn: validatedData.companyNameEn,
-                taxId: taxId ? String(taxId) : undefined,
-
-                // New Core
-                code, shortName, referrer, taxAddress, healthBillAddress, healthBillZip,
-
-                responsiblePerson: responsiblePerson ? String(responsiblePerson) : undefined,
-                phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
-                address: address ? String(address) : undefined,
-                addressEn: validatedData.addressEn,
-                invoiceAddress: invoiceAddress ? String(invoiceAddress) : undefined,
-                email: email ? String(email) : undefined,
-                contactPerson: validatedData.contactPerson,
-                contactPhone: validatedData.contactPhone,
-
-                // 3K5 & Compliance
-                allocationRate: allocationRate ? Number(allocationRate) : undefined,
-                complianceStandard: complianceStandard || 'NONE',
-                zeroFeeEffectiveDate: zeroFeeEffectiveDate ? new Date(zeroFeeEffectiveDate) : undefined,
-                industryAttributes: validatedData.isExtra ? { isExtra: true } : undefined,
-            };
-
-            if (isCorporate) {
-                data.corporateInfo = {
-                    create: {
-                        factoryRegistrationNo,
-                        industryType,
-                        industryCode: validatedData.industryCode,
-                        factoryAddress,
-                        capital: validatedData.capital ? Number(validatedData.capital) : undefined,
-                        laborInsuranceNo,
-                        laborInsuranceId,
-                        healthInsuranceUnitNo,
-                        healthInsuranceId,
-                        faxNumber,
-                        institutionCode,
-                        bedCount: bedCount,
-                    }
-                };
-            } else if (isIndividual) {
-                data.individualInfo = {
-                    create: {
-                        responsiblePersonIdNo: responsiblePersonIdNo || (taxId?.length === 10 ? taxId : undefined),
-                        responsiblePersonSpouse,
-                        responsiblePersonFather,
-                        responsiblePersonMother,
-                        responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
-                        englishName, birthPlace, birthPlaceEn, residenceAddress, residenceZip, residenceCityCode,
-                        militaryStatus, militaryStatusEn,
-                        idIssueDate: idIssueDate ? new Date(idIssueDate) : undefined,
-                        idIssuePlace,
-
-                        patientName,
-                        patientIdNo,
-                        careAddress,
-                        relationship
-                    }
-                };
-            }
-
-            // Add factories
-            if (factories && factories.length > 0) {
-                data.factories = {
-                    create: factories.map(f => ({
-                        name: f.name,
-                        factoryRegNo: f.factoryRegNo,
-                        address: f.address,
-                        addressEn: f.addressEn,
-                        zipCode: f.zipCode,
-                        cityCode: f.cityCode,
-                        laborCount: f.laborCount,
-                        foreignCount: f.foreignCount
-                    }))
-                };
-            }
-
-            // Add nested recruitment letters if provided
-            if (initialRecruitmentLetters && initialRecruitmentLetters.length > 0) {
-                data.recruitmentLetters = {
-                    create: initialRecruitmentLetters.map(letter => ({
-                        letterNumber: letter.letterNumber,
-                        issueDate: letter.issueDate,
-                        expiryDate: letter.expiryDate,
-                        approvedQuota: letter.approvedQuota,
-                        usedQuota: 0
-                    }))
-                };
-            }
-
-            const emp = await tx.employer.create({
-                data,
-                include: {
-                    recruitmentLetters: true,
-                    factories: true
-                }
-            });
-
-            // If Manufacturing AND domestic workers count provided, create initial labor count record
-            if (isCorporate && industryType === 'MANUFACTURING' && avgDomesticWorkers && avgDomesticWorkers > 0) {
-                const now = new Date();
-                await tx.employerLaborCount.create({
-                    data: {
-                        employerId: emp.id,
-                        year: now.getFullYear(),
-                        month: now.getMonth() + 1,
-                        count: Number(avgDomesticWorkers)
-                    }
-                });
-            }
-
-            return emp;
-        });
-
-        res.status(201).json(newEmployer);
+        const newEmployer = await createEmployer(req.body);
+        res.status(201).json({ data: newEmployer });
     } catch (error) {
-        // Handle Zod validation errors
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({
-                message: "資料驗證失敗",
-                errors: error.issues.map(err => ({
-                    field: err.path.join('.'),
-                    message: err.message
-                }))
-            });
-        }
-
-        console.error('Create Employer Error:', error);
-        res.status(500).json({ message: 'Failed to create employer', error: String(error) });
+        next(error); // Global error handler will process ZodError, DuplicateResourceError, etc.
     }
 });
 
@@ -656,50 +340,13 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/employers/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
     try {
         const { id } = req.params;
-
-        // Check if employer exists
-        const employer = await prisma.employer.findUnique({
-            where: { id },
-            include: {
-                _count: {
-                    select: {
-                        deployments: true,
-                        recruitmentLetters: true
-                    }
-                }
-            }
-        });
-
-        if (!employer) {
-            return res.status(404).json({ error: 'Employer not found' });
-        }
-
-        // Prevent deletion if there are active deployments
-        const activeDeployments = await prisma.deployment.count({
-            where: {
-                employerId: id,
-                status: { in: ['active', 'pending'] }
-            }
-        });
-
-        if (activeDeployments > 0) {
-            return res.status(400).json({
-                error: `Cannot delete employer with ${activeDeployments} active deployment(s). Please terminate all deployments first.`
-            });
-        }
-
-        // Delete employer (cascade will handle related records)
-        await prisma.employer.delete({
-            where: { id }
-        });
-
+        await deleteEmployer(id);
         res.json({ success: true, message: 'Employer deleted successfully' });
     } catch (error) {
-        console.error('Delete Employer Error:', error);
-        res.status(500).json({ error: 'Failed to delete employer' });
+        next(error); // ResourceNotFoundError, ValidationError handled by global handler
     }
 });
 

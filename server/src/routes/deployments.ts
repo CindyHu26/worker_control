@@ -1,13 +1,13 @@
 
 import { Router } from 'express';
 import prisma from '../prisma';
+import { quotaService } from '../services/quotaService';
+import { ResourceNotFoundError, ValidationError, BusinessRuleError } from '../types/errors';
 
 const router = Router();
 
-import { quotaService } from '../services/quotaService';
-
 // POST /api/deployments
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
     try {
         const {
             workerId,
@@ -18,7 +18,7 @@ router.post('/', async (req, res) => {
         } = req.body;
 
         if (!workerId || !employerId || !startDate) {
-            return res.status(400).json({ error: 'Missing required fields' });
+            throw new ValidationError('Missing required fields: workerId, employerId, startDate');
         }
 
         const result = await prisma.$transaction(async (tx) => {
@@ -26,26 +26,31 @@ router.post('/', async (req, res) => {
             const worker = await tx.worker.findUnique({
                 where: { id: workerId }
             });
-            if (!worker) throw new Error('Worker not found');
+            if (!worker) {
+                throw new ResourceNotFoundError('Worker', workerId);
+            }
 
             // 1. Validate Recruitment Letter (Strict Check)
             if (recruitmentLetterId) {
                 // Determine effective used count based on policy
                 await quotaService.checkQuotaAvailability(recruitmentLetterId, worker.gender, tx);
 
-                // Verify employer ownership logic still applies inside check? 
-                // checkQuotaAvailability checks existence. 
-                // I should verify ownership here or add it to service. 
-                // Stick to checking ownership here.
+                // Verify employer ownership
                 const validLetter = await tx.employerRecruitmentLetter.findUnique({
                     where: { id: recruitmentLetterId }
                 });
                 if (validLetter && validLetter.employerId !== employerId) {
-                    throw new Error('Recruitment Letter does not belong to this employer');
+                    throw new BusinessRuleError(
+                        'Recruitment Letter does not belong to this employer',
+                        { recruitmentLetterId, expectedEmployerId: employerId, actualEmployerId: validLetter.employerId }
+                    );
                 }
             }
 
-            // 2. Validate Worker Availability (Double check)
+            // 2. Validate Worker Availability with Row Lock (防止重複部署)
+            // Add row-level lock to prevent race conditions
+            await tx.$executeRaw`SELECT 1 FROM "workers" WHERE id = ${workerId} FOR UPDATE`;
+
             const activeDeployment = await tx.deployment.findFirst({
                 where: {
                     workerId,
@@ -54,7 +59,10 @@ router.post('/', async (req, res) => {
             });
 
             if (activeDeployment) {
-                throw new Error('Worker already has an active deployment');
+                throw new BusinessRuleError(
+                    'Worker already has an active deployment',
+                    { workerId, activeDeploymentId: activeDeployment.id }
+                );
             }
 
             // 3. Create Deployment
@@ -85,13 +93,13 @@ router.post('/', async (req, res) => {
             return newDeployment;
         });
 
-        res.status(201).json(result);
+        res.status(201).json({ data: result });
 
     } catch (error: any) {
-        console.error('Create Deployment Error:', error);
-        res.status(400).json({ error: error.message || 'Failed to create deployment' });
+        next(error); // Pass to global error handler
     }
 });
+
 
 // PATCH /api/deployments/:id
 router.patch('/:id', async (req, res) => {

@@ -1,4 +1,5 @@
 import prisma from '../prisma';
+import { QuotaExceededError, ResourceNotFoundError, ValidationError } from '../types/errors';
 
 export const quotaService = {
     /**
@@ -11,7 +12,12 @@ export const quotaService = {
      */
     async checkQuotaAvailability(letterId: string, workerGender: string | null | undefined, tx: any) {
         // enforce transaction context
-        if (!tx) throw new Error('Transaction context required for quota check');
+        if (!tx || typeof tx.$executeRawUnsafe !== 'function') {
+            throw new ValidationError(
+                '[QuotaService] Must be called within Prisma transaction context',
+                { service: 'quotaService', method: 'checkQuotaAvailability' }
+            );
+        }
 
         // LOCK the letter row to prevent race conditions
         // This ensures no other transaction can read/update this letter until this one finishes
@@ -25,7 +31,7 @@ export const quotaService = {
         });
 
         if (!letter) {
-            throw new Error('Recruitment Letter not found');
+            throw new ResourceNotFoundError('Recruitment Letter', letterId);
         }
 
         const isCircular = letter.canCirculate;
@@ -44,7 +50,16 @@ export const quotaService = {
         });
 
         if (currentUsage >= letter.approvedQuota) {
-            throw new Error(`入國通知人數已滿 (Quota Exceeded) - Approved: ${letter.approvedQuota}, Used: ${currentUsage}`);
+            throw new QuotaExceededError(
+                `入國通知人數已滿 (Quota Exceeded) - Approved: ${letter.approvedQuota}, Used: ${currentUsage}`,
+                {
+                    letterId,
+                    letterNumber: letter.letterNumber,
+                    approvedQuota: letter.approvedQuota,
+                    currentUsage,
+                    isCircular
+                }
+            );
         }
 
         // Gender Specific Check
@@ -59,7 +74,15 @@ export const quotaService = {
                     }
                 });
                 if (maleUsage >= letter.quotaMale) {
-                    throw new Error('男性名額已滿 (Male Quota Exceeded)');
+                    throw new QuotaExceededError(
+                        '男性名額已滿 (Male Quota Exceeded)',
+                        {
+                            letterId,
+                            letterNumber: letter.letterNumber,
+                            quotaMale: letter.quotaMale,
+                            maleUsage
+                        }
+                    );
                 }
             } else if (workerGender === 'female' && letter.quotaFemale > 0) {
                 const femaleUsage = await tx.deployment.count({
@@ -70,7 +93,15 @@ export const quotaService = {
                     }
                 });
                 if (femaleUsage >= letter.quotaFemale) {
-                    throw new Error('女性名額已滿 (Female Quota Exceeded)');
+                    throw new QuotaExceededError(
+                        '女性名額已滿 (Female Quota Exceeded)',
+                        {
+                            letterId,
+                            letterNumber: letter.letterNumber,
+                            quotaFemale: letter.quotaFemale,
+                            femaleUsage
+                        }
+                    );
                 }
             }
         }
@@ -108,3 +139,4 @@ export const quotaService = {
         });
     }
 };
+

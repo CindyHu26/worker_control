@@ -1,22 +1,27 @@
 import express from 'express';
 import cors from 'cors';
 import routes from './routes';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import requestLoggerMiddleware from './middleware/requestLogger';
+import logger from './utils/logger';
 
 const app = express();
 
-app.use(cors({
-    origin: 'http://localhost:3000', // 前端網址
-    credentials: true // 必須開啟，因為您前端用了 credentials: 'include'
-}));
+app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+app.use(express.static('public'));
+
+// HTTP Request Logging (before routes)
+app.use(requestLoggerMiddleware);
 
 // API Routes
 app.use('/api', routes);
 
-// Health Check
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
-});
+
+// 404 Handler (Must be AFTER all routes)
+app.use(notFoundHandler);
+
+// Global Error Handler (Must be LAST)
+app.use(errorHandler);
 
 export default app;

@@ -1,5 +1,18 @@
 import { z } from 'zod';
 import prisma from '../prisma';
+import {
+    CreateEmployerInputSchema,
+    EmployerSearchParamsSchema,
+    type CreateEmployerInput,
+    type EmployerSearchParams,
+    type EmployerListItem,
+    type PaginationMeta
+} from '../types/dtos';
+import {
+    DuplicateResourceError,
+    ResourceNotFoundError,
+    ValidationError
+} from '../types/errors';
 
 // 定義結構，確保 JSON 裡面不會被亂存垃圾
 // Define schemas for industry-specific attributes
@@ -17,6 +30,329 @@ const CaretakerAttrs = z.object({
     careAddress: z.string().optional(),
     relationship: z.string().optional(),
 });
+
+/**
+ * Create New Employer
+ * Handles both corporate and individual employers with nested relations
+ */
+export async function createEmployer(input: CreateEmployerInput) {
+    // Validate input
+    const validatedData = CreateEmployerInputSchema.parse(input);
+
+    // Check for duplicate taxId
+    if (validatedData.taxId) {
+        const existing = await prisma.employer.findUnique({
+            where: { taxId: validatedData.taxId }
+        });
+        if (existing) {
+            throw new DuplicateResourceError('taxId', validatedData.taxId);
+        }
+    }
+
+    // Check for duplicate code
+    if (validatedData.code) {
+        const existing = await prisma.employer.findUnique({
+            where: { code: validatedData.code }
+        });
+        if (existing) {
+            throw new DuplicateResourceError('code', validatedData.code);
+        }
+    }
+
+    // Determine employer type
+    const isCorporate = !!(
+        validatedData.factoryRegistrationNo ||
+        validatedData.industryType ||
+        validatedData.category ||
+        (validatedData.taxId && validatedData.taxId.length === 8)
+    );
+
+    const isIndividual = !!(
+        validatedData.responsiblePersonIdNo ||
+        validatedData.responsiblePersonSpouse ||
+        validatedData.patientName ||
+        (validatedData.taxId && validatedData.taxId.length === 10)
+    );
+
+    // Create employer in transaction
+    const newEmployer = await prisma.$transaction(async (tx) => {
+        const data: any = {
+            companyName: validatedData.companyName || validatedData.responsiblePerson || '未命名雇主',
+            companyNameEn: validatedData.companyNameEn,
+            taxId: validatedData.taxId,
+            code: validatedData.code,
+            shortName: validatedData.shortName,
+            referrer: validatedData.referrer,
+            taxAddress: validatedData.taxAddress,
+            healthBillAddress: validatedData.healthBillAddress,
+            healthBillZip: validatedData.healthBillZip,
+            responsiblePerson: validatedData.responsiblePerson,
+            phoneNumber: validatedData.phoneNumber,
+            address: validatedData.address,
+            addressEn: validatedData.addressEn,
+            invoiceAddress: validatedData.invoiceAddress,
+            email: validatedData.email,
+            contactPerson: validatedData.contactPerson,
+            contactPhone: validatedData.contactPhone,
+            allocationRate: validatedData.allocationRate ? Number(validatedData.allocationRate) : undefined,
+            complianceStandard: validatedData.complianceStandard || 'NONE',
+            zeroFeeEffectiveDate: validatedData.zeroFeeEffectiveDate
+                ? new Date(validatedData.zeroFeeEffectiveDate)
+                : undefined
+        };
+
+        // Add corporate info if applicable
+        if (isCorporate) {
+            data.corporateInfo = {
+                create: {
+                    factoryRegistrationNo: validatedData.factoryRegistrationNo,
+                    industryType: validatedData.industryType,
+                    industryCode: validatedData.industryCode,
+                    factoryAddress: validatedData.factoryAddress,
+                    capital: validatedData.capital,
+                    laborInsuranceNo: validatedData.laborInsuranceNo,
+                    laborInsuranceId: validatedData.laborInsuranceId,
+                    healthInsuranceUnitNo: validatedData.healthInsuranceUnitNo,
+                    healthInsuranceId: validatedData.healthInsuranceId,
+                    institutionCode: validatedData.institutionCode,
+                    bedCount: validatedData.bedCount
+                }
+            };
+        }
+
+        // Add individual info if applicable
+        if (isIndividual) {
+            data.individualInfo = {
+                create: {
+                    responsiblePersonIdNo: validatedData.responsiblePersonIdNo ||
+                        (validatedData.taxId?.length === 10 ? validatedData.taxId : undefined),
+                    responsiblePersonSpouse: validatedData.responsiblePersonSpouse,
+                    responsiblePersonFather: validatedData.responsiblePersonFather,
+                    responsiblePersonMother: validatedData.responsiblePersonMother,
+                    responsiblePersonDob: validatedData.responsiblePersonDob
+                        ? new Date(validatedData.responsiblePersonDob)
+                        : undefined,
+                    englishName: validatedData.englishName,
+                    birthPlace: validatedData.birthPlace,
+                    birthPlaceEn: validatedData.birthPlaceEn,
+                    residenceAddress: validatedData.residenceAddress,
+                    residenceZip: validatedData.residenceZip,
+                    residenceCityCode: validatedData.residenceCityCode,
+                    militaryStatus: validatedData.militaryStatus,
+                    militaryStatusEn: validatedData.militaryStatusEn,
+                    idIssueDate: validatedData.idIssueDate
+                        ? new Date(validatedData.idIssueDate)
+                        : undefined,
+                    idIssuePlace: validatedData.idIssuePlace,
+                    patientName: validatedData.patientName,
+                    patientIdNo: validatedData.patientIdNo,
+                    careAddress: validatedData.careAddress,
+                    relationship: validatedData.relationship
+                }
+            };
+        }
+
+        // Add factories if provided
+        if (validatedData.factories && validatedData.factories.length > 0) {
+            data.factories = {
+                create: validatedData.factories.map(f => ({
+                    name: f.name,
+                    factoryRegNo: f.factoryRegNo,
+                    address: f.address,
+                    addressEn: f.addressEn,
+                    zipCode: f.zipCode,
+                    cityCode: f.cityCode,
+                    laborCount: f.laborCount,
+                    foreignCount: f.foreignCount
+                }))
+            };
+        }
+
+        // Add initial recruitment letters if provided
+        if (validatedData.initialRecruitmentLetters && validatedData.initialRecruitmentLetters.length > 0) {
+            data.recruitmentLetters = {
+                create: validatedData.initialRecruitmentLetters.map(letter => ({
+                    letterNumber: letter.letterNumber,
+                    issueDate: letter.issueDate,
+                    expiryDate: letter.expiryDate,
+                    approvedQuota: letter.approvedQuota,
+                    usedQuota: 0,
+                    validUntil: letter.expiryDate // Default validUntil to expiryDate
+                }))
+            };
+        }
+
+        // Create employer
+        const employer = await tx.employer.create({
+            data,
+            include: {
+                corporateInfo: true,
+                individualInfo: true,
+                factories: true,
+                recruitmentLetters: true
+            }
+        });
+
+        // Create initial labor count if manufacturing employer with domestic workers
+        if (isCorporate &&
+            validatedData.industryType === 'MANUFACTURING' &&
+            validatedData.avgDomesticWorkers &&
+            validatedData.avgDomesticWorkers > 0
+        ) {
+            const now = new Date();
+            await tx.employerLaborCount.create({
+                data: {
+                    employerId: employer.id,
+                    year: now.getFullYear(),
+                    month: now.getMonth() + 1,
+                    count: validatedData.avgDomesticWorkers
+                }
+            });
+        }
+
+        return employer;
+    });
+
+    return newEmployer;
+}
+
+/**
+ * Search Employers with Pagination
+ */
+export async function searchEmployers(params: EmployerSearchParams): Promise<{
+    data: EmployerListItem[];
+    meta: PaginationMeta;
+}> {
+    const validated = EmployerSearchParamsSchema.parse(params);
+    const { q, page, limit, type, category } = validated;
+
+    const skip = (page - 1) * limit;
+    const whereClause: any = {};
+
+    // Category filter
+    if (category && category !== 'ALL') {
+        if (category === 'MANUFACTURING') {
+            whereClause.corporateInfo = { industryType: 'MANUFACTURING' };
+        } else if (category === 'HOME_CARE') {
+            whereClause.individualInfo = { isNot: null };
+        } else if (category === 'INSTITUTION') {
+            whereClause.corporateInfo = { industryType: 'INSTITUTION' };
+        }
+    }
+
+    // Type filter
+    if (type === 'corporate') {
+        whereClause.corporateInfo = { isNot: null };
+    } else if (type === 'individual') {
+        whereClause.individualInfo = { isNot: null };
+    }
+
+    // Keyword search
+    if (q) {
+        whereClause.OR = [
+            { companyName: { contains: q, mode: 'insensitive' } },
+            { taxId: { contains: q } },
+            { responsiblePerson: { contains: q } },
+            { code: { contains: q } },
+            { shortName: { contains: q, mode: 'insensitive' } }
+        ];
+    }
+
+    const [total, employers] = await Promise.all([
+        prisma.employer.count({ where: whereClause }),
+        prisma.employer.findMany({
+            where: whereClause,
+            include: {
+                corporateInfo: true,
+                individualInfo: true,
+                _count: {
+                    select: { deployments: { where: { status: 'active' } } }
+                }
+            },
+            skip,
+            take: limit,
+            orderBy: { createdAt: 'desc' }
+        })
+    ]);
+
+    // Map to EmployerListItem
+    const data: EmployerListItem[] = employers.map(emp => ({
+        id: emp.id,
+        code: emp.code,
+        shortName: emp.shortName,
+        companyName: emp.companyName || emp.responsiblePerson || '未命名',
+        taxId: emp.taxId,
+        responsiblePerson: emp.responsiblePerson,
+        phoneNumber: emp.phoneNumber,
+        address: emp.address,
+        email: emp.email,
+        _count: emp._count,
+        homeCareInfo: emp.individualInfo ? {
+            patients: [{
+                name: emp.individualInfo.patientName || '',
+                careAddress: emp.individualInfo.careAddress || ''
+            }]
+        } : undefined,
+        institutionInfo: emp.corporateInfo ? {
+            institutionCode: emp.corporateInfo.institutionCode,
+            bedCount: emp.corporateInfo.bedCount
+        } : undefined,
+        createdAt: emp.createdAt.toISOString()
+    }));
+
+    return {
+        data,
+        meta: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        }
+    };
+}
+
+/**
+ * Delete Employer
+ * Checks for active deployments before deletion
+ */
+export async function deleteEmployer(id: string): Promise<void> {
+    // Check if employer exists
+    const employer = await prisma.employer.findUnique({
+        where: { id },
+        include: {
+            _count: {
+                select: {
+                    deployments: true,
+                    recruitmentLetters: true
+                }
+            }
+        }
+    });
+
+    if (!employer) {
+        throw new ResourceNotFoundError('Employer', id);
+    }
+
+    // Check for active deployments
+    const activeDeployments = await prisma.deployment.count({
+        where: {
+            employerId: id,
+            status: { in: ['active', 'pending'] }
+        }
+    });
+
+    if (activeDeployments > 0) {
+        throw new ValidationError(
+            `Cannot delete employer with ${activeDeployments} active deployment(s). Please terminate all deployments first.`,
+            { activeDeployments }
+        );
+    }
+
+    // Delete employer (cascade will handle related records)
+    await prisma.employer.delete({
+        where: { id }
+    });
+}
 
 // 存檔時 (Create/Update)
 export async function updateEmployer(id: string, data: any) {
