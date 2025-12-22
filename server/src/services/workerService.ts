@@ -1,4 +1,4 @@
-
+import { PrismaClient, Prisma } from '@prisma/client';
 import prisma from '../prisma';
 
 export const renewPassport = async (workerId: string, newPassportData: {
@@ -7,7 +7,7 @@ export const renewPassport = async (workerId: string, newPassportData: {
     expiryDate: Date | string,
     issuePlace?: string
 }) => {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // 1. Archive current passport
         await tx.workerPassport.updateMany({
             where: { workerId, isCurrent: true },
@@ -54,7 +54,7 @@ export const renewArc = async (workerId: string, newArcData: {
     issueDate: Date | string,
     expiryDate: Date | string
 }) => {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // 1. Archive current ARC
         await tx.workerArc.updateMany({
             where: { workerId, isCurrent: true },
@@ -147,7 +147,7 @@ export const getWorkerDashboardData = async (workerId: string) => {
             // 1. Core Relations
             passports: { where: { isCurrent: true } },
             arcs: { where: { isCurrent: true } },
-            
+
             // 2. Fetch Active Deployment
             deployments: {
                 where: { status: 'active' },
@@ -155,12 +155,11 @@ export const getWorkerDashboardData = async (workerId: string) => {
                 include: {
                     employer: true,
                     recruitmentLetter: true,
-                    entryPermit: true,
-                    employmentPermit: {
-                        orderBy: { issueDate: 'desc' },
-                        take: 1
-                    },
-                    timelines: true
+                    permitDetails: {
+                        include: {
+                            permitDocument: true
+                        }
+                    }
                 }
             }
         }
@@ -171,6 +170,11 @@ export const getWorkerDashboardData = async (workerId: string) => {
     const currentDeployment = worker.deployments[0] || null;
     const currentPassport = worker.passports[0] || null;
     const currentArc = worker.arcs[0] || null;
+
+    // Helper to find specific permit documents
+    // Assuming we just want to display SOME permit info, or we need specific types logic which isn't fully clear without PermitDocument types enum.
+    // For now, let's grab the first available permit detail's document.
+    const activePermit = currentDeployment?.permitDetails?.[0]?.permitDocument;
 
     // 3. Flatten for Frontend "Old System" view
     return {
@@ -188,14 +192,14 @@ export const getWorkerDashboardData = async (workerId: string) => {
         job: {
             employerName: currentDeployment?.employer?.companyName,
             workAddress: currentDeployment?.employer?.address || currentDeployment?.jobDescription,
-            salary: (currentDeployment as any)?.basicSalary, // Casting due to potential schema mismatch found in research
+            salary: currentDeployment?.basicSalary ? Number(currentDeployment.basicSalary) : 0,
             jobType: currentDeployment?.jobType,
         },
         permits: {
             recruitmentNo: currentDeployment?.recruitmentLetter?.letterNumber,
-            entryPermitNo: (currentDeployment as any)?.entryPermit?.permitNo,
-            employmentPermitNo: (currentDeployment as any)?.employmentPermit?.permitNumber,
-            employmentPermitDate: (currentDeployment as any)?.employmentPermit?.issueDate,
+            entryPermitNo: '', // Entry Permit logic needs 'PermitDocument' with type 'ENTRY'?
+            employmentPermitNo: activePermit?.permitNumber, // Most recent permit
+            employmentPermitDate: activePermit?.issueDate,
         },
         dates: {
             entryDate: currentDeployment?.entryDate,
@@ -203,4 +207,5 @@ export const getWorkerDashboardData = async (workerId: string) => {
             endDate: currentDeployment?.endDate,
         }
     };
-};
+}
+

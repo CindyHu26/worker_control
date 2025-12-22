@@ -1,16 +1,14 @@
 import cron from 'node-cron';
 import prisma from '../prisma';
-import type { WorkerTimeline, Deployment, Worker, Employer } from '@prisma/client';
+import type { Deployment, Worker, Employer } from '@prisma/client';
 
 // Batch processing configuration to prevent memory overload
 const BATCH_SIZE = 100; // Process 100 records at a time
 
-// Type for WorkerTimeline with nested relations
-type TimelineWithRelations = WorkerTimeline & {
-    deployment: Deployment & {
-        worker: Worker;
-        employer: Employer;
-    };
+// Type for Deployment with nested relations
+type DeploymentWithRelations = Deployment & {
+    worker: Worker;
+    employer: Employer;
 };
 
 /**
@@ -49,7 +47,7 @@ export async function createNotification(
 
 /**
  * Run Daily Checks
- * Scans WorkerTimeline for upcoming expiries
+ * Scans Active Deployments (and Workers) for upcoming expiries
  */
 export async function runDailyChecks() {
     console.log('[Scheduler] Running daily checks...');
@@ -63,29 +61,23 @@ export async function runDailyChecks() {
     let processedCount = 0;
 
     while (true) {
-        const batch: TimelineWithRelations[] = await prisma.workerTimeline.findMany({
+        const batch: DeploymentWithRelations[] = await prisma.deployment.findMany({
             take: BATCH_SIZE,
             skip: cursor ? 1 : 0,
             cursor: cursor ? { id: cursor } : undefined,
             where: {
-                deployment: {
-                    status: 'active'
-                }
+                status: 'active'
             },
             include: {
-                deployment: {
-                    include: {
-                        worker: true,
-                        employer: true,
-                    }
-                }
+                worker: true,
+                employer: true,
             },
             orderBy: { id: 'asc' }
         });
 
         if (batch.length === 0) break;
 
-        const workerIds = batch.map((tl: TimelineWithRelations) => tl.deployment.workerId);
+        const workerIds = batch.map((d) => d.workerId);
         const assignments = await prisma.serviceAssignment.findMany({
             where: {
                 workerId: { in: workerIds },
@@ -99,9 +91,9 @@ export async function runDailyChecks() {
 
         let adminUserId: string | undefined;
 
-        for (const tl of batch) {
-            const { deployment } = tl;
-            const workerName = deployment.worker.englishName;
+        for (const deployment of batch) {
+            const { worker } = deployment;
+            const workerName = worker.englishName;
 
             let targetUserId = assignmentMap.get(deployment.workerId);
 
@@ -137,20 +129,20 @@ export async function runDailyChecks() {
                 }
             };
 
-            await checkDate(tl.residencePermitExpiry, 'ARC');
-            await checkDate(tl.passportExpiry, 'Passport');
-            await checkDate(tl.medCheck6moDeadline, '6-Mo Med Check');
-            await checkDate(tl.medCheck18moDeadline, '18-Mo Med Check');
-            await checkDate(tl.medCheck30moDeadline, '30-Mo Med Check');
+            await checkDate(worker.residencePermitExpiry, 'ARC');
+            await checkDate(worker.passportExpiry, 'Passport');
+            await checkDate(worker.medCheck6moDeadline, '6-Mo Med Check');
+            await checkDate(worker.medCheck18moDeadline, '18-Mo Med Check');
+            await checkDate(worker.medCheck30moDeadline, '30-Mo Med Check');
         }
 
         processedCount += batch.length;
         cursor = batch[batch.length - 1].id;
-        console.log(`[Scheduler] Processed ${processedCount} worker timelines...`);
+        console.log(`[Scheduler] Processed ${processedCount} deployments...`);
     }
 
     // CRM Lead checks removed for now as Lead model is missing in schema
-    console.log(`[Scheduler] Completed processing ${processedCount} worker timelines.`);
+    console.log(`[Scheduler] Completed processing ${processedCount} deployments.`);
 }
 
 // Initialize Cron

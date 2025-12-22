@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["clientExtensions"]
 }
 
 datasource db {
@@ -271,6 +272,14 @@ model Employer {
   industryRecognitions IndustryRecognition[]
   recruitmentProofs    RecruitmentProof[]
 
+  // Soft Delete
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Agency Relation
+  agencyId String?        @map("agency_id") @db.Uuid
+  agency   AgencyCompany? @relation(fields: [agencyId], references: [id])
+
   @@map("employers")
 }
 
@@ -296,6 +305,10 @@ model Lead {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Soft Delete
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
 
   @@map("leads")
 }
@@ -425,6 +438,12 @@ model Worker {
   overseasContactPhone  String? @map("overseas_contact_phone") @db.VarChar(50)
   overseasFamilyContact String? @map("overseas_family_contact") @db.VarChar(100)
 
+  // [New] Social & Emergency
+  lineId                String? @map("line_id") @db.VarChar(50)
+  religion              String? @db.VarChar(50)
+  emergencyContactName  String? @map("emergency_contact_name") @db.VarChar(50)
+  emergencyContactPhone String? @map("emergency_contact_phone") @db.VarChar(50)
+
   bankAccountNo String?  @map("bank_account_no") @db.VarChar(50)
   bankCode      String?  @map("bank_code") @db.VarChar(20)
   loanBank      String?  @map("loan_bank") @db.VarChar(50)
@@ -453,6 +472,26 @@ model Worker {
   insurances          WorkerInsurance[]
   addressHistory      WorkerAddressHistory[]
   interviewCandidates InterviewCandidate[]
+  payrolls            PayrollRecord[]
+
+  // Soft Delete
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Foreign Agency
+  foreignAgencyId String?        @map("foreign_agency_id") @db.Uuid
+  foreignAgency   ForeignAgency? @relation(fields: [foreignAgencyId], references: [id])
+
+  // New Fields for Scheduler
+  residencePermitExpiry DateTime? @map("residence_permit_expiry") @db.Date
+  passportExpiry        DateTime? @map("passport_expiry") @db.Date
+  medCheck6moDeadline   DateTime? @map("med_check_6mo_deadline") @db.Date
+  medCheck18moDeadline  DateTime? @map("med_check_18mo_deadline") @db.Date
+  medCheck30moDeadline  DateTime? @map("med_check_30mo_deadline") @db.Date
+
+  // Dormitory Bed
+  bedId String? @unique @map("bed_id") @db.Uuid
+  bed   DormitoryBed? @relation(fields: [bedId], references: [id])
 
   @@map("workers")
 }
@@ -539,6 +578,10 @@ model EmployerRecruitmentLetter {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  // Soft Delete
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+
   @@map("employer_recruitment_letters")
 }
 
@@ -550,6 +593,7 @@ model WorkerPassport {
   expiryDate     DateTime @map("expiry_date") @db.Date
   issuePlace     String?  @map("issue_place") @db.VarChar(100)
   isCurrent      Boolean  @default(false) @map("is_current")
+  isVerified     Boolean  @default(false) @map("is_verified") // Added for verification
 
   worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
@@ -566,6 +610,7 @@ model WorkerArc {
   issueDate  DateTime @map("issue_date") @db.Date
   expiryDate DateTime @map("expiry_date") @db.Date
   isCurrent  Boolean  @default(false) @map("is_current")
+  isVerified Boolean  @default(false) @map("is_verified") // Added for verification
 
   worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
@@ -611,6 +656,11 @@ model Deployment {
   terminationNotes  String? @map("termination_notes") @db.Text
 
 
+  // Contract / Salary Info
+  basicSalary   Decimal? @map("basic_salary") @db.Decimal(10, 2)
+  foodAmount    Decimal? @map("food_amount") @db.Decimal(10, 2)
+  foodStatus    String?  @map("food_status") @db.VarChar(50)
+
   // [New] Specific Factory Location
   factoryId         String?          @map("factory_id") @db.Uuid
   factory           EmployerFactory? @relation(fields: [factoryId], references: [id])
@@ -623,10 +673,14 @@ model Deployment {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  timelines     WorkerTimeline?
   healthChecks  HealthCheck[]
   permitDetails WorkerPermitDetail[]
   insurances    WorkerInsurance[]
+
+
+  // Soft Delete
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
 
   @@map("deployments")
 }
@@ -727,35 +781,7 @@ model WorkerPermitDetail {
   @@map("worker_permit_details")
 }
 
-model WorkerTimeline {
-  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  deploymentId String @unique @map("deployment_id") @db.Uuid
 
-  // 1. Entry Phase Deadlines
-  entryMedCheckDeadline DateTime? @map("entry_med_check_deadline") @db.Date
-  empPermitDeadline     DateTime? @map("emp_permit_deadline") @db.Date
-  arcDeadline           DateTime? @map("arc_deadline") @db.Date
-
-  // 2. Regular Checks (Legacy names preserved, mapped to specific months)
-  medCheck6moDeadline  DateTime? @map("med_check_6mo_deadline") @db.Date // 6 months
-  medCheck18moDeadline DateTime? @map("med_check_18mo_deadline") @db.Date // 18 months
-  medCheck30moDeadline DateTime? @map("med_check_30mo_deadline") @db.Date // 30 months
-
-  // 3. Document Expiries (Data driven)
-  residencePermitExpiry DateTime? @map("residence_permit_expiry") @db.Date
-  passportExpiry        DateTime? @map("passport_expiry") @db.Date
-
-  // 4. Renewal Phase
-  renewalWindowStart DateTime? @map("renewal_window_start") @db.Date // End - 4 months
-  renewalWindowEnd   DateTime? @map("renewal_window_end") @db.Date // End - 2 months
-
-  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-
-  @@map("worker_timelines")
-}
 
 model HealthCheck {
   id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -861,6 +887,7 @@ model JobOrder {
   expectedArrivalDate      DateTime?      @map("expected_arrival_date") @db.Date
   localRecruitmentDeadline DateTime?      @map("local_recruitment_deadline") @db.Date
   status                   JobOrderStatus @default(open)
+  jobCenter                String?        @map("job_center") @db.VarChar(100)
 
   employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
 
@@ -874,6 +901,10 @@ model JobOrder {
 
   // Relations
   interviews Interview[]
+
+  // Soft Delete
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
 
   @@map("job_orders")
 }
@@ -1068,3 +1099,113 @@ model DocumentTemplate {
 
   @@map("document_templates")
 }
+
+model AgencyCompany {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(100)
+  licenseNo String?  @map("license_no") @db.VarChar(50)
+  taxId     String?  @map("tax_id") @db.VarChar(20)
+  address   String?  @db.Text
+  phone     String?  @db.VarChar(20)
+  fax       String?  @db.VarChar(20)
+  email     String?  @db.VarChar(100)
+  responsiblePerson String? @map("responsible_person") @db.VarChar(50)
+  isDefault Boolean  @default(false) @map("is_default")
+
+  employers Employer[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("agency_companies")
+}
+
+model ForeignAgency {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(100)
+  code      String?  @db.VarChar(50)
+  address   String?  @db.Text
+  country   String?  @db.VarChar(50)
+  
+  workers   Worker[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("foreign_agencies")
+}
+
+
+model PayrollRecord {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId  String   @map("worker_id") @db.Uuid
+  worker    Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  
+  payDate      DateTime @map("pay_date") @db.Date
+  salaryAmount Decimal  @map("salary_amount") @db.Decimal(10, 2)
+  bonusAmount  Decimal  @map("bonus_amount") @db.Decimal(10, 2)
+  taxWithheld  Decimal  @map("tax_withheld") @db.Decimal(10, 2)
+  
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("payroll_records")
+}
+
+
+model Dormitory {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String @db.VarChar(100)
+  address        String? @db.Text
+  landlordName   String? @map("landlord_name") @db.VarChar(50)
+  accommodationType String? @map("accommodation_type") @db.VarChar(50)
+  totalArea      Decimal? @map("total_area") @db.Decimal(10, 2)
+  capacity       Int?     @default(0)
+  bathroomCount  Int?     @map("bathroom_count") @default(0)
+  waterHeaterCount Int?   @map("water_heater_count") @default(0)
+  hasFireExtinguisher Boolean @map("has_fire_extinguisher") @default(false)
+  hasFireAlarm   Boolean @map("has_fire_alarm") @default(false)
+  fireSafetyExpiry DateTime? @map("fire_safety_expiry") @db.Date
+
+  rooms          DormitoryRoom[]
+
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("dormitories")
+}
+
+
+model DormitoryRoom {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  dormitoryId String   @map("dormitory_id") @db.Uuid
+  roomNumber  String   @map("room_number") @db.VarChar(20)
+  capacity    Int      @default(0)
+  
+  dormitory   Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
+  beds        DormitoryBed[]
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("dormitory_rooms")
+}
+
+model DormitoryBed {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roomId    String   @map("room_id") @db.Uuid
+  bedCode   String   @map("bed_code") @db.VarChar(20)
+  isOccupied Boolean @default(false) @map("is_occupied")
+
+  room      DormitoryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  worker    Worker?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("dormitory_beds")
+}
+
+
+
+

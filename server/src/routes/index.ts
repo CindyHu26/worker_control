@@ -1,4 +1,4 @@
-import { contractsRouter } from './contracts';
+
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 // Import specific route modules here
@@ -43,7 +43,7 @@ import workerDocumentRoutes from './workerDocuments';
 
 const router = Router();
 
-router.use('/contracts', contractsRouter);
+
 
 router.use('/auth', authRoutes);
 

@@ -84,7 +84,7 @@ export const storageService = {
         for (const attachment of attachments) {
             try {
                 // Get stream from MinIO
-                const dataStream = await minioClient.getObject(attachment.bucketName, attachment.storageKey);
+                const dataStream = await minioClient.getObject(BUCKET_NAME, attachment.filePath);
 
                 // Append stream to zip with original filename
                 archive.append(dataStream, { name: attachment.fileName });

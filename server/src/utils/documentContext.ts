@@ -23,15 +23,14 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
                             laborCounts: { orderBy: [{ year: 'desc' }, { month: 'desc' }], take: 12 } // Fetch for 3K5
                         }
                     },
-                    monthlyFee: true, // For salary/fee details
-                    entryPermit: {
+                    recruitmentLetter: true,
+                    // monthlyFee: true, // Removed: Not in schema
+                    permitDetails: {
+                        orderBy: { startDate: 'desc' },
+                        take: 1,
                         include: {
-                            recruitmentLetter: true
+                            permitDocument: true
                         }
-                    },
-                    employmentPermits: {
-                        orderBy: { issueDate: 'desc' },
-                        take: 1
                     }
                 }
             },
@@ -57,6 +56,7 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
             // History & Other Lists
             addressHistory: { orderBy: { startDate: 'desc' } },
             insurances: true,
+
             // familyMembers: true, // Removed: Not in schema
             // emergencyContacts: true, // Removed: Not in schema
         }
@@ -131,9 +131,11 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
     // Let's use checking of specific fields to determine Context flags.
 
     // Retrieve Recruitment Letter info if available
-    const entryPermit = deployment?.entryPermit;
-    const recruitmentLetter = entryPermit?.recruitmentLetter;
-    const activeEmploymentPermit = deployment?.employmentPermits?.[0];
+    const recruitmentLetter = deployment?.recruitmentLetter;
+    // const entryPermit = deployment?.entryPermit; // Removed
+    // const recruitmentLetter = entryPermit?.recruitmentLetter; // Removed
+    const activePermitDetail = deployment?.permitDetails?.[0];
+    const activeEmploymentPermit = activePermitDetail?.permitDocument;
 
     const isRecruitPermit = !!recruitmentLetter; // Simplify: If we have linked recruitment letter info
     const isEmployPermit = !!activeEmploymentPermit;
@@ -182,7 +184,7 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
         // 3K5 Stats
         avg_labor_count: avgLaborCount,
         allocation_rate: employer?.allocationRate ? Number(employer.allocationRate) : 0,
-        qualified_count: employer?.totalQuota || 0,
+        qualified_count: 0, // Field totalQuota not on Employer
 
         // --- Agency (Taiwan) ---
         agency_name: agencyCompany.name || '',
@@ -214,9 +216,9 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
         chk_employ_permit: isEmployPermit ? '☑' : '☐',
 
         // Review Fee
-        receipt_no: isEmployPermit ? activeEmploymentPermit?.receiptNumber : recruitmentLetter?.reviewFeeReceiptNo || '',
-        pay_date: formatDate(isEmployPermit ? activeEmploymentPermit?.applicationDate : recruitmentLetter?.reviewFeeDate),
-        amount: isEmployPermit ? activeEmploymentPermit?.feeAmount : recruitmentLetter?.reviewFeeAmount || 0,
+        receipt_no: isEmployPermit ? activeEmploymentPermit?.permitNumber : recruitmentLetter?.reviewFeeReceiptNo || '', // permitNumber as receipt? Or separate field?
+        pay_date: formatDate(isEmployPermit ? activeEmploymentPermit?.issueDate : recruitmentLetter?.reviewFeePayDate), // issueDate vs payDate
+        amount: isEmployPermit ? 0 : recruitmentLetter?.reviewFeeAmount || 0, // Fee amount for permit usually not stored in PermitDocument?
 
         // --- Dormitory ---
         dorm_name: dormitory?.name || '',
@@ -389,13 +391,13 @@ export async function getDocumentContext(type: string, id: string) {
             return {
                 employer_name: job.employer.companyName,
                 employer_tax_id: job.employer.taxId,
-                job_vacancy: job.vacancyCount,
-                job_center: job.centerName,
-                job_registry_date: job.registryDate.toISOString().split('T')[0], // YYYY-MM-DD
+                job_vacancy: job.requiredWorkers,
+                job_center: job.jobCenter,
+                job_registry_date: job.orderDate.toISOString().split('T')[0], // YYYY-MM-DD
             };
 
         case 'recruitment':
-            const letter = await prisma.recruitmentLetter.findUnique({
+            const letter = await prisma.employerRecruitmentLetter.findUnique({
                 where: { id },
                 include: { employer: true }
             });
