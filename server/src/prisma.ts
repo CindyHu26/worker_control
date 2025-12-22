@@ -1,8 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './generated/client';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
 const prismaClient = new PrismaClient();
+console.log('LOADING src/prisma.ts with generated client');
 
 const SOFT_DELETE_MODELS = [
     'Employer',

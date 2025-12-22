@@ -22,7 +22,7 @@ export const quotaService = {
         // LOCK the letter row to prevent race conditions
         // This ensures no other transaction can read/update this letter until this one finishes
         await tx.$executeRawUnsafe(
-            `SELECT 1 FROM "employer_recruitment_letters" WHERE id = $1 FOR UPDATE`,
+            `SELECT 1 FROM "employer_recruitment_letters" WHERE id = $1::uuid FOR UPDATE`,
             letterId
         );
 

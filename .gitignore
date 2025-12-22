@@ -59,6 +59,9 @@ playwright-report/
 !CHANGELOG.txt
 !LICENSE.txt
 
+# Generated Code
+server/src/generated/
+
 # BDD / Test Artifacts (Clean Testing)
 server/temp/
 test_output.txt
