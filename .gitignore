@@ -58,3 +58,12 @@ playwright-report/
 !README.txt
 !CHANGELOG.txt
 !LICENSE.txt
+
+# BDD / Test Artifacts (Clean Testing)
+server/temp/
+test_output.txt
+debug_trace.txt
+debug_error.log
+sanity_error.log
+*.tmp
+TestResults/

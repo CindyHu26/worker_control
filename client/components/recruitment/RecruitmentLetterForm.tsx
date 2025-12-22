@@ -90,34 +90,24 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
             const remaining = item.approvedQuota - item.usedQuota;
 
             if (item.allocationRate) {
+                // setValue('allocationRate', item.allocationRate); // Not using RHF
+                // State update:
                 const rate = Number(item.allocationRate);
-                let quotaInfo = `核配比率 ${(rate * 100).toFixed(0)}%`;
-
                 // Calculate quota from labor count
+                let calculatedQuota = 0;
                 if (employer && employer.laborCounts && employer.laborCounts.length > 0) {
-                    const latestCount = employer.laborCounts[0]; // Assuming sorted by desc
-                    const calculatedQuota = Math.floor(latestCount.count * rate);
-
-                    setFormData(prev => ({
-                        ...prev,
-                        approvedQuota: calculatedQuota,
-                        // Update other fields
-                        industrialBureauRef: item.bureauRefNumber,
-                        industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
-                        industryTier: item.tier,
-                    }));
-                    quotaInfo += ` / 本勞 ${latestCount.count} 人 -> 可申請 ${calculatedQuota} 人`;
-                } else {
-                    setFormData(prev => ({
-                        ...prev,
-                        industrialBureauRef: item.bureauRefNumber,
-                        industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
-                        industryTier: item.tier,
-                    }));
-                    quotaInfo += ` (查無本勞人數，請手動計算)`;
+                    const latestCount = employer.laborCounts[0];
+                    calculatedQuota = Math.floor(latestCount.count * rate);
                 }
 
-                toast.info(`已選定核定函：級別 ${item.tier} / ${quotaInfo}`);
+                setFormData(prev => ({
+                    ...prev,
+                    approvedQuota: calculatedQuota,
+                    industrialBureauRef: item.bureauRefNumber,
+                    industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
+                    industryTier: item.tier,
+                }));
+                toast.info(`已選定核定函：級別 ${item.tier} (Ratio: ${item.allocationRate})`);
             } else {
                 setFormData(prev => ({
                     ...prev,
@@ -125,7 +115,6 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                     industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
                     industryTier: item.tier,
                 }));
-                toast.info(`已選定核定函：級別 ${item.tier}`);
             }
         }
     };

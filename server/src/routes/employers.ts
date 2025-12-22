@@ -149,7 +149,7 @@ router.get('/', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
     try {
         const newEmployer = await createEmployer(req.body);
-        res.status(201).json({ data: newEmployer });
+        res.status(201).json(newEmployer);
     } catch (error) {
         next(error); // Global error handler will process ZodError, DuplicateResourceError, etc.
     }
@@ -286,40 +286,41 @@ router.delete('/:id/recruitment-letters/:letterId', async (req, res) => {
     }
 });
 
+
 // GET /api/employers/:id
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const [employer, summary] = await Promise.all([
-            prisma.employer.findUnique({
-                where: { id },
-                include: {
-                    corporateInfo: true,
-                    individualInfo: true,
-                    factories: true,
-                    recruitmentLetters: {
-                        orderBy: { issueDate: 'desc' },
-                        include: {
-                            deployments: true
-                        }
-                    },
-                    deployments: { where: { status: 'active' } },
-                    industryRecognitions: {
-                        orderBy: { issueDate: 'desc' },
-                        take: 1
-                    },
-                    laborCounts: {
-                        orderBy: { year: 'desc' }, // Get latest
-                        take: 1
+
+        const employer = await prisma.employer.findUnique({
+            where: { id },
+            include: {
+                corporateInfo: true,
+                individualInfo: true,
+                factories: true,
+                recruitmentLetters: {
+                    orderBy: { issueDate: 'desc' },
+                    include: {
+                        deployments: true
                     }
+                },
+                deployments: { where: { status: 'active' } },
+                industryRecognitions: {
+                    orderBy: { issueDate: 'desc' },
+                    take: 1
+                },
+                laborCounts: {
+                    orderBy: { year: 'desc' }, // Get latest
+                    take: 1
                 }
-            }),
-            getEmployerSummary(id)
-        ]);
+            }
+        });
 
         if (!employer) {
             return res.status(404).json({ error: 'Employer not found' });
         }
+
+        const summary = await getEmployerSummary(id);
 
         res.json({
             ...employer,

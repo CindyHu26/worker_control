@@ -717,17 +717,19 @@ export const getEmployerSummary = async (id: string) => {
         }
     }) as any;
 
+
     if (!employer) return null;
 
     // Derive Assignee (Sales Agent preferred)
-    const assignee = employer.serviceAssignments.find((a: any) => a.role === 'sales_agent')?.internalUser.username
-        || employer.serviceAssignments[0]?.internalUser.username
+    const assignments = employer.serviceAssignments || [];
+    const assignee = assignments.find((a: any) => a.role === 'sales_agent')?.internalUser.username
+        || assignments[0]?.internalUser.username
         || '未指派';
 
     // Calculate Statistics
-    const activeWorkerCount = employer.deployments.length;
-    const totalQuota = employer.recruitmentLetters.reduce((acc: number, curr: any) => acc + (curr.approvedQuota || 0), 0);
-    const usedQuota = employer.recruitmentLetters.reduce((acc: number, curr: any) => acc + (curr.usedQuota || 0), 0);
+    const activeWorkerCount = employer.deployments?.length || 0;
+    const totalQuota = (employer.recruitmentLetters || []).reduce((acc: number, curr: any) => acc + (curr.approvedQuota || 0), 0);
+    const usedQuota = (employer.recruitmentLetters || []).reduce((acc: number, curr: any) => acc + (curr.usedQuota || 0), 0);
     const availableQuota = Math.max(0, totalQuota - usedQuota);
 
     // Flatten data for frontend
