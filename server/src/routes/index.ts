@@ -36,6 +36,11 @@ import utilsRoutes from './utils';
 import interviewsRouter from './interviews';
 import hospitalRoutes from './hospitals';
 import immigrationRouter from './immigration';
+import industryRecognitionRoutes from './industryRecognitions';
+import recruitmentProofRoutes from './recruitmentProofs';
+import workerEventRoutes from './workerEvents';
+import workerDocumentRoutes from './workerDocuments';
+
 const router = Router();
 
 router.use('/contracts', contractsRouter);
@@ -83,5 +88,9 @@ router.use('/interviews', interviewsRouter);
 router.use('/hospitals', hospitalRoutes);
 
 router.use('/immigration', immigrationRouter);
+router.use('/industry-recognitions', industryRecognitionRoutes);
+router.use('/recruitment-proofs', recruitmentProofRoutes);
+router.use('/worker-events', workerEventRoutes);
+router.use('/worker-documents', workerDocumentRoutes);
 
 export default router;

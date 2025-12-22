@@ -159,6 +159,18 @@ enum CandidateResult {
   @@map("candidate_result")
 }
 
+enum WorkerEventType {
+  RUNAWAY
+  TRANSFER_OUT
+  DEPARTURE
+  DOMESTIC_HIRE
+  CONTRACT_RENEWAL
+  DEATH
+  OTHER
+
+  @@map("worker_event_type")
+}
+
 // Models
 
 model InternalUser {
@@ -256,6 +268,8 @@ model Employer {
 
   // Relations
   laborCounts EmployerLaborCount[]
+  industryRecognitions IndustryRecognition[]
+  recruitmentProofs    RecruitmentProof[]
 
   @@map("employers")
 }
@@ -306,6 +320,7 @@ model EmployerFactory {
   
   // Relations
   deployments Deployment[] 
+  industryRecognitions IndustryRecognition[] 
 
 
   @@map("employer_factories")
@@ -342,6 +357,7 @@ model CorporateInfo {
   laborInsuranceId      String?  @map("labor_insurance_id") @db.VarChar(50)
   healthInsuranceUnitNo String?  @map("health_insurance_unit_no") @db.VarChar(50)
   healthInsuranceId     String?  @map("health_insurance_id") @db.VarChar(50)
+  securityFeeAccount    String?  @map("security_fee_account") @db.VarChar(50) // Employment Security Fee Account
   faxNumber             String?  @map("fax_number") @db.VarChar(20)
 
   // Institution Specifics
@@ -427,6 +443,7 @@ model Worker {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
+  events              WorkerEvent[]
   passports           WorkerPassport[]
   arcs                WorkerArc[]
   deployments         Deployment[]
@@ -450,7 +467,15 @@ model EmployerRecruitmentLetter {
   expiryDate    DateTime @map("expiry_date") @db.Date // 招募效期
   validUntil    DateTime @map("valid_until") @db.Date @default(now()) // 有效期限 (通常同 expiryDate) - Added default to avoid migration issue on existing rows if any
 
+  // --- [Phase 1 New Relations] ---
+  industryRecognitionId String?              @map("industry_recognition_id") @db.Uuid
+  industryRecognition   IndustryRecognition? @relation(fields: [industryRecognitionId], references: [id])
+
+  recruitmentProofId String?           @map("recruitment_proof_id") @db.Uuid
+  recruitmentProof   RecruitmentProof? @relation(fields: [recruitmentProofId], references: [id])
+
   // --- 2. 步驟一：工業局核定 (Industrial Bureau) ---
+  // [DEPRECATED] Use relation industryRecognition instead
   // 證明你是3K產業，並核定級別 (A+, A, B, C, D)
   industrialBureauRef   String?  @map("industrial_bureau_ref") @db.VarChar(50) // 工業局核定函號
   industrialBureauDate  DateTime? @map("industrial_bureau_date") @db.Date // 工業局發文日
@@ -585,6 +610,7 @@ model Deployment {
   terminationReason String? @map("termination_reason") @db.VarChar(50)
   terminationNotes  String? @map("termination_notes") @db.Text
 
+
   // [New] Specific Factory Location
   factoryId         String?          @map("factory_id") @db.Uuid
   factory           EmployerFactory? @relation(fields: [factoryId], references: [id])
@@ -603,6 +629,66 @@ model Deployment {
   insurances    WorkerInsurance[]
 
   @@map("deployments")
+}
+
+// ==========================================
+// [Phase 1] Pre-Permit / Component Documents
+// ==========================================
+
+model IndustryRecognition {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employerId String   @map("employer_id") @db.Uuid
+  factoryId  String?  @map("factory_id") @db.Uuid // Optional: link to specific factory if multi-site
+
+  bureauRefNumber String   @unique @map("bureau_ref_number") @db.VarChar(50) // 工業局函號
+  issueDate       DateTime @map("issue_date") @db.Date // 發文日期
+  
+  // Tier Management
+  tier          String   @map("tier") @db.VarChar(10) // A+, A, B, C, D
+  expiryDate    DateTime? @map("expiry_date") @db.Date // 效期 (usually 3 years?)
+
+  fileUrl       String?   @map("file_url") @db.Text
+
+  // Stats
+  approvedQuota Int @default(0) @map("approved_quota") 
+  usedQuota     Int @default(0) @map("used_quota")
+
+  employer        Employer         @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  employerFactory EmployerFactory? @relation(fields: [factoryId], references: [id])
+
+  // Relations
+  recruitmentLetters EmployerRecruitmentLetter[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("industry_recognitions")
+}
+
+model RecruitmentProof {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employerId String   @map("employer_id") @db.Uuid
+
+  receiptNumber String   @unique @map("receipt_number") @db.VarChar(50) // 求才證明序號
+  registerDate  DateTime @map("register_date") @db.Date // 求才登記日
+  issueDate     DateTime @map("issue_date") @db.Date // 證明書發文日
+  
+  jobCenter     String?  @map("job_center") @db.VarChar(50) // 受理公立就業服務機構
+  status        String   @default("VALID") @db.VarChar(20) // VALID, EXPIRED, USED
+  
+  // Fees
+  reviewFeeReceiptNo String?   @map("review_fee_receipt_no") @db.VarChar(50) // 審查費收據號碼
+  reviewFeePayDate   DateTime? @map("review_fee_pay_date") @db.Date
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  // Relations
+  recruitmentLetters EmployerRecruitmentLetter[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("recruitment_proofs")
 }
 
 model PermitDocument {
@@ -789,6 +875,28 @@ model JobOrder {
   interviews Interview[]
 
   @@map("job_orders")
+}
+
+model WorkerEvent {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId  String          @map("worker_id") @db.Uuid
+  eventType WorkerEventType @map("event_type")
+  
+  eventDate       DateTime? @map("event_date") @db.Date // 發生日期
+  reportDate      DateTime? @map("report_date") @db.Date // 通報日期/登記日
+  
+  bureauRefNumber String?   @map("bureau_ref_number") @db.VarChar(50) // 核備文號
+  bureauRefDate   DateTime? @map("bureau_ref_date") @db.Date // 核備函文日期
+
+  notes   String? @db.Text
+  fileUrl String? @map("file_url") @db.Text
+
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("worker_events")
 }
 
 model Interview {
