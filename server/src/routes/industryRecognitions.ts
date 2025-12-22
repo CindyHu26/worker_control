@@ -14,6 +14,7 @@ const IndustryRecognitionSchema = z.object({
   expiryDate: z.string().transform(str => new Date(str)).optional(),
   fileUrl: z.string().optional(),
   approvedQuota: z.number().int().min(0).optional(),
+  allocationRate: z.number().optional(), // Expect decimal value e.g. 0.2
 });
 
 // GET all for an employer
@@ -64,6 +65,7 @@ router.post('/', async (req, res) => {
         expiryDate: data.expiryDate,
         fileUrl: data.fileUrl,
         approvedQuota: data.approvedQuota || 0,
+        allocationRate: data.allocationRate,
       }
     });
     res.json(newRecord);

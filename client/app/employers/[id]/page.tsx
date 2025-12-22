@@ -166,6 +166,42 @@ export default function EmployerDetailPage() {
                                 </div>
                                 <div>{employer.address || '-'}</div>
                             </div>
+                            {/* [Added] Dynamic Tier Display */}
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-gray-500">
+                                    <span className="font-bold border border-gray-400 rounded px-1 text-xs">3K</span> 核定級別 (Tier)
+                                </div>
+                                <div>
+                                    {(() => {
+                                        // Filter for valid recognitions
+                                        const recognitions = (employer as any).industryRecognitions || [];
+                                        const now = new Date();
+                                        const activeRec = recognitions.find((doc: any) => {
+                                            // Check if not expired (or no expiry date)
+                                            if (doc.expiryDate && new Date(doc.expiryDate) < now) return false;
+                                            return true;
+                                        });
+
+                                        if (activeRec) {
+                                            const rate = activeRec.allocationRate
+                                                ? (Number(activeRec.allocationRate) * 100).toFixed(0) + '%'
+                                                : '?%';
+                                            return (
+                                                <div>
+                                                    <span className="text-blue-600 font-bold text-lg">
+                                                        {activeRec.tier} 級 ({rate})
+                                                    </span>
+                                                    <div className="text-xs text-gray-400">
+                                                        {activeRec.bureauRefNumber}
+                                                    </div>
+                                                </div>
+                                            );
+                                        } else {
+                                            return <span className="text-gray-400 text-sm">無有效核定 (No Valid Permit)</span>;
+                                        }
+                                    })()}
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

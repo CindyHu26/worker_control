@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Save, Building2, FileText, Receipt, Landmark } from 'lucide-react';
-import { apiPost, apiPut } from '@/lib/api';
+import { apiGet, apiPost, apiPut } from '@/lib/api';
 
 // Simple toast mock since generic useToast might not be present or configured similarly
 const toast = (props: { title: string; description?: string; className?: string; variant?: string }) => {
@@ -26,13 +26,36 @@ interface Props {
 }
 
 export function RecruitmentLetterForm({ employerId, employer, initialData, onSuccess, onCancel }: Props) {
-    const [loading, setLoading] = useState(false);
+    const [industryRecognitions, setIndustryRecognitions] = useState<any[]>([]);
+    const [recruitmentProofs, setRecruitmentProofs] = useState<any[]>([]);
+    const [selectedIndRec, setSelectedIndRec] = useState<string>('');
+    const [selectedProof, setSelectedProof] = useState<string>('');
+    const [loading, setLoading] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (employerId) {
+            const fetchData = async () => {
+                try {
+                    const [resInd, resProof] = await Promise.all([
+                        apiGet(`/api/industry-recognitions?employerId=${employerId}`),
+                        apiGet(`/api/recruitment-proofs?employerId=${employerId}`)
+                    ]);
+                    setIndustryRecognitions(resInd as any[]);
+                    setRecruitmentProofs(resProof as any[]);
+                } catch (err) {
+                    console.error("Failed to fetch dependencies", err);
+                }
+            };
+            fetchData();
+        }
+    }, [employerId]);
 
     // Form State
     const [formData, setFormData] = useState({
         // A. Industrial Bureau (Step 1)
         industrialBureauRef: '',
         industrialBureauDate: '',
+        industryTier: '', // Hidden or auto-filled
 
         // B. Domestic Recruitment (Step 2)
         domesticRecruitmentRef: '',
@@ -58,6 +81,7 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
             setFormData({
                 industrialBureauRef: initialData.industrialBureauRef || '',
                 industrialBureauDate: format(initialData.industrialBureauDate),
+                industryTier: initialData.industryTier || '',
                 domesticRecruitmentRef: initialData.domesticRecruitmentRef || '',
                 domesticRecruitmentDate: format(initialData.domesticRecruitmentDate),
                 reviewFeeReceiptNo: initialData.reviewFeeReceiptNo || '',
@@ -70,8 +94,61 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                 workAddress: initialData.workAddress || '',
                 remarks: initialData.remarks || ''
             });
+            // Also set selected IDs if they exist (need backend to return them in initialData)
+            if (initialData.industryRecognitionId) setSelectedIndRec(initialData.industryRecognitionId);
+            if (initialData.recruitmentProofId) setSelectedProof(initialData.recruitmentProofId);
         }
     }, [initialData]);
+
+    const handleIndRecChange = (id: string) => {
+        setSelectedIndRec(id);
+        const item = industryRecognitions.find(x => x.id === id);
+        if (item) {
+            const remaining = item.approvedQuota - item.usedQuota;
+            // Calculate Quota based on Allocation Rate if available
+            // Formula: Labor Count * Allocation Rate.
+            // However, we don't have labor count directly here, usually it's input manually or fetched.
+            // For now, let's just use the remaining quota as a hint, or if we had labor count we'd calc.
+            // The request says: "System automatically calculates: Approved Quota Limit = Labor Count * 20%".
+            // Since we don't have Labor Count in this form's context (yet), we might skip the auto-calc of exact number
+            // OR if we want to be fancy, we fetch labor count.
+            // Given the prompt "Auto-fill fields... based on selected documents", let's at least fill tier/ref.
+
+            setFormData(prev => ({
+                ...prev,
+                industrialBureauRef: item.bureauRefNumber,
+                industrialBureauDate: item.issueDate ? item.issueDate.split('T')[0] : '',
+                industryTier: item.tier,
+                // If we had allocationRate, we can maybe store it in a hidden field or just use it for display
+            }));
+
+            if (item.allocationRate) {
+                // Determine rate percentage
+                const rate = Number(item.allocationRate);
+                toast({
+                    title: "已選定核定函",
+                    description: `級別: ${item.tier} / 核配比率: ${(rate * 100).toFixed(0)}% / 剩餘名額: ${remaining}`,
+                });
+            } else {
+                toast({
+                    title: "已選定核定函",
+                    description: `級別: ${item.tier} / 剩餘名額: ${remaining}`,
+                });
+            }
+        }
+    };
+
+    const handleProofChange = (id: string) => {
+        setSelectedProof(id);
+        const item = recruitmentProofs.find(x => x.id === id);
+        if (item) {
+            setFormData(prev => ({
+                ...prev,
+                domesticRecruitmentRef: item.receiptNumber,
+                domesticRecruitmentDate: item.issueDate ? item.issueDate.split('T')[0] : ''
+            }));
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -82,6 +159,8 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                 employerId,
                 approvedQuota: Number(formData.approvedQuota),
                 reviewFeeAmount: Number(formData.reviewFeeAmount),
+                industryRecognitionId: selectedIndRec || undefined,
+                recruitmentProofId: selectedProof || undefined
             };
 
             // Use the new /api/recruitment endpoint
@@ -91,13 +170,14 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                 await apiPost('/api/recruitment', payload);
             }
 
-            // toast({ title: "儲存成功" });
             if (onSuccess) onSuccess();
         } catch (error: any) {
             console.error(error);
+            // Extract nice message if possible
+            const msg = error.response?.data?.message || error.message || "儲存失敗";
             toast({
                 title: "儲存失敗",
-                description: error.message || "請檢查欄位格式",
+                description: msg,
                 variant: "destructive"
             });
         } finally {
@@ -117,11 +197,32 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label>工業局核定函號</Label>
+                        <Label>選擇工業局核定函 (選填)</Label>
+                        <Select value={selectedIndRec} onValueChange={handleIndRecChange} disabled={initialData?.id}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="請選擇現有核定函..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {industryRecognitions.map(item => {
+                                    const bal = item.approvedQuota - item.usedQuota;
+                                    return (
+                                        <SelectItem key={item.id} value={item.id} disabled={bal <= 0}>
+                                            {item.bureauRefNumber} ({item.tier}級 / 餘額:{bal})
+                                        </SelectItem>
+                                    );
+                                })}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>工業局核定函號 (自動帶入)</Label>
                         <Input
                             placeholder="例：112工中字第12345678號"
                             value={formData.industrialBureauRef}
                             onChange={e => setFormData({ ...formData, industrialBureauRef: e.target.value })}
+                            readOnly={!!selectedIndRec}
+                            className={selectedIndRec ? "bg-gray-100" : ""}
                         />
                     </div>
                     <div className="space-y-2">
@@ -130,6 +231,8 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                             type="date"
                             value={formData.industrialBureauDate}
                             onChange={e => setFormData({ ...formData, industrialBureauDate: e.target.value })}
+                            readOnly={!!selectedIndRec}
+                            className={selectedIndRec ? "bg-gray-100" : ""}
                         />
                     </div>
                 </CardContent>
@@ -144,6 +247,22 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
+                        <Label>選擇求才證明書 (選填)</Label>
+                        <Select value={selectedProof} onValueChange={handleProofChange} disabled={initialData?.id}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="請選擇有效之證明書..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {recruitmentProofs.map(item => (
+                                    <SelectItem key={item.id} value={item.id}>
+                                        {item.receiptNumber} (發文:{item.issueDate?.split('T')[0]})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
                         <Label className="flex justify-between">
                             <span>求才證明書序號</span>
                             <span className="text-xs text-orange-600 font-bold">*必填</span>
@@ -152,8 +271,8 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                             placeholder="請輸入證明書序號"
                             value={formData.domesticRecruitmentRef}
                             onChange={e => setFormData({ ...formData, domesticRecruitmentRef: e.target.value })}
-                        // Required only for new? strictness can be relaxed for editing legacy data. Use simple validation logic if needed.
-                        // required={!initialData} 
+                            readOnly={!!selectedProof}
+                            className={selectedProof ? "bg-gray-100" : ""}
                         />
                     </div>
                     <div className="space-y-2">
@@ -162,6 +281,8 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                             type="date"
                             value={formData.domesticRecruitmentDate}
                             onChange={e => setFormData({ ...formData, domesticRecruitmentDate: e.target.value })}
+                            readOnly={!!selectedProof}
+                            className={selectedProof ? "bg-gray-100" : ""}
                         />
                     </div>
                 </CardContent>

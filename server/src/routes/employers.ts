@@ -619,10 +619,10 @@ router.get('/:id', async (req, res) => {
                             deployments: true
                         }
                     },
-                    _count: {
-                        select: {
-                            deployments: { where: { status: 'active' } }
-                        }
+                    deployments: { where: { status: 'active' } },
+                    industryRecognitions: {
+                        orderBy: { issueDate: 'desc' },
+                        take: 1
                     }
                 }
             }),

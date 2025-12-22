@@ -646,6 +646,7 @@ model IndustryRecognition {
   // Tier Management
   tier          String   @map("tier") @db.VarChar(10) // A+, A, B, C, D
   expiryDate    DateTime? @map("expiry_date") @db.Date // 效期 (usually 3 years?)
+  allocationRate Decimal? @map("allocation_rate") @db.Decimal(5, 2) // e.g. 0.20
 
   fileUrl       String?   @map("file_url") @db.Text
 

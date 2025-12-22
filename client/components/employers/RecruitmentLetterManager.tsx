@@ -19,6 +19,9 @@ interface RecruitmentLetter {
     workAddress?: string;
     recruitmentType?: string;
     remarks?: string;
+    // [New] Relations
+    industryRecognition?: { bureauRefNumber: string };
+    recruitmentProof?: { receiptNumber: string };
 }
 
 interface RecruitmentLetterManagerProps {
@@ -39,13 +42,22 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
 
     const fetchLetters = async () => {
         try {
-            const data = await apiGet<any>(`/api/employers/${employerId}`);
-            setEmployer(data);
-            // Sort by issueDate desc
-            const sorted = (data.recruitmentLetters || []).sort((a: any, b: any) =>
-                new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()
-            );
-            setLetters(sorted);
+            // Updated to use the new endpoint which returns includes
+            // Was: /api/employers/${employerId} -> data.recruitmentLetters
+            // Now: /api/recruitment?employerId=${employerId} 
+            // The previous code relied on fetching the whole employer object. 
+            // We should keep fetching employer for context but maybe also fetch letters separately 
+            // OR depend on the employer endpoint update (which we didn't do yet).
+            // The user plan said "Add GET /api/recruitment ... with includes".
+            // So let's switch to using that for the list.
+
+            const [empData, lettersData] = await Promise.all([
+                apiGet<any>(`/api/employers/${employerId}`),
+                apiGet<RecruitmentLetter[]>(`/api/recruitment?employerId=${employerId}`)
+            ]);
+
+            setEmployer(empData);
+            setLetters(lettersData);
         } catch (error) {
             console.error('載入函文失敗', error);
         } finally {
@@ -56,6 +68,42 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
     useEffect(() => {
         fetchLetters();
     }, [employerId]);
+
+    // ... (Handlers)
+
+    // ... (Render)
+
+    // In the Table Body Map:
+    /*
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="font-medium text-gray-900 cursor-pointer hover:text-blue-600"
+                title="點擊編輯"
+                onClick={() => {
+                    setSelectedLetter(letter);
+                    setViewMode('edit');
+                }}
+            >
+                {letter.letterNumber}
+            </div>
+            <div className="text-sm text-gray-500">{letter.issueDate.split('T')[0]}</div>
+            {letter.industryRecognition && (
+                 <div className="text-xs text-gray-500 mt-1">
+                    <span className="bg-blue-50 text-blue-600 px-1 rounded mr-1">工</span>
+                    {letter.industryRecognition.bureauRefNumber}
+                 </div>
+            )}
+             {letter.recruitmentProof && (
+                 <div className="text-xs text-gray-500 mt-0.5">
+                    <span className="bg-orange-50 text-orange-600 px-1 rounded mr-1">求</span>
+                    {letter.recruitmentProof.receiptNumber}
+                 </div>
+            )}
+        </td>
+    */
+
+    // Actually applying the replacement for the whole file logic is cleaner to ensure imports etc match.
+    // I will replace the component logic above to use the new fetch strategy.
+
 
     // Form submission is handled by the component
 
@@ -252,6 +300,18 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
                                             {letter.letterNumber}
                                         </div>
                                         <div className="text-sm text-gray-500">{letter.issueDate.split('T')[0]}</div>
+                                        {letter.industryRecognition && (
+                                            <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                                <span className="bg-blue-50 text-blue-700 px-1 py-0.5 rounded text-[10px]">工</span>
+                                                {letter.industryRecognition.bureauRefNumber}
+                                            </div>
+                                        )}
+                                        {letter.recruitmentProof && (
+                                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                                <span className="bg-orange-50 text-orange-700 px-1 py-0.5 rounded text-[10px]">求</span>
+                                                {letter.recruitmentProof.receiptNumber}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
