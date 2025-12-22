@@ -1,7 +1,4 @@
-
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../prisma';
 
 interface HealthResult {
     score: number;
@@ -16,13 +13,24 @@ interface HealthResult {
 }
 
 export const analyzeDormHealth = async (dormId: string): Promise<HealthResult> => {
-    // 1. Fetch Dorm Data with Rooms
-    const dorm = await prisma.dormitory.findUnique({
-        where: { id: dormId },
-        include: { rooms: true }
-    });
+    // 1. Fetch Dorm Data and Compliance Rules in parallel
+    const [dorm, areaRule, safetyRule] = await Promise.all([
+        prisma.dormitory.findUnique({
+            where: { id: dormId },
+            include: { rooms: true }
+        }),
+        prisma.complianceRule.findUnique({ where: { code: 'DORM_MIN_AREA_PER_PERSON' } }),
+        prisma.complianceRule.findUnique({ where: { code: 'FIRE_SAFETY_WARNING_DAYS' } })
+    ]);
 
     if (!dorm) throw new Error("Dormitory not found");
+
+    // Parse rules with fallbacks
+    const MIN_AREA_PER_PERSON = areaRule ? parseFloat(areaRule.value) : 3.6;
+    const FIRE_SAFETY_WARNING_DAYS = safetyRule ? parseInt(safetyRule.value) : 30;
+
+    if (!areaRule) console.warn('[Compliance] Missing rule DORM_MIN_AREA_PER_PERSON, using default:', MIN_AREA_PER_PERSON);
+    if (!safetyRule) console.warn('[Compliance] Missing rule FIRE_SAFETY_WARNING_DAYS, using default:', FIRE_SAFETY_WARNING_DAYS);
 
     const missingFields: string[] = [];
     const violations: any[] = [];
@@ -60,19 +68,18 @@ export const analyzeDormHealth = async (dormId: string): Promise<HealthResult> =
         // Density Violation (Requires Area & Capacity)
         if (room.area && room.capacity > 0) {
             const areaPerPerson = Number(room.area) / room.capacity;
-            if (areaPerPerson < 3.2) { // Legal is 3.6, but maybe warn at 3.2? prompt said < 3.6 is VIOLATION.
-                // Strict check < 3.6
-                if (areaPerPerson < 3.6) {
-                    violations.push({
-                        roomId: room.roomNumber,
-                        type: 'DENSITY_TOO_HIGH',
-                        message: `房號 ${room.roomNumber}: 人均僅 ${areaPerPerson.toFixed(1)}m² (標準: 3.6m²)`
-                    });
-                    if (!hasDensityViolation) {
-                        score -= 20;
-                        actionItems.push('存在房間人均面積不足 (過度擁擠)，請減少床位或擴大面積');
-                        hasDensityViolation = true;
-                    }
+
+            // Check against dynamic rule
+            if (areaPerPerson < MIN_AREA_PER_PERSON) {
+                violations.push({
+                    roomId: room.roomNumber,
+                    type: 'DENSITY_TOO_HIGH',
+                    message: `房號 ${room.roomNumber}: 人均僅 ${areaPerPerson.toFixed(1)}m² (標準: ${MIN_AREA_PER_PERSON}m²)`
+                });
+                if (!hasDensityViolation) {
+                    score -= 20;
+                    actionItems.push(`存在房間人均面積不足 (過度擁擠)，請減少床位或擴大面積 (標準: ${MIN_AREA_PER_PERSON}m²)`);
+                    hasDensityViolation = true;
                 }
             }
         }
@@ -85,7 +92,7 @@ export const analyzeDormHealth = async (dormId: string): Promise<HealthResult> =
             violations.push({ type: 'EXPIRED', message: '消防安檢已過期！' });
             score -= 30; // Critical hit
             actionItems.push('消防安檢已過期，請盡速申報');
-        } else if (daysToExpiry < 30) {
+        } else if (daysToExpiry < FIRE_SAFETY_WARNING_DAYS) {
             violations.push({ type: 'EXPIRING_SOON', message: `消防安檢將於 ${daysToExpiry} 天後到期` });
             score -= 5;
             actionItems.push('請安排消防安檢申報');

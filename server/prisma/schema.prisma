@@ -1186,6 +1186,7 @@ model DormitoryRoom {
   dormitoryId String   @map("dormitory_id") @db.Uuid
   roomNumber  String   @map("room_number") @db.VarChar(20)
   capacity    Int      @default(0)
+  area        Decimal? @db.Decimal(10, 2) // Added for compliance checks
   
   dormitory   Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
   beds        DormitoryBed[]
@@ -1213,4 +1214,19 @@ model DormitoryBed {
 
 
 
+// ... existing code ...
+
+model ComplianceRule {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code          String   @unique @db.VarChar(50)
+  value         String   @db.VarChar(255)
+  category      String   @db.VarChar(50)
+  description   String?  @db.Text
+  effectiveDate DateTime @default(now()) @map("effective_date") @db.Date
+
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("compliance_rules")
+}
 

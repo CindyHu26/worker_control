@@ -1,5 +1,5 @@
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -208,6 +208,22 @@ async function main() {
 
     // 7. System Settings
     console.log('System initialized.');
+
+    // 8. Compliance Rules (New)
+    console.log('Seeding compliance rules...');
+    const rules = [
+        { code: 'DORM_MIN_AREA_PER_PERSON', value: '3.6', category: 'DORM', description: 'Minimum internal area per person (sq meters)' },
+        { code: 'FIRE_SAFETY_WARNING_DAYS', value: '30', category: 'SAFETY', description: 'Days before expiry to trigger warning' }
+    ];
+
+    for (const r of rules) {
+        await prisma.complianceRule.upsert({
+            where: { code: r.code },
+            update: { value: r.value, category: r.category, description: r.description },
+            create: { code: r.code, value: r.value, category: r.category, description: r.description }
+        });
+        console.log(`✅ Compliance Rule ${r.code} seeded`);
+    }
 }
 
 main()
