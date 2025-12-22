@@ -16,7 +16,7 @@ import {
     type CreateEmployerInput,
     type EmployerResponse,
     type EmployerListItem
-} from '../types/dtos';
+} from '@worker-control/shared';
 import { ValidationError, DuplicateResourceError } from '../types/errors';
 
 const router = Router();

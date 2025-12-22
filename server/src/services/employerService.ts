@@ -7,7 +7,7 @@ import {
     type EmployerSearchParams,
     type EmployerListItem,
     type PaginationMeta
-} from '../types/dtos';
+} from '@worker-control/shared';
 import {
     DuplicateResourceError,
     ResourceNotFoundError,
