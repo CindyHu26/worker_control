@@ -14,6 +14,24 @@ import {
     ValidationError
 } from '../types/errors';
 
+// Helper: Safe Date Parser
+// Returns Date object or undefined (if null/empty string)
+// Prevents "Invalid Date" crash on empty strings
+const parseDate = (value: string | null | undefined): Date | undefined => {
+    if (!value || value.trim() === '') return undefined;
+    const date = new Date(value);
+    // valid if not NaN
+    return isNaN(date.getTime()) ? undefined : date;
+};
+
+// Helper: Safe Number Parser
+// Returns number or undefined
+const parseNumber = (value: string | number | null | undefined): number | undefined => {
+    if (value === null || value === undefined || value === '') return undefined;
+    const num = Number(value);
+    return isNaN(num) ? undefined : num;
+};
+
 // 定義結構，確保 JSON 裡面不會被亂存垃圾
 // Define schemas for industry-specific attributes
 const FactoryAttrs = z.object({
@@ -59,6 +77,25 @@ export async function createEmployer(input: CreateEmployerInput) {
         }
     }
 
+    // [New] Category-based Validation
+    const category = validatedData.category;
+    if (category === 'HOME_CARE') {
+        if (!validatedData.responsiblePersonIdNo) {
+            throw new ValidationError('Missing responsible person ID for Household Employer (category: HOME_CARE)');
+        }
+        if (validatedData.taxId) {
+            throw new ValidationError('Household Employer should not have Tax ID (Unified Business No)');
+        }
+    } else if (category === 'MANUFACTURING' || category === 'INSTITUTION') {
+        // Business Types
+        if (!validatedData.taxId) {
+            throw new ValidationError(`Missing Tax ID for Business Employer (category: ${category})`);
+        }
+        if (!validatedData.responsiblePerson) {
+            throw new ValidationError('Missing Responsible Person for Business Employer');
+        }
+    }
+
     // Determine employer type
     const isCorporate = !!(
         validatedData.factoryRegistrationNo ||
@@ -94,11 +131,9 @@ export async function createEmployer(input: CreateEmployerInput) {
             email: validatedData.email,
             contactPerson: validatedData.contactPerson,
             contactPhone: validatedData.contactPhone,
-            allocationRate: validatedData.allocationRate ? Number(validatedData.allocationRate) : undefined,
+            allocationRate: parseNumber(validatedData.allocationRate),
             complianceStandard: validatedData.complianceStandard || 'NONE',
-            zeroFeeEffectiveDate: validatedData.zeroFeeEffectiveDate
-                ? new Date(validatedData.zeroFeeEffectiveDate)
-                : undefined
+            zeroFeeEffectiveDate: parseDate(validatedData.zeroFeeEffectiveDate)
         };
 
         // Add corporate info if applicable
@@ -109,13 +144,13 @@ export async function createEmployer(input: CreateEmployerInput) {
                     industryType: validatedData.industryType,
                     industryCode: validatedData.industryCode,
                     factoryAddress: validatedData.factoryAddress,
-                    capital: validatedData.capital,
+                    capital: parseNumber(validatedData.capital),
                     laborInsuranceNo: validatedData.laborInsuranceNo,
                     laborInsuranceId: validatedData.laborInsuranceId,
                     healthInsuranceUnitNo: validatedData.healthInsuranceUnitNo,
                     healthInsuranceId: validatedData.healthInsuranceId,
                     institutionCode: validatedData.institutionCode,
-                    bedCount: validatedData.bedCount
+                    bedCount: parseNumber(validatedData.bedCount)
                 }
             };
         }
@@ -129,9 +164,7 @@ export async function createEmployer(input: CreateEmployerInput) {
                     responsiblePersonSpouse: validatedData.responsiblePersonSpouse,
                     responsiblePersonFather: validatedData.responsiblePersonFather,
                     responsiblePersonMother: validatedData.responsiblePersonMother,
-                    responsiblePersonDob: validatedData.responsiblePersonDob
-                        ? new Date(validatedData.responsiblePersonDob)
-                        : undefined,
+                    responsiblePersonDob: parseDate(validatedData.responsiblePersonDob),
                     englishName: validatedData.englishName,
                     birthPlace: validatedData.birthPlace,
                     birthPlaceEn: validatedData.birthPlaceEn,
@@ -140,9 +173,7 @@ export async function createEmployer(input: CreateEmployerInput) {
                     residenceCityCode: validatedData.residenceCityCode,
                     militaryStatus: validatedData.militaryStatus,
                     militaryStatusEn: validatedData.militaryStatusEn,
-                    idIssueDate: validatedData.idIssueDate
-                        ? new Date(validatedData.idIssueDate)
-                        : undefined,
+                    idIssueDate: parseDate(validatedData.idIssueDate),
                     idIssuePlace: validatedData.idIssuePlace,
                     patientName: validatedData.patientName,
                     patientIdNo: validatedData.patientIdNo,
@@ -162,8 +193,8 @@ export async function createEmployer(input: CreateEmployerInput) {
                     addressEn: f.addressEn,
                     zipCode: f.zipCode,
                     cityCode: f.cityCode,
-                    laborCount: f.laborCount,
-                    foreignCount: f.foreignCount
+                    laborCount: parseNumber(f.laborCount) || 0,
+                    foreignCount: parseNumber(f.foreignCount) || 0
                 }))
             };
         }
@@ -362,7 +393,7 @@ export async function updateEmployer(id: string, data: any) {
         factoryRegistrationNo, industryCode, industryType, factoryAddress, factoryAddressEn,
         capital,
         laborInsuranceNo, laborInsuranceId, healthInsuranceUnitNo, healthInsuranceId, faxNumber,
-        institutionCode, bedCount,
+        institutionCode, bedCount, avgDomesticWorkers,
         // Individual fields
         patientName, hospitalCertNo, careAddress, relationship,
         responsiblePersonDob, responsiblePersonIdNo, responsiblePersonFather, responsiblePersonMother, responsiblePersonSpouse,
@@ -388,7 +419,7 @@ export async function updateEmployer(id: string, data: any) {
     if (code !== undefined) coreUpdate.code = code;
     if (shortName !== undefined) coreUpdate.shortName = shortName;
     if (referrer !== undefined) coreUpdate.referrer = referrer;
-    if (terminateDate !== undefined) coreUpdate.terminateDate = terminateDate ? new Date(terminateDate) : null;
+    if (terminateDate !== undefined) coreUpdate.terminateDate = parseDate(terminateDate) || null; // Use safe parser
     if (companyNameEn !== undefined) coreUpdate.companyNameEn = companyNameEn;
     if (addressEn !== undefined) coreUpdate.addressEn = addressEn;
     if (contactPerson !== undefined) coreUpdate.contactPerson = contactPerson;
@@ -397,50 +428,37 @@ export async function updateEmployer(id: string, data: any) {
     if (healthBillAddress !== undefined) coreUpdate.healthBillAddress = healthBillAddress;
     if (healthBillZip !== undefined) coreUpdate.healthBillZip = healthBillZip;
 
+    if (coreData.allocationRate !== undefined) {
+        coreUpdate.allocationRate = parseNumber(coreData.allocationRate);
+    }
+    if (coreData.zeroFeeEffectiveDate !== undefined) {
+        coreUpdate.zeroFeeEffectiveDate = parseDate(coreData.zeroFeeEffectiveDate);
+    }
+
     const updates: any = { ...coreUpdate };
 
     // Update Factories (Improved Logic)
+    // Note: We handle the actual update in transaction below
+    let existingFactoriesToUpdate: any[] = [];
+
     if (factories && Array.isArray(factories)) {
         // Separate factories with IDs (existing) from those without (new)
-        const existingFactories = factories.filter((f: any) => f.id);
+        existingFactoriesToUpdate = factories.filter((f: any) => f.id);
         const newFactories = factories.filter((f: any) => !f.id);
 
-        // Get IDs that still exist in the frontend payload
-        const existingIds = existingFactories.map((f: any) => f.id);
+        const newFactoryCreates = newFactories.map((f: any) => ({
+            name: f.name,
+            factoryRegNo: f.factoryRegNo,
+            address: f.address,
+            addressEn: f.addressEn,
+            zipCode: f.zipCode,
+            cityCode: f.cityCode,
+            laborCount: parseNumber(f.laborCount) || 0,
+            foreignCount: parseNumber(f.foreignCount) || 0
+        }));
 
-        // Build update operations
-        const factoryUpdates: any = {};
-
-        // Delete factories that are no longer in the payload
-        if (existingIds.length > 0) {
-            factoryUpdates.deleteMany = {
-                employerId: id,
-                id: { notIn: existingIds }
-            };
-        } else {
-            // If no existing IDs, delete all (user removed all factories)
-            factoryUpdates.deleteMany = { employerId: id };
-        }
-
-        // Create new factories
-        if (newFactories.length > 0) {
-            factoryUpdates.create = newFactories.map((f: any) => ({
-                name: f.name,
-                factoryRegNo: f.factoryRegNo,
-                address: f.address,
-                addressEn: f.addressEn,
-                zipCode: f.zipCode,
-                cityCode: f.cityCode,
-                laborCount: f.laborCount ? Number(f.laborCount) : 0,
-                foreignCount: f.foreignCount ? Number(f.foreignCount) : 0
-            }));
-        }
-
-        // Update existing factories (requires transaction with individual updates)
-        // Note: Prisma's nested writes don't support update arrays elegantly
-        // We'll handle this in a transaction after the main update
-        updates.factories = factoryUpdates;
-        updates._existingFactoriesToUpdate = existingFactories; // Pass for transaction handling
+        updates._newFactoryCreates = newFactoryCreates; // Pass to transaction
+        updates._existingFactoriesToUpdate = existingFactoriesToUpdate; // Pass to transaction
     }
 
     // If Corporate fields are present
@@ -451,27 +469,27 @@ export async function updateEmployer(id: string, data: any) {
                     factoryRegistrationNo,
                     industryType,
                     industryCode,
-                    capital: capital ? Number(capital) : undefined,
+                    capital: parseNumber(capital),
                     laborInsuranceNo,
                     laborInsuranceId,
                     healthInsuranceUnitNo,
                     healthInsuranceId,
                     faxNumber,
                     institutionCode,
-                    bedCount: bedCount ? Number(bedCount) : undefined,
+                    bedCount: parseNumber(bedCount),
                 },
                 update: {
                     factoryRegistrationNo,
                     industryType,
                     industryCode,
-                    capital: capital ? Number(capital) : undefined,
+                    capital: parseNumber(capital),
                     laborInsuranceNo,
                     laborInsuranceId,
                     healthInsuranceUnitNo,
                     healthInsuranceId,
                     faxNumber,
                     institutionCode,
-                    bedCount: bedCount ? Number(bedCount) : undefined,
+                    bedCount: parseNumber(bedCount),
                 }
             }
         };
@@ -484,8 +502,8 @@ export async function updateEmployer(id: string, data: any) {
             responsiblePersonSpouse,
             responsiblePersonFather,
             responsiblePersonMother,
-            responsiblePersonDob: responsiblePersonDob ? new Date(responsiblePersonDob) : undefined,
-            idIssueDate: idIssueDate ? new Date(idIssueDate) : undefined,
+            responsiblePersonDob: parseDate(responsiblePersonDob),
+            idIssueDate: parseDate(idIssueDate),
             idIssuePlace,
             militaryStatus,
             militaryStatusEn,
@@ -509,13 +527,53 @@ export async function updateEmployer(id: string, data: any) {
         }
     }
 
-    // Extract existing factories to update separately
-    const existingFactoriesToUpdate = updates._existingFactoriesToUpdate || [];
-    delete updates._existingFactoriesToUpdate; // Remove from updates object
-
     // Use transaction to handle factory updates properly
     return prisma.$transaction(async (tx) => {
-        // 1. Update employer with delete/create operations for factories
+        const existingFactoriesUpdateList = updates._existingFactoriesToUpdate || [];
+        const newFactoryCreateList = updates._newFactoryCreates || [];
+        delete updates._existingFactoriesToUpdate;
+        delete updates._newFactoryCreates;
+
+        // FACTORY DELETION LOGIC (SAFE VERSION)
+        // 1. Determine which factories are being removed
+        // If factories array was provided, it means it's the full list.
+        // IDs present in DB but NOT in existingFactoriesUpdateList are candidates for deletion.
+        if (factories && Array.isArray(factories)) {
+            const keepIds = existingFactoriesUpdateList.map((f: any) => f.id);
+
+            // Find candidates for deletion (belong to employer, but not in keepIds)
+            const candidates = await tx.employerFactory.findMany({
+                where: {
+                    employerId: id,
+                    id: { notIn: keepIds }
+                },
+                select: { id: true, deployments: { select: { id: true } } } // Check for deployments
+            });
+
+            // Filter out those that have deployments
+            const factoryIdsToDelete = candidates
+                .filter(f => f.deployments.length === 0)
+                .map(f => f.id);
+
+            if (factoryIdsToDelete.length > 0) {
+                updates.factories = {
+                    deleteMany: {
+                        id: { in: factoryIdsToDelete }
+                    }
+                };
+            }
+
+            // Add Create logic to updates.factories if needed, or handle separately? 
+            // Prisma updates.factories can take deleteMany and create simultaneously.
+            if (newFactoryCreateList.length > 0) {
+                updates.factories = {
+                    ...(updates.factories || {}),
+                    create: newFactoryCreateList
+                };
+            }
+        }
+
+        // 2. Update employer (including nested upserts and factory delete/create)
         const updatedEmployer = await tx.employer.update({
             where: { id },
             data: updates,
@@ -526,8 +584,8 @@ export async function updateEmployer(id: string, data: any) {
             }
         });
 
-        // 2. Update existing factories individually (preserves IDs)
-        for (const factory of existingFactoriesToUpdate) {
+        // 3. Update existing factories individually (preserves IDs)
+        for (const factory of existingFactoriesUpdateList) {
             await tx.employerFactory.update({
                 where: { id: factory.id },
                 data: {
@@ -537,13 +595,36 @@ export async function updateEmployer(id: string, data: any) {
                     addressEn: factory.addressEn,
                     zipCode: factory.zipCode,
                     cityCode: factory.cityCode,
-                    laborCount: factory.laborCount ? Number(factory.laborCount) : 0,
-                    foreignCount: factory.foreignCount ? Number(factory.foreignCount) : 0
+                    laborCount: parseNumber(factory.laborCount) || 0,
+                    foreignCount: parseNumber(factory.foreignCount) || 0
                 }
             });
         }
 
-        // 3. Return updated employer with fresh factory data
+        // 4. Update avgDomesticWorkers (Labor Count)
+        if (avgDomesticWorkers !== undefined) {
+            const now = new Date();
+            await tx.employerLaborCount.upsert({
+                where: {
+                    employerId_year_month: {
+                        employerId: id,
+                        year: now.getFullYear(),
+                        month: now.getMonth() + 1
+                    }
+                },
+                create: {
+                    employerId: id,
+                    year: now.getFullYear(),
+                    month: now.getMonth() + 1,
+                    count: parseNumber(avgDomesticWorkers) || 0
+                },
+                update: {
+                    count: parseNumber(avgDomesticWorkers) || 0
+                }
+            });
+        }
+
+        // 5. Return updated employer with fresh factory data
         return tx.employer.findUnique({
             where: { id },
             include: {

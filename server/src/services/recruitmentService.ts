@@ -59,43 +59,64 @@ export const recruitmentService = {
      */
     async createRecruitmentLetter(data: {
         employerId: string;
-        jobOrderId?: string;
         letterNumber: string;
-        issueDate: string;
-        expiryDate: string;
+        issueDate: string | Date;
+        expiryDate?: string | Date;
         approvedQuota: number;
         attachmentPath?: string;
+        recruitmentType?: string;
     }) {
-        // 檢查文號是否重複
-        const existing = await (prisma as any).recruitmentLetter.findUnique({
-            where: { letterNumber: data.letterNumber }
-        });
-        if (existing) throw new Error(`招募函文號 ${data.letterNumber} 已存在`);
-
-        // 建立招募函
-        const letter = await (prisma as any).recruitmentLetter.create({
-            data: {
-                employerId: data.employerId,
-                jobOrderId: data.jobOrderId || null,
-                letterNumber: data.letterNumber,
-                issueDate: new Date(data.issueDate),
-                expiryDate: new Date(data.expiryDate),
-                approvedQuota: data.approvedQuota,
-                usedQuota: 0,
-                revokedQuota: 0,
-                attachmentPath: data.attachmentPath
-            }
-        });
-
-        // 如果有關聯求才單，將求才單狀態更新為「已完成」(Completed)
-        if (data.jobOrderId) {
-            await (prisma as any).jobOrder.update({
-                where: { id: data.jobOrderId },
-                data: { status: 'completed' }
-            });
+        const iDate = new Date(data.issueDate);
+        let validUntil = data.expiryDate ? new Date(data.expiryDate) : new Date(iDate);
+        if (!data.expiryDate) {
+            validUntil.setFullYear(validUntil.getFullYear() + 1);
         }
 
-        return letter;
+        return await prisma.$transaction(async (tx) => {
+            // 1. Check Duplicate
+            const existing = await tx.employerRecruitmentLetter.findUnique({
+                where: { letterNumber: data.letterNumber }
+            });
+            if (existing) {
+                throw new Error(`DUPLICATE_LETTER_NO: 招募函文號 ${data.letterNumber} 已存在`);
+            }
+
+            // 2. Create Letter
+            const letter = await tx.employerRecruitmentLetter.create({
+                data: {
+                    employerId: data.employerId,
+                    letterNumber: data.letterNumber,
+                    issueDate: iDate,
+                    expiryDate: validUntil,
+                    validUntil: validUntil,
+                    approvedQuota: data.approvedQuota,
+                    recruitmentType: data.recruitmentType,
+                    usedQuota: 0
+                }
+            });
+
+            // 3. Recalculate Employer Total Quota
+            const allLetters = await tx.employerRecruitmentLetter.findMany({
+                where: {
+                    employerId: data.employerId,
+                    isDeleted: false
+                }
+            });
+
+            const now = new Date();
+            const totalApproved = allLetters.reduce((sum, l) => {
+                const isValid = l.validUntil ? l.validUntil > now : true;
+                return isValid ? sum + l.approvedQuota : sum;
+            }, 0);
+
+            // 4. Update Employer
+            await tx.employer.update({
+                where: { id: data.employerId },
+                data: { totalQuota: totalApproved }
+            });
+
+            return letter;
+        });
     },
 
     /**

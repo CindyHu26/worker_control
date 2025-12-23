@@ -277,6 +277,9 @@ model Employer {
   isDeleted Boolean   @default(false) @map("is_deleted")
   deletedAt DateTime? @map("deleted_at")
 
+  // Quota Cache
+  totalQuota Int @default(0) @map("total_quota") // Derived: Sum(active letters)
+
   // Agency Relation
   agencyId String?        @map("agency_id") @db.Uuid
   agency   AgencyCompany? @relation(fields: [agencyId], references: [id])

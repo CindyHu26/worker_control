@@ -116,18 +116,33 @@ const baseSchema = z.object({
 
 const employerSchema = baseSchema.superRefine((data, ctx) => {
     if (data.category === 'HOME_CARE') {
-        if (data.taxId && !isValidNationalID(data.taxId)) {
+        // Household: Must have ID No, Must NOT have Tax ID
+        if (data.taxId && data.taxId.trim() !== '') {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "身分證字號格式錯誤 (需為1碼英文+9碼數字，並符合邏輯)",
+                message: "家庭類雇主不需要統編 (請留空)",
                 path: ["taxId"]
             });
         }
+        if (!data.responsiblePersonIdNo) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "家庭類雇主必須填寫負責人身分證字號",
+                path: ["responsiblePersonIdNo"]
+            });
+        } else if (!isValidNationalID(data.responsiblePersonIdNo)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "負責人身分證字號格式錯誤",
+                path: ["responsiblePersonIdNo"]
+            });
+        }
     } else {
+        // Business: Must have Tax ID
         if (!data.taxId) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "統一編號為必填",
+                message: "事業類雇主必須填寫統一編號",
                 path: ["taxId"]
             });
         } else if (!isValidGUINumber(data.taxId)) {
@@ -135,6 +150,14 @@ const employerSchema = baseSchema.superRefine((data, ctx) => {
                 code: z.ZodIssueCode.custom,
                 message: "統一編號格式錯誤 (需為8碼數字，並符合邏輯運算)",
                 path: ["taxId"]
+            });
+        }
+
+        if (!data.responsiblePerson) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "事業類雇主必須填寫負責人姓名",
+                path: ["responsiblePerson"]
             });
         }
     }
@@ -349,7 +372,15 @@ export default function EmployerForm({
                 industryType: data.category,
                 // Combine address parts
                 address: selectedCity || selectedDistrict ? `${selectedCity}${selectedDistrict}${data.address || ''}` : data.address,
+                // Sanitize Empty Strings to undefined for Dates/Decimals
                 allocationRate: data.allocationRate ? String(data.allocationRate) : undefined,
+                capital: data.capital ? String(data.capital) : undefined,
+                bedCount: data.bedCount ? Number(data.bedCount) : undefined,
+                avgDomesticWorkers: data.avgDomesticWorkers ? Number(data.avgDomesticWorkers) : undefined,
+                zeroFeeEffectiveDate: data.zeroFeeEffectiveDate || undefined,
+                responsiblePersonDob: data.responsiblePersonDob || undefined,
+                idIssueDate: data.idIssueDate || undefined,
+                terminateDate: (data as any).terminateDate || undefined,
                 // Ensure factories have numeric conversion if needed
                 factories: data.factories?.map(f => ({
                     ...f,
@@ -419,19 +450,24 @@ export default function EmployerForm({
                             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Category & Code */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="category" className="required">雇主類型 (Employer Category)</Label>
-                                        <Select
-                                            value={formData.category}
-                                            onValueChange={(val) => setValue('category', val)}
-                                        >
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                {Object.entries(INDUSTRIES).map(([key, label]) => (
-                                                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                    <div className="space-y-3">
+                                        <Label className="required text-base font-semibold">雇主類型 (Employer Category)</Label>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            {Object.entries(INDUSTRIES).map(([key, label]) => (
+                                                <div
+                                                    key={key}
+                                                    onClick={() => setValue('category', key)}
+                                                    className={cn(
+                                                        "cursor-pointer border rounded-lg p-3 text-center transition-all hover:bg-gray-50",
+                                                        formData.category === key
+                                                            ? "bg-blue-50 border-blue-500 ring-2 ring-blue-200 text-blue-700 font-medium"
+                                                            : "border-gray-200 text-gray-600"
+                                                    )}
+                                                >
+                                                    {label}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="code">雇主編號 (Employer Code)</Label>

@@ -33,6 +33,7 @@ interface Employer {
     category?: string;
     // Basic fields
     code?: string;
+    totalQuota?: number;
     industryType?: string;
     summary?: any;
     _count?: {
@@ -166,6 +167,15 @@ export default function EmployerDetailPage() {
                                     <MapPin className="h-4 w-4" /> 地址 (Address)
                                 </div>
                                 <div>{employer.address || '-'}</div>
+                            </div>
+                            {/* [New] Total Quota Display */}
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-gray-500">
+                                    <span className="font-bold border border-blue-400 bg-blue-50 text-blue-600 rounded px-1 text-xs">SUM</span> 目前可用名額 (Quota)
+                                </div>
+                                <div className="text-2xl font-bold text-green-600 pl-1">
+                                    {employer.totalQuota ?? 0} <span className="text-sm font-normal text-gray-500">人</span>
+                                </div>
                             </div>
                             {/* [Added] Dynamic Tier Display */}
                             <div className="space-y-1">

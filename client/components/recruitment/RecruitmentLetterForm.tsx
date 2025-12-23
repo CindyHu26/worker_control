@@ -322,6 +322,9 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                         <Landmark size={20} /> 步驟四：勞動部招募許可函 (Recruitment Letter)
                     </CardTitle>
                 </CardHeader>
+                <div className="bg-yellow-50 border-1 border-yellow-200 p-2 text-sm text-yellow-800 flex items-center gap-2 mx-4 mt-4 rounded">
+                    <span className="font-bold">⚠️ 合規提示：</span> 請依照勞動部正式核發之公文如實填寫，此欄位將用作「可用名額」計算依據。
+                </div>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                     <div className="space-y-2">
                         <Label className="text-blue-900 font-bold">發文文號 (Permit No)</Label>
