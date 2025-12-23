@@ -37,6 +37,8 @@ import industryRecognitionRoutes from './industryRecognitions';
 import recruitmentProofRoutes from './recruitmentProofs';
 import workerEventRoutes from './workerEvents';
 import workerDocumentRoutes from './workerDocuments';
+import referenceDataRoutes from './referenceData';
+
 
 const router = Router();
 
@@ -90,5 +92,7 @@ router.use('/industry-recognitions', industryRecognitionRoutes);
 router.use('/recruitment-proofs', recruitmentProofRoutes);
 router.use('/worker-events', workerEventRoutes);
 router.use('/worker-documents', workerDocumentRoutes);
+router.use('/reference', referenceDataRoutes);
+
 
 export default router;

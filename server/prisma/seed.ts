@@ -224,6 +224,494 @@ async function main() {
         });
         console.log(`✅ Compliance Rule ${r.code} seeded`);
     }
+
+    // 9. Reference Data: Employer Categories
+    console.log('Seeding employer categories...');
+    const categories = [
+        { code: 'MANUFACTURING', nameZh: '製造業', nameEn: 'Manufacturing', sortOrder: 1 },
+        { code: 'HOME_CARE', nameZh: '家庭看護', nameEn: 'Home Care', sortOrder: 2 },
+        { code: 'INSTITUTION', nameZh: '養護機構', nameEn: 'Care Institution', sortOrder: 3 },
+        { code: 'CONSTRUCTION', nameZh: '營造業', nameEn: 'Construction', sortOrder: 4 }
+    ];
+
+    for (const cat of categories) {
+        await prisma.employerCategory.upsert({
+            where: { code: cat.code },
+            update: { nameZh: cat.nameZh, nameEn: cat.nameEn, sortOrder: cat.sortOrder },
+            create: cat
+        });
+        console.log(`✅ Employer Category ${cat.code} seeded`);
+    }
+
+    // 10. Reference Data: Application Types
+    console.log('Seeding application types...');
+    const appTypes = [
+        { code: '1', nameZh: '製造業勞工', nameEn: 'Manufacturing Worker', sortOrder: 1 },
+        { code: '2', nameZh: '營造業勞工', nameEn: 'Construction Worker', sortOrder: 2 },
+        { code: '3', nameZh: '家庭看護工', nameEn: 'Home Care Worker', sortOrder: 3 },
+        { code: '4', nameZh: '家庭幫傭', nameEn: 'Domestic Helper', sortOrder: 4 },
+        { code: '61', nameZh: '護理之家看護工', nameEn: 'Nursing Home Care Worker', sortOrder: 5 },
+        { code: '6', nameZh: '養護機構看護工', nameEn: 'Care Institution Worker', sortOrder: 6 }
+    ];
+
+    for (const type of appTypes) {
+        await prisma.applicationType.upsert({
+            where: { code: type.code },
+            update: { nameZh: type.nameZh, nameEn: type.nameEn, sortOrder: type.sortOrder },
+            create: type
+        });
+        console.log(`✅ Application Type ${type.code} seeded`);
+    }
+
+    // 11. Reference Data: Industry Codes
+    console.log('Seeding industry codes...');
+    const industryCodes = [
+        { code: '08', nameZh: '食品及飼品製造業', nameEn: 'Food Manufacturing', sortOrder: 1 },
+        { code: '09', nameZh: '飲料製造業', nameEn: 'Beverage Manufacturing', sortOrder: 2 },
+        { code: '11', nameZh: '紡織業', nameEn: 'Textile Manufacturing', sortOrder: 3 },
+        { code: '12', nameZh: '成衣及服飾品製造業', nameEn: 'Apparel Manufacturing', sortOrder: 4 },
+        { code: '13', nameZh: '皮革、毛皮及其製品製造業', nameEn: 'Leather Manufacturing', sortOrder: 5 },
+        { code: '14', nameZh: '木竹製品製造業', nameEn: 'Wood Products Manufacturing', sortOrder: 6 },
+        { code: '15', nameZh: '紙漿、紙及紙製品製造業', nameEn: 'Paper Manufacturing', sortOrder: 7 },
+        { code: '16', nameZh: '印刷及資料儲存媒體複製業', nameEn: 'Printing', sortOrder: 8 },
+        { code: '17', nameZh: '石油及煤製品製造業', nameEn: 'Petroleum Products', sortOrder: 9 },
+        { code: '18', nameZh: '化學材料製造業', nameEn: 'Chemical Materials', sortOrder: 10 },
+        { code: '19', nameZh: '化學製品製造業', nameEn: 'Chemical Products', sortOrder: 11 },
+        { code: '20', nameZh: '藥品及醫用化學製品製造業', nameEn: 'Pharmaceuticals', sortOrder: 12 },
+        { code: '21', nameZh: '橡膠製品製造業', nameEn: 'Rubber Products', sortOrder: 13 },
+        { code: '22', nameZh: '塑膠製品製造業', nameEn: 'Plastic Products', sortOrder: 14 },
+        { code: '23', nameZh: '非金屬礦物製品製造業', nameEn: 'Non-metallic Mineral Products', sortOrder: 15 },
+        { code: '24', nameZh: '基本金屬製造業', nameEn: 'Basic Metal Manufacturing', sortOrder: 16 },
+        { code: '25', nameZh: '金屬製品製造業', nameEn: 'Fabricated Metal Products', sortOrder: 17 },
+        { code: '2501', nameZh: '金屬刀具、手工具及模具製造業', nameEn: 'Metal Tools & Molds', sortOrder: 18 },
+        { code: '26', nameZh: '電子零組件製造業', nameEn: 'Electronic Components', sortOrder: 19 },
+        { code: '27', nameZh: '電腦、電子產品及光學製品製造業', nameEn: 'Computer & Electronics', sortOrder: 20 },
+        { code: '28', nameZh: '電力設備製造業', nameEn: 'Electrical Equipment', sortOrder: 21 },
+        { code: '29', nameZh: '機械設備製造業', nameEn: 'Machinery Manufacturing', sortOrder: 22 },
+        { code: '30', nameZh: '汽車及其零件製造業', nameEn: 'Motor Vehicles', sortOrder: 23 },
+        { code: '31', nameZh: '其他運輸工具製造業', nameEn: 'Other Transport Equipment', sortOrder: 24 },
+        { code: '32', nameZh: '家具製造業', nameEn: 'Furniture Manufacturing', sortOrder: 25 },
+        { code: '33', nameZh: '其他製造業', nameEn: 'Other Manufacturing', sortOrder: 26 }
+    ];
+
+    for (const industry of industryCodes) {
+        await prisma.industryCode.upsert({
+            where: { code: industry.code },
+            update: { nameZh: industry.nameZh, nameEn: industry.nameEn, sortOrder: industry.sortOrder },
+            create: industry
+        });
+        console.log(`✅ Industry Code ${industry.code} seeded`);
+    }
+
+    // 12. Reference Data: Domestic Agencies
+    console.log('Seeding domestic agencies...');
+    const domesticAgencies = [
+        {
+            code: '01',
+            agencyNameZh: '範例人力仲介股份有限公司',
+            agencyNameEn: 'EXAMPLE MANPOWER CO.,LTD.',
+            agencyNameShort: '範例人力',
+            phone: '02-23456789',
+            fax: '02-23456780',
+            emergencyEmail: 'emergency@example.com',
+            zipCode: '100',
+            cityCode: '01',
+            addressZh: '台北市中正區中山南路1號',
+            addressEn: 'No.1, Zhongshan S. Rd., Zhongzheng Dist., Taipei City 100, Taiwan (R.O.C.)',
+            representativeName: '範例負責人',
+            representativeNameEn: 'EXAMPLE REPRESENTATIVE',
+            representativeIdNo: 'A123456789',
+            checkPayableTo: '範例負責人',
+            taxId: '12345678',
+            permitNumber: '0001',
+            permitValidFrom: new Date('2025-01-01'),
+            permitValidTo: new Date('2027-12-31'),
+            customerServicePhone: '02-23456789',
+            emergencyPhone: '0900-123456',
+            postalAccountName: '範例人力仲介股份有限公司',
+            bankName: '範例銀行(台北分行)',
+            bankCode: '001',
+            bankBranchCode: '0001',
+            bankAccountNo: '123456789012',
+            bankAccountName: '範例人力仲介股份有限公司',
+            accountant: '範例會計',
+            sortOrder: 1
+        },
+        {
+            code: '02',
+            agencyNameZh: '範例管理顧問股份有限公司',
+            agencyNameEn: 'Example Management Consulting Co.,Ltd.',
+            agencyNameShort: '範例管顧',
+            sortOrder: 2
+        },
+        {
+            code: '03',
+            agencyNameZh: '範例國際開發股份有限公司',
+            agencyNameEn: 'Example International Development Co.,Ltd.',
+            agencyNameShort: '範例國際',
+            sortOrder: 3
+        }
+    ];
+
+    const createdAgencies: any[] = [];
+    for (const agency of domesticAgencies) {
+        const created = await prisma.domesticAgency.upsert({
+            where: { code: agency.code },
+            update: agency,
+            create: agency
+        });
+        createdAgencies.push(created);
+        console.log(`✅ Domestic Agency ${agency.code} - ${agency.agencyNameShort} seeded`);
+    }
+
+    // 13. Reference Data: Bilateral Trade Licenses (for agency 01)
+    console.log('Seeding bilateral trade licenses...');
+    const agency01 = createdAgencies.find(a => a.code === '01');
+    if (agency01) {
+        const bilateralLicenses = [
+            {
+                agencyId: agency01.id,
+                country: 'TH', // 泰國
+                validFrom: new Date('2024-01-01'),
+                validTo: new Date('2025-12-31'),
+                status: 'ACTIVE'
+            },
+            {
+                agencyId: agency01.id,
+                country: 'PH', // 菲律賓
+                validFrom: new Date('2024-06-01'),
+                validTo: new Date('2026-05-31'),
+                status: 'ACTIVE'
+            },
+            {
+                agencyId: agency01.id,
+                country: 'ID', // 印尼
+                validFrom: new Date('2024-01-01'),
+                validTo: new Date('2025-12-31'),
+                status: 'ACTIVE'
+            },
+            {
+                agencyId: agency01.id,
+                country: 'VN', // 越南
+                validFrom: new Date('2024-01-01'),
+                validTo: new Date('2025-12-31'),
+                status: 'ACTIVE'
+            }
+        ];
+
+        for (const license of bilateralLicenses) {
+            await prisma.agencyBilateralTradeLicense.create({
+                data: license
+            });
+            console.log(`✅ Bilateral License ${license.country} for ${agency01.agencyNameShort} seeded`);
+        }
+    }
+
+    // 14. Reference Data: Loan Banks
+    console.log('Seeding loan banks...');
+    const loanBanks = [
+        { code: '0004', nameZh: '玉山銀行', nameEn: 'E.SUN Bank', sortOrder: 1 },
+        { code: '0001', nameZh: '華南銀行', nameEn: 'Hua Nan Bank', sortOrder: 2 },
+        { code: '0002', nameZh: '中國信託', nameEn: 'CTBC Bank', sortOrder: 3 },
+        { code: '003', nameZh: '台新銀行', nameEn: 'Taishin Bank', sortOrder: 4 },
+        { code: '05', nameZh: '大眾EPDA', sortOrder: 5 },
+        { code: '006', nameZh: '飛盟利', sortOrder: 6 },
+        { code: '007', nameZh: '宏融', sortOrder: 7 },
+        { code: '008', nameZh: '智惠', sortOrder: 8 },
+        { code: '009', nameZh: 'SINARMAS', sortOrder: 9 },
+        { code: '8090000', nameZh: '凱基', nameEn: 'KGI Bank', sortOrder: 10 },
+        { code: '700', nameZh: '中華郵政', nameEn: 'Chunghwa Post', sortOrder: 11 }
+    ];
+
+    for (const bank of loanBanks) {
+        await prisma.loanBank.upsert({
+            where: { code: bank.code },
+            update: bank,
+            create: bank
+        });
+        console.log(`✅ Loan Bank ${bank.code} - ${bank.nameZh} seeded`);
+    }
+
+    // 15. Partner Agencies (配合仲介)
+    console.log('Seeding partner agencies...');
+    const partnerAgencies = [
+        {
+            code: '16',
+            agencyNameZh: '範例國際開發股份有限公司',
+            agencyNameZhShort: '範例國際',
+            agencyNameEn: 'EXAMPLE INTERNATIONAL DEVELOPMENT CO.,LTD.',
+            phone: '04-22248600',
+            fax: '04-22248606',
+            country: 'VN', // 越南
+            countryNameZh: '越南',
+            loanBankCode: '0004', // 玉山銀行
+            isActive: true
+        },
+        {
+            code: '20',
+            agencyNameZh: '菲律賓人力資源公司',
+            agencyNameZhShort: '菲律賓人力',
+            agencyNameEn: 'Philippines Manpower Agency Inc.',
+            phone: '+63-2-1234567',
+            country: 'PH', // 菲律賓
+            countryNameZh: '菲律賓',
+            loanBankCode: '0002', // 中國信託
+            isActive: true
+        }
+    ];
+
+    const createdPartnerAgencies: any[] = [];
+    for (const agency of partnerAgencies) {
+        const created = await prisma.partnerAgency.upsert({
+            where: { code: agency.code },
+            update: agency,
+            create: agency
+        });
+        createdPartnerAgencies.push(created);
+        console.log(`✅ Partner Agency ${agency.code} - ${agency.agencyNameZhShort} seeded`);
+    }
+
+    // 16. Partner Agency Bilateral Licenses
+    console.log('Seeding partner agency bilateral licenses...');
+    const partnerAgency16 = createdPartnerAgencies.find(a => a.code === '16');
+    if (partnerAgency16) {
+        const bilateralLicenses = [
+            {
+                agencyId: partnerAgency16.id,
+                validFrom: new Date('2024-01-01'),
+                validTo: new Date('2025-12-31'),
+                status: 'ACTIVE'
+            }
+        ];
+
+        for (const license of bilateralLicenses) {
+            await prisma.partnerAgencyBilateralLicense.create({
+                data: license
+            });
+            console.log(`✅ Bilateral License for ${partnerAgency16.agencyNameZhShort} seeded`);
+        }
+    }
+
+    // 17. Partner Agency Contracts
+    console.log('Seeding partner agency contracts...');
+    const partnerAgency20 = createdPartnerAgencies.find(a => a.code === '20');
+    if (partnerAgency20) {
+        const contracts = [
+            {
+                agencyId: partnerAgency20.id,
+                contractNo: 'LC-2024-PH-001',
+                contractType: '勞工供應契約',
+                signedDate: new Date('2024-01-15'),
+                validFrom: new Date('2024-02-01'),
+                validTo: new Date('2025-01-31'),
+                summary: '菲律賓家庭看護工供應合約',
+                status: 'ACTIVE'
+            }
+        ];
+
+        for (const contract of contracts) {
+            await prisma.partnerAgencyContract.create({
+                data: contract
+            });
+            console.log(`✅ Contract ${contract.contractNo} for ${partnerAgency20.agencyNameZhShort} seeded`);
+        }
+    }
+
+    // 18. Banks (銀行基本資料)
+    console.log('Seeding banks...');
+    const banks = [
+        {
+            code: '0004',
+            bankName: '玉山銀行',
+            bankNameEn: 'E.SUN Bank',
+            phone: '02-21821313',
+            address: '台北市松山區民生東路三段115號'
+        },
+        {
+            code: '0001',
+            bankName: '華南銀行',
+            bankNameEn: 'Hua Nan Bank',
+            phone: '02-23713111',
+            address: '台北市信義區松仁路123號'
+        },
+        {
+            code: '0002',
+            bankName: '中國信託',
+            bankNameEn: 'CTBC Bank',
+            phone: '02-33277777',
+            address: '台北市南港區經貿二路168號'
+        }
+    ];
+
+    const createdBanks: any[] = [];
+    for (const bank of banks) {
+        const created = await prisma.bank.upsert({
+            where: { code: bank.code },
+            update: bank,
+            create: bank
+        });
+        createdBanks.push(created);
+        console.log(`✅ Bank ${bank.code} - ${bank.bankName} seeded`);
+    }
+
+    // 19. Domestic Agency Bank Accounts
+    console.log('Seeding domestic agency bank accounts...');
+
+    // 取得已創建的國內仲介
+    const agency02 = createdAgencies.find(a => a.code === '02'); // 範例管顧
+    const agency03 = createdAgencies.find(a => a.code === '03'); // 範例國際
+
+    const bank0004 = createdBanks.find(b => b.code === '0004');
+    const bank0001 = createdBanks.find(b => b.code === '0001');
+    const bank0002 = createdBanks.find(b => b.code === '0002');
+
+    const agencyBankAccounts = [];
+
+    // 範例人力的銀行帳戶
+    if (agency01 && bank0004) {
+        agencyBankAccounts.push({
+            domesticAgencyId: agency01.id,
+            bankId: bank0004.id,
+            agencyUnitCode: 'EG1234567890',
+            agencyAccountNo: '0621234567890',
+            accountPurpose: '勞工薪資轉帳專戶',
+            isPrimary: true
+        });
+    }
+    if (agency01 && bank0001) {
+        agencyBankAccounts.push({
+            domesticAgencyId: agency01.id,
+            bankId: bank0001.id,
+            agencyUnitCode: 'HN9876543210',
+            agencyAccountNo: '1239876543210',
+            accountPurpose: '備用帳戶',
+            isPrimary: false
+        });
+    }
+
+    // 範例管顧的銀行帳戶
+    if (agency02 && bank0004) {
+        agencyBankAccounts.push({
+            domesticAgencyId: agency02.id,
+            bankId: bank0004.id,
+            agencyUnitCode: 'MC5555666677',
+            agencyAccountNo: '0625555666677',
+            accountPurpose: '服務費收款專戶',
+            isPrimary: true
+        });
+    }
+
+    // 範例國際的銀行帳戶
+    if (agency03 && bank0002) {
+        agencyBankAccounts.push({
+            domesticAgencyId: agency03.id,
+            bankId: bank0002.id,
+            agencyUnitCode: 'ID8888999900',
+            agencyAccountNo: '0028888999900',
+            accountPurpose: '勞工薪資轉帳專戶',
+            isPrimary: true
+        });
+    }
+
+    for (const account of agencyBankAccounts) {
+        await prisma.domesticAgencyBankAccount.upsert({
+            where: {
+                domesticAgencyId_bankId_agencyAccountNo: {
+                    domesticAgencyId: account.domesticAgencyId,
+                    bankId: account.bankId,
+                    agencyAccountNo: account.agencyAccountNo
+                }
+            },
+            update: account,
+            create: account
+        });
+
+        const agency = createdAgencies.find(a => a.id === account.domesticAgencyId);
+        const bank = createdBanks.find(b => b.id === account.bankId);
+        console.log(`✅ Bank Account: ${agency?.agencyNameShort} @ ${bank?.bankName} seeded`);
+    }
+
+    // 20. Departments (部門)
+    console.log('Seeding departments...');
+    const departments = [
+        { code: '001', nameZh: '董事長', nameEn: 'Chairman', sortOrder: 1 },
+        { code: '002', nameZh: '總經理', nameEn: 'General Manager', sortOrder: 2 },
+        { code: '100', nameZh: '業務部', nameEn: 'Sales Department', sortOrder: 3 },
+        { code: '200', nameZh: '財務部', nameEn: 'Finance Department', sortOrder: 4 },
+        { code: '300', nameZh: '行政部', nameEn: 'Administration Department', sortOrder: 5 },
+        { code: '500', nameZh: '客服部', nameEn: 'Customer Service Department', sortOrder: 6 }
+    ];
+
+    for (const dept of departments) {
+        await prisma.department.upsert({
+            where: { code: dept.code },
+            update: dept,
+            create: dept
+        });
+        console.log(`✅ Department ${dept.code} - ${dept.nameZh} seeded`);
+    }
+
+    // 21. Employees (員工)
+    console.log('Seeding employees...');
+    const employees = [
+        {
+            code: '4',
+            fullName: '範例業務',
+            fullNameEn: 'Example Sales',
+            gender: '男',
+            nationality: '中華民國',
+            dateOfBirth: new Date('1990-01-01'),
+            idNumber: 'A123456789',
+            departmentCode: '100', // 業務部
+            employeeNumber: 'EMP001',
+            jobTitle: '資深業務專員',
+            domesticAgencyId: agency01?.id,
+            phone: '02-23456789',
+            mobilePhone: '0900-123456',
+            email: 'sales@example.com',
+            receiveSms: false,
+            mailingAddressZh: '台北市信義區信義路五段7號',
+            isSales: true,
+            isAdmin: false,
+            isCustomerService: false,
+            isAccounting: false,
+            isBilingual: false,
+            hireDate: new Date('2020-03-01'),
+            insuranceStartDate: new Date('2020-03-01'),
+            isActive: true
+        },
+        {
+            code: '10',
+            fullName: '範例客服',
+            gender: '男',
+            nationality: '中華民國',
+            departmentCode: '500', // 客服部
+            employeeNumber: 'EMP010',
+            jobTitle: '客服專員',
+            domesticAgencyId: agency01?.id,
+            phone: '02-23456789',
+            extension: '101',
+            email: 'service@example.com',
+            isSales: false,
+            isAdmin: false,
+            isCustomerService: true,
+            isAccounting: false,
+            isBilingual: true,
+            hireDate: new Date('2021-06-15'),
+            insuranceStartDate: new Date('2021-06-15'),
+            isActive: true
+        }
+    ];
+
+    for (const emp of employees) {
+        await prisma.employee.upsert({
+            where: { code: emp.code },
+            update: emp,
+            create: emp
+        });
+        console.log(`✅ Employee ${emp.code} - ${emp.fullName} seeded`);
+    }
+
 }
 
 main()

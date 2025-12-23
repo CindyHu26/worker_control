@@ -53,140 +53,139 @@ const CaretakerAttrs = z.object({
  * Create New Employer
  * Handles both corporate and individual employers with nested relations
  */
-export async function createEmployer(input: CreateEmployerInput) {
-    // Validate input
-    const validatedData = CreateEmployerInputSchema.parse(input);
+export async function createEmployer(input: any) {
+    // We allow passing nested or flat data. 
+    // If input has corporateInfo/individualInfo, we use them.
+    const {
+        corporateInfo,
+        individualInfo,
+        factories,
+        industryAttributes,
+        avgDomesticWorkers,
+        ...coreData
+    } = input;
 
-    // Check for duplicate taxId
-    if (validatedData.taxId) {
-        const existing = await prisma.employer.findUnique({
-            where: { taxId: validatedData.taxId }
-        });
-        if (existing) {
-            throw new DuplicateResourceError('taxId', validatedData.taxId);
-        }
-    }
-
-    // Check for duplicate code
-    if (validatedData.code) {
-        const existing = await prisma.employer.findUnique({
-            where: { code: validatedData.code }
-        });
-        if (existing) {
-            throw new DuplicateResourceError('code', validatedData.code);
-        }
-    }
-
-    // [New] Category-based Validation
-    const category = validatedData.category;
-    if (category === 'HOME_CARE') {
-        if (!validatedData.responsiblePersonIdNo) {
-            throw new ValidationError('Missing responsible person ID for Household Employer (category: HOME_CARE)');
-        }
-        if (validatedData.taxId) {
-            throw new ValidationError('Household Employer should not have Tax ID (Unified Business No)');
-        }
-    } else if (category === 'MANUFACTURING' || category === 'INSTITUTION') {
-        // Business Types
-        if (!validatedData.taxId) {
-            throw new ValidationError(`Missing Tax ID for Business Employer (category: ${category})`);
-        }
-        if (!validatedData.responsiblePerson) {
-            throw new ValidationError('Missing Responsible Person for Business Employer');
-        }
-    }
-
-    // Determine employer type
-    const isCorporate = !!(
-        validatedData.factoryRegistrationNo ||
-        validatedData.industryType ||
-        validatedData.category ||
-        (validatedData.taxId && validatedData.taxId.length === 8)
-    );
-
-    const isIndividual = !!(
-        validatedData.responsiblePersonIdNo ||
-        validatedData.responsiblePersonSpouse ||
-        validatedData.patientName ||
-        (validatedData.taxId && validatedData.taxId.length === 10)
-    );
+    // Validate core data if needed, but here we'll follow previous pattern with more flexibility
+    // Determine basic fields
+    const finalCompanyName = coreData.companyName || coreData.responsiblePerson || '未命名雇主';
 
     // Create employer in transaction
     const newEmployer = await prisma.$transaction(async (tx) => {
         const data: any = {
-            companyName: validatedData.companyName || validatedData.responsiblePerson || '未命名雇主',
-            companyNameEn: validatedData.companyNameEn,
-            taxId: validatedData.taxId,
-            code: validatedData.code,
-            shortName: validatedData.shortName,
-            referrer: validatedData.referrer,
-            taxAddress: validatedData.taxAddress,
-            healthBillAddress: validatedData.healthBillAddress,
-            healthBillZip: validatedData.healthBillZip,
-            responsiblePerson: validatedData.responsiblePerson,
-            phoneNumber: validatedData.phoneNumber,
-            address: validatedData.address,
-            addressEn: validatedData.addressEn,
-            invoiceAddress: validatedData.invoiceAddress,
-            email: validatedData.email,
-            contactPerson: validatedData.contactPerson,
-            contactPhone: validatedData.contactPhone,
-            allocationRate: parseNumber(validatedData.allocationRate),
-            complianceStandard: validatedData.complianceStandard || 'NONE',
-            zeroFeeEffectiveDate: parseDate(validatedData.zeroFeeEffectiveDate)
+            companyName: finalCompanyName,
+            companyNameEn: coreData.companyNameEn,
+            taxId: coreData.taxId,
+            code: coreData.code,
+            shortName: coreData.shortName,
+            referrer: coreData.referrer,
+            taxAddress: coreData.taxAddress,
+            healthBillAddress: coreData.healthBillAddress,
+            healthBillZip: coreData.healthBillZip,
+            responsiblePerson: coreData.responsiblePerson,
+            phoneNumber: coreData.phoneNumber,
+            mobilePhone: coreData.mobilePhone,
+            address: coreData.address,
+            addressEn: coreData.addressEn,
+            invoiceAddress: coreData.invoiceAddress,
+            email: coreData.email,
+            contactPerson: coreData.contactPerson,
+            contactPhone: coreData.contactPhone,
+            allocationRate: parseNumber(coreData.allocationRate),
+            complianceStandard: coreData.complianceStandard || 'NONE',
+            zeroFeeEffectiveDate: parseDate(coreData.zeroFeeEffectiveDate),
+            industryAttributes: industryAttributes || coreData.industryAttributes,
+            agencyId: coreData.agencyId,
+            remarks: coreData.remarks,
         };
 
-        // Add corporate info if applicable
-        if (isCorporate) {
+        // Add corporate info
+        if (corporateInfo || coreData.factoryRegistrationNo) {
+            const corpData = corporateInfo || {
+                factoryRegistrationNo: coreData.factoryRegistrationNo,
+                industryType: coreData.industryType,
+                industryCode: coreData.industryCode,
+                factoryAddress: coreData.factoryAddress,
+                capital: coreData.capital,
+                laborInsuranceNo: coreData.laborInsuranceNo,
+                laborInsuranceId: coreData.laborInsuranceId,
+                healthInsuranceUnitNo: coreData.healthInsuranceUnitNo,
+                healthInsuranceId: coreData.healthInsuranceId,
+                institutionCode: coreData.institutionCode,
+                bedCount: coreData.bedCount
+            };
+
             data.corporateInfo = {
                 create: {
-                    factoryRegistrationNo: validatedData.factoryRegistrationNo,
-                    industryType: validatedData.industryType,
-                    industryCode: validatedData.industryCode,
-                    factoryAddress: validatedData.factoryAddress,
-                    capital: parseNumber(validatedData.capital),
-                    laborInsuranceNo: validatedData.laborInsuranceNo,
-                    laborInsuranceId: validatedData.laborInsuranceId,
-                    healthInsuranceUnitNo: validatedData.healthInsuranceUnitNo,
-                    healthInsuranceId: validatedData.healthInsuranceId,
-                    institutionCode: validatedData.institutionCode,
-                    bedCount: parseNumber(validatedData.bedCount)
+                    factoryRegistrationNo: corpData.factoryRegistrationNo,
+                    industryType: corpData.industryType,
+                    industryCode: corpData.industryCode,
+                    factoryAddress: corpData.factoryAddress,
+                    capital: parseNumber(corpData.capital),
+                    laborInsuranceNo: corpData.laborInsuranceNo,
+                    laborInsuranceId: corpData.laborInsuranceId,
+                    healthInsuranceUnitNo: corpData.healthInsuranceUnitNo,
+                    healthInsuranceId: corpData.healthInsuranceId,
+                    institutionCode: corpData.institutionCode,
+                    bedCount: parseNumber(corpData.bedCount),
+                    faxNumber: corpData.faxNumber || coreData.faxNumber
                 }
             };
         }
 
-        // Add individual info if applicable
-        if (isIndividual) {
+        // Add individual info
+        if (individualInfo || coreData.responsiblePersonIdNo) {
+            const indData = individualInfo || {
+                responsiblePersonIdNo: coreData.responsiblePersonIdNo,
+                responsiblePersonSpouse: coreData.responsiblePersonSpouse,
+                responsiblePersonFather: coreData.responsiblePersonFather,
+                responsiblePersonMother: coreData.responsiblePersonMother,
+                responsiblePersonDob: coreData.responsiblePersonDob,
+                englishName: coreData.englishName,
+                birthPlace: coreData.birthPlace,
+                birthPlaceEn: coreData.birthPlaceEn,
+                residenceAddress: coreData.residenceAddress,
+                residenceZip: coreData.residenceZip,
+                residenceCityCode: coreData.residenceCityCode,
+                militaryStatus: coreData.militaryStatus,
+                militaryStatusEn: coreData.militaryStatusEn,
+                idIssueDate: coreData.idIssueDate,
+                idIssuePlace: coreData.idIssuePlace,
+                patientName: coreData.patientName,
+                patientIdNo: coreData.patientIdNo,
+                careAddress: coreData.careAddress,
+                relationship: coreData.relationship
+            };
+
             data.individualInfo = {
                 create: {
-                    responsiblePersonIdNo: validatedData.responsiblePersonIdNo ||
-                        (validatedData.taxId?.length === 10 ? validatedData.taxId : undefined),
-                    responsiblePersonSpouse: validatedData.responsiblePersonSpouse,
-                    responsiblePersonFather: validatedData.responsiblePersonFather,
-                    responsiblePersonMother: validatedData.responsiblePersonMother,
-                    responsiblePersonDob: parseDate(validatedData.responsiblePersonDob),
-                    englishName: validatedData.englishName,
-                    birthPlace: validatedData.birthPlace,
-                    birthPlaceEn: validatedData.birthPlaceEn,
-                    residenceAddress: validatedData.residenceAddress,
-                    residenceZip: validatedData.residenceZip,
-                    residenceCityCode: validatedData.residenceCityCode,
-                    militaryStatus: validatedData.militaryStatus,
-                    militaryStatusEn: validatedData.militaryStatusEn,
-                    idIssueDate: parseDate(validatedData.idIssueDate),
-                    idIssuePlace: validatedData.idIssuePlace,
-                    patientName: validatedData.patientName,
-                    patientIdNo: validatedData.patientIdNo,
-                    careAddress: validatedData.careAddress,
-                    relationship: validatedData.relationship
+                    responsiblePersonIdNo: indData.responsiblePersonIdNo ||
+                        (coreData.taxId?.length === 10 ? coreData.taxId : undefined),
+                    responsiblePersonSpouse: indData.responsiblePersonSpouse,
+                    responsiblePersonFather: indData.responsiblePersonFather,
+                    responsiblePersonMother: indData.responsiblePersonMother,
+                    responsiblePersonDob: parseDate(indData.responsiblePersonDob),
+                    englishName: indData.englishName,
+                    birthPlace: indData.birthPlace,
+                    birthPlaceEn: indData.birthPlaceEn,
+                    residenceAddress: indData.residenceAddress,
+                    residenceZip: indData.residenceZip,
+                    residenceCityCode: indData.residenceCityCode,
+                    militaryStatus: indData.militaryStatus,
+                    militaryStatusEn: indData.militaryStatusEn,
+                    idIssueDate: parseDate(indData.idIssueDate),
+                    idIssuePlace: indData.idIssuePlace,
+                    patientName: indData.patientName,
+                    patientIdNo: indData.patientIdNo,
+                    careAddress: indData.careAddress,
+                    relationship: indData.relationship
                 }
             };
         }
 
-        // Add factories if provided
-        if (validatedData.factories && validatedData.factories.length > 0) {
+        // Add factories
+        if (factories && factories.length > 0) {
             data.factories = {
-                create: validatedData.factories.map(f => ({
+                create: factories.map((f: any) => ({
                     name: f.name,
                     factoryRegNo: f.factoryRegNo,
                     address: f.address,
@@ -195,20 +194,6 @@ export async function createEmployer(input: CreateEmployerInput) {
                     cityCode: f.cityCode,
                     laborCount: parseNumber(f.laborCount) || 0,
                     foreignCount: parseNumber(f.foreignCount) || 0
-                }))
-            };
-        }
-
-        // Add initial recruitment letters if provided
-        if (validatedData.initialRecruitmentLetters && validatedData.initialRecruitmentLetters.length > 0) {
-            data.recruitmentLetters = {
-                create: validatedData.initialRecruitmentLetters.map(letter => ({
-                    letterNumber: letter.letterNumber,
-                    issueDate: letter.issueDate,
-                    expiryDate: letter.expiryDate,
-                    approvedQuota: letter.approvedQuota,
-                    usedQuota: 0,
-                    validUntil: letter.expiryDate // Default validUntil to expiryDate
                 }))
             };
         }
@@ -224,19 +209,16 @@ export async function createEmployer(input: CreateEmployerInput) {
             }
         });
 
-        // Create initial labor count if manufacturing employer with domestic workers
-        if (isCorporate &&
-            validatedData.industryType === 'MANUFACTURING' &&
-            validatedData.avgDomesticWorkers &&
-            validatedData.avgDomesticWorkers > 0
-        ) {
+        // Create initial labor count
+        const laborCountValue = parseNumber(avgDomesticWorkers) || parseNumber(coreData.avgDomesticWorkers);
+        if (laborCountValue && laborCountValue > 0) {
             const now = new Date();
             await tx.employerLaborCount.create({
                 data: {
                     employerId: employer.id,
                     year: now.getFullYear(),
                     month: now.getMonth() + 1,
-                    count: validatedData.avgDomesticWorkers
+                    count: laborCountValue
                 }
             });
         }
@@ -388,61 +370,47 @@ export async function deleteEmployer(id: string): Promise<void> {
 // 存檔時 (Create/Update)
 export async function updateEmployer(id: string, data: any) {
     const {
-        attributes,
-        // Corporate fields
-        factoryRegistrationNo, industryCode, industryType, factoryAddress, factoryAddressEn,
-        capital,
-        laborInsuranceNo, laborInsuranceId, healthInsuranceUnitNo, healthInsuranceId, faxNumber,
-        institutionCode, bedCount, avgDomesticWorkers,
-        // Individual fields
-        patientName, hospitalCertNo, careAddress, relationship,
-        responsiblePersonDob, responsiblePersonIdNo, responsiblePersonFather, responsiblePersonMother, responsiblePersonSpouse,
-        idIssueDate, idIssuePlace, militaryStatus,
-        englishName, birthPlace, birthPlaceEn, residenceAddress, residenceZip, residenceCityCode,
-        militaryStatusEn,
-        // New Core fields
-        code, shortName, referrer, terminateDate,
-        companyNameEn, addressEn, contactPerson, contactPhone,
-        taxAddress, healthBillAddress, healthBillZip,
-        factories, // Array of factory objects
+        corporateInfo,
+        individualInfo,
+        factories,
+        industryAttributes,
+        avgDomesticWorkers,
         ...coreData
     } = data;
 
-    // [新增] 自動補全邏輯
+    // Determine basic fields
     const finalCompanyName = coreData.companyName || coreData.responsiblePerson || '未命名雇主';
 
-    // Prepare updates
-    const coreUpdate: any = {
-        ...coreData,
-        companyName: finalCompanyName // 強制賦值
+    const updates: any = {
+        companyName: finalCompanyName,
+        companyNameEn: coreData.companyNameEn,
+        taxId: coreData.taxId,
+        code: coreData.code,
+        shortName: coreData.shortName,
+        referrer: coreData.referrer,
+        phoneNumber: coreData.phoneNumber,
+        mobilePhone: coreData.mobilePhone,
+        email: coreData.email,
+        address: coreData.address,
+        addressEn: coreData.addressEn,
+        invoiceAddress: coreData.invoiceAddress,
+        taxAddress: coreData.taxAddress,
+        healthBillAddress: coreData.healthBillAddress,
+        healthBillZip: coreData.healthBillZip,
+        contactPerson: coreData.contactPerson,
+        contactPhone: coreData.contactPhone,
+        allocationRate: parseNumber(coreData.allocationRate),
+        complianceStandard: coreData.complianceStandard,
+        zeroFeeEffectiveDate: parseDate(coreData.zeroFeeEffectiveDate),
+        terminateDate: parseDate(coreData.terminateDate),
+        industryAttributes: industryAttributes || coreData.industryAttributes, // Handle both flat and nested if present
+        agencyId: coreData.agencyId,
+        remarks: coreData.remarks,
     };
-    if (code !== undefined) coreUpdate.code = code;
-    if (shortName !== undefined) coreUpdate.shortName = shortName;
-    if (referrer !== undefined) coreUpdate.referrer = referrer;
-    if (terminateDate !== undefined) coreUpdate.terminateDate = parseDate(terminateDate) || null; // Use safe parser
-    if (companyNameEn !== undefined) coreUpdate.companyNameEn = companyNameEn;
-    if (addressEn !== undefined) coreUpdate.addressEn = addressEn;
-    if (contactPerson !== undefined) coreUpdate.contactPerson = contactPerson;
-    if (contactPhone !== undefined) coreUpdate.contactPhone = contactPhone;
-    if (taxAddress !== undefined) coreUpdate.taxAddress = taxAddress;
-    if (healthBillAddress !== undefined) coreUpdate.healthBillAddress = healthBillAddress;
-    if (healthBillZip !== undefined) coreUpdate.healthBillZip = healthBillZip;
 
-    if (coreData.allocationRate !== undefined) {
-        coreUpdate.allocationRate = parseNumber(coreData.allocationRate);
-    }
-    if (coreData.zeroFeeEffectiveDate !== undefined) {
-        coreUpdate.zeroFeeEffectiveDate = parseDate(coreData.zeroFeeEffectiveDate);
-    }
-
-    const updates: any = { ...coreUpdate };
-
-    // Update Factories (Improved Logic)
-    // Note: We handle the actual update in transaction below
+    // Update Factories
     let existingFactoriesToUpdate: any[] = [];
-
     if (factories && Array.isArray(factories)) {
-        // Separate factories with IDs (existing) from those without (new)
         existingFactoriesToUpdate = factories.filter((f: any) => f.id);
         const newFactories = factories.filter((f: any) => !f.id);
 
@@ -457,74 +425,62 @@ export async function updateEmployer(id: string, data: any) {
             foreignCount: parseNumber(f.foreignCount) || 0
         }));
 
-        updates._newFactoryCreates = newFactoryCreates; // Pass to transaction
-        updates._existingFactoriesToUpdate = existingFactoriesToUpdate; // Pass to transaction
+        updates._newFactoryCreates = newFactoryCreates;
+        updates._existingFactoriesToUpdate = existingFactoriesToUpdate;
     }
 
-    // If Corporate fields are present
-    if (factoryRegistrationNo || industryType || industryCode || capital !== undefined || laborInsuranceNo || healthInsuranceUnitNo || institutionCode) {
+    // Corporate Info
+    if (corporateInfo) {
+        const corpUpdateData = {
+            factoryRegistrationNo: corporateInfo.factoryRegistrationNo,
+            industryType: corporateInfo.industryType,
+            industryCode: corporateInfo.industryCode,
+            capital: parseNumber(corporateInfo.capital),
+            laborInsuranceNo: corporateInfo.laborInsuranceNo,
+            laborInsuranceId: corporateInfo.laborInsuranceId,
+            healthInsuranceUnitNo: corporateInfo.healthInsuranceUnitNo,
+            healthInsuranceId: corporateInfo.healthInsuranceId,
+            faxNumber: corporateInfo.faxNumber,
+            institutionCode: corporateInfo.institutionCode,
+            bedCount: parseNumber(corporateInfo.bedCount),
+        };
         updates.corporateInfo = {
             upsert: {
-                create: {
-                    factoryRegistrationNo,
-                    industryType,
-                    industryCode,
-                    capital: parseNumber(capital),
-                    laborInsuranceNo,
-                    laborInsuranceId,
-                    healthInsuranceUnitNo,
-                    healthInsuranceId,
-                    faxNumber,
-                    institutionCode,
-                    bedCount: parseNumber(bedCount),
-                },
-                update: {
-                    factoryRegistrationNo,
-                    industryType,
-                    industryCode,
-                    capital: parseNumber(capital),
-                    laborInsuranceNo,
-                    laborInsuranceId,
-                    healthInsuranceUnitNo,
-                    healthInsuranceId,
-                    faxNumber,
-                    institutionCode,
-                    bedCount: parseNumber(bedCount),
-                }
+                create: corpUpdateData,
+                update: corpUpdateData
             }
         };
     }
 
-    // If Individual fields are present
-    if (responsiblePersonIdNo || responsiblePersonSpouse || responsiblePersonFather || patientName || englishName) {
+    // Individual Info
+    if (individualInfo) {
         const indUpdateData = {
-            responsiblePersonIdNo,
-            responsiblePersonSpouse,
-            responsiblePersonFather,
-            responsiblePersonMother,
-            responsiblePersonDob: parseDate(responsiblePersonDob),
-            idIssueDate: parseDate(idIssueDate),
-            idIssuePlace,
-            militaryStatus,
-            militaryStatusEn,
-            patientName,
-            patientIdNo: data.patientIdNo,
-            careAddress,
-            relationship,
-            englishName,
-            birthPlace,
-            birthPlaceEn,
-            residenceAddress,
-            residenceZip,
-            residenceCityCode
+            responsiblePersonDob: parseDate(individualInfo.responsiblePersonDob),
+            responsiblePersonIdNo: individualInfo.responsiblePersonIdNo,
+            responsiblePersonFather: individualInfo.responsiblePersonFather,
+            responsiblePersonMother: individualInfo.responsiblePersonMother,
+            responsiblePersonSpouse: individualInfo.responsiblePersonSpouse,
+            englishName: individualInfo.englishName,
+            birthPlace: individualInfo.birthPlace,
+            birthPlaceEn: individualInfo.birthPlaceEn,
+            residenceAddress: individualInfo.residenceAddress,
+            residenceZip: individualInfo.residenceZip,
+            residenceCityCode: individualInfo.residenceCityCode,
+            idIssueDate: parseDate(individualInfo.idIssueDate),
+            idIssuePlace: individualInfo.idIssuePlace,
+            militaryStatus: individualInfo.militaryStatus,
+            militaryStatusEn: individualInfo.militaryStatusEn,
+            patientName: individualInfo.patientName,
+            patientIdNo: individualInfo.patientIdNo,
+            careAddress: individualInfo.careAddress,
+            relationship: individualInfo.relationship,
         };
-
         updates.individualInfo = {
             upsert: {
                 create: indUpdateData,
                 update: indUpdateData
             }
-        }
+        };
     }
 
     // Use transaction to handle factory updates properly
@@ -535,22 +491,16 @@ export async function updateEmployer(id: string, data: any) {
         delete updates._newFactoryCreates;
 
         // FACTORY DELETION LOGIC (SAFE VERSION)
-        // 1. Determine which factories are being removed
-        // If factories array was provided, it means it's the full list.
-        // IDs present in DB but NOT in existingFactoriesUpdateList are candidates for deletion.
         if (factories && Array.isArray(factories)) {
             const keepIds = existingFactoriesUpdateList.map((f: any) => f.id);
-
-            // Find candidates for deletion (belong to employer, but not in keepIds)
             const candidates = await tx.employerFactory.findMany({
                 where: {
                     employerId: id,
                     id: { notIn: keepIds }
                 },
-                select: { id: true, deployments: { select: { id: true } } } // Check for deployments
+                select: { id: true, deployments: { select: { id: true } } }
             });
 
-            // Filter out those that have deployments
             const factoryIdsToDelete = candidates
                 .filter(f => f.deployments.length === 0)
                 .map(f => f.id);
@@ -563,8 +513,6 @@ export async function updateEmployer(id: string, data: any) {
                 };
             }
 
-            // Add Create logic to updates.factories if needed, or handle separately? 
-            // Prisma updates.factories can take deleteMany and create simultaneously.
             if (newFactoryCreateList.length > 0) {
                 updates.factories = {
                     ...(updates.factories || {}),
@@ -573,7 +521,7 @@ export async function updateEmployer(id: string, data: any) {
             }
         }
 
-        // 2. Update employer (including nested upserts and factory delete/create)
+        // 2. Update employer
         const updatedEmployer = await tx.employer.update({
             where: { id },
             data: updates,
@@ -584,7 +532,7 @@ export async function updateEmployer(id: string, data: any) {
             }
         });
 
-        // 3. Update existing factories individually (preserves IDs)
+        // 3. Update existing factories individually
         for (const factory of existingFactoriesUpdateList) {
             await tx.employerFactory.update({
                 where: { id: factory.id },
@@ -601,7 +549,7 @@ export async function updateEmployer(id: string, data: any) {
             });
         }
 
-        // 4. Update avgDomesticWorkers (Labor Count)
+        // 4. Update avgDomesticWorkers
         if (avgDomesticWorkers !== undefined) {
             const now = new Date();
             await tx.employerLaborCount.upsert({
@@ -624,7 +572,6 @@ export async function updateEmployer(id: string, data: any) {
             });
         }
 
-        // 5. Return updated employer with fresh factory data
         return tx.employer.findUnique({
             where: { id },
             include: {

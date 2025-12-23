@@ -24,6 +24,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Application logs
+server/logs/
+client/logs/
+logs/
+
 # Editor directories and files
 .idea
 .vscode
@@ -70,3 +75,7 @@ debug_error.log
 sanity_error.log
 *.tmp
 TestResults/
+
+*_files/
+*.html
+old_sample_to_imigrant/

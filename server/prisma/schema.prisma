@@ -175,6 +175,444 @@ enum WorkerEventType {
 
 // Models
 
+// ==========================================
+// Reference Data Tables
+// ==========================================
+
+model EmployerCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(20) // e.g., "MANUFACTURING"
+  nameZh    String   @map("name_zh") @db.VarChar(50) // 製造業
+  nameEn    String?  @map("name_en") @db.VarChar(50)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("employer_categories")
+}
+
+model ApplicationType {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(10) // e.g., "1", "2", "3"
+  nameZh    String   @map("name_zh") @db.VarChar(100) // 製造業勞工
+  nameEn    String?  @map("name_en") @db.VarChar(100)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("application_types")
+}
+
+model IndustryCode {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(10) // e.g., "2501"
+  nameZh    String   @map("name_zh") @db.VarChar(100) // 塑膠製品製造業
+  nameEn    String?  @map("name_en") @db.VarChar(100)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("industry_codes")
+}
+
+model DomesticAgency {
+  id                    String   @id @default(uuid()) @db.Uuid
+  code                  String   @unique @db.VarChar(10) // 代號 (CO01)
+  
+  // 公司名稱
+  agencyNameZh          String   @map("agency_name_zh") @db.VarChar(100) // 公司名稱-中 (CO02)
+  agencyNameEn          String?  @map("agency_name_en") @db.VarChar(100) // 公司名稱-英 (CO03)
+  agencyNameShort       String?  @map("agency_name_short") @db.VarChar(50) // 公司名稱-簡 (CO04)
+  
+  // 聯絡資訊
+  phone                 String?  @map("phone") @db.VarChar(20) // 電話 (CO05)
+  fax                   String?  @map("fax") @db.VarChar(20) // 傳真 (CO06)
+  email                 String?  @map("email") @db.VarChar(100) // E-MAIL (CO19)
+  emergencyEmail        String?  @map("emergency_email") @db.VarChar(255) // 緊急待辦收件者e-mail (CO19A)
+  website               String?  @map("website") @db.VarChar(100) // 網址 (CO32)
+  customerServicePhone  String?  @map("customer_service_phone") @db.VarChar(20) // 客戶申訴專線 (CO18)
+  emergencyPhone        String?  @map("emergency_phone") @db.VarChar(20) // 緊急連絡電話 (CO24)
+  
+  // 地址資訊
+  zipCode               String?  @map("zip_code") @db.VarChar(5) // 郵遞區號 (CO07_POST)
+  cityCode              String?  @map("city_code") @db.VarChar(3) // 縣市別代碼 (CO07_CITY)
+  addressZh             String?  @map("address_zh") @db.VarChar(200) // 公司地址-中 (CO07_ADR_TC)
+  addressEn             String?  @map("address_en") @db.VarChar(200) // 公司地址-英 (CO07_ADR_E)
+  
+  // 負責人資訊
+  representativeName    String?  @map("representative_name") @db.VarChar(50) // 負責人姓名 (CO12)
+  representativeNameEn  String?  @map("representative_name_en") @db.VarChar(100) // 負責人姓名-英 (CO12_E)
+  representativeIdNo    String?  @map("representative_id_no") @db.VarChar(20) // 負責人身份證號 (CO17)
+  representativePassport String? @map("representative_passport") @db.VarChar(20) // 負責人護照號碼 (CO21)
+  checkPayableTo        String?  @map("check_payable_to") @db.VarChar(50) // 請款開立支票抬頭 (CO34)
+  
+  // 公司證照資訊
+  taxId                 String?  @map("tax_id") @db.VarChar(10) // 公司統一編號 (CO14)
+  taxRegistrationNo     String?  @map("tax_registration_no") @db.VarChar(20) // 稅籍編號 (CO31)
+  permitNumber          String?  @map("permit_number") @db.VarChar(20) // 公司許可證字號 (CO13)
+  permitValidFrom       DateTime? @map("permit_valid_from") @db.Date // 公司許可證效期-起 (CO16)
+  permitValidTo         DateTime? @map("permit_valid_to") @db.Date // 公司許可證效期-訖 (CO15)
+  businessRegistrationNo String? @map("business_registration_no") @db.VarChar(50) // 營利事業登記證號 (CO20)
+  
+  // 銀行帳戶資訊
+  postalAccountNo       String?  @map("postal_account_no") @db.VarChar(20) // 郵政劃撥帳號 (CO22)
+  postalAccountName     String?  @map("postal_account_name") @db.VarChar(100) // 郵政劃撥帳號-戶名 (CO23)
+  bankName              String?  @map("bank_name") @db.VarChar(100) // 匯款銀行名稱 (CO25)
+  bankCode              String?  @map("bank_code") @db.VarChar(3) // 銀行總行代號 (CO26)
+  bankBranchCode        String?  @map("bank_branch_code") @db.VarChar(4) // 銀行分支單位代號 (CO27)
+  bankAccountNo         String?  @map("bank_account_no") @db.VarChar(20) // 銀行帳號 (CO28)
+  bankAccountName       String?  @map("bank_account_name") @db.VarChar(100) // 銀行帳戶名稱 (CO29)
+  
+  // 內部管理
+  accountant            String?  @map("accountant") @db.VarChar(50) // 帳務會計 (CO30)
+  isActive              Boolean  @default(true) @map("is_active")
+  sortOrder             Int      @default(0) @map("sort_order")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  // Relations
+  bilateralTradeLicenses AgencyBilateralTradeLicense[]
+  bankAccounts          DomesticAgencyBankAccount[]
+  employees             Employee[]
+
+  @@map("domestic_agencies")
+}
+
+model Bank {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique @db.VarChar(12) // 銀行編號 (LCA01)
+  
+  // 銀行名稱
+  bankName      String   @map("bank_name") @db.VarChar(100) // 銀行名稱 (LCA02)
+  bankNameEn    String?  @map("bank_name_en") @db.VarChar(100) // 銀行名稱-英文 (LCA02_E)
+  
+  // 聯絡資訊
+  contactPerson String?  @map("contact_person") @db.VarChar(50) // 連絡人 (LCA03)
+  phone         String?  @map("phone") @db.VarChar(30) // 電話 (LCA04)
+  fax           String?  @map("fax") @db.VarChar(30) // 傳真 (LCA05)
+  address       String?  @map("address") @db.VarChar(200) // 地址 (LCA07)
+  
+  // 備註
+  notes         String?  @map("notes") @db.VarChar(200) // 備註 (LCA06)
+  
+  // 狀態
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  // Relations
+  agencyAccounts DomesticAgencyBankAccount[]
+
+  @@map("banks")
+}
+
+model DomesticAgencyBankAccount {
+  id                String   @id @default(uuid()) @db.Uuid
+  
+  // 外鍵
+  domesticAgencyId  String   @map("domestic_agency_id") @db.Uuid
+  domesticAgency    DomesticAgency @relation(fields: [domesticAgencyId], references: [id], onDelete: Cascade)
+  
+  bankId            String   @map("bank_id") @db.Uuid
+  bank              Bank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  
+  // 該國內仲介在該銀行的專屬資訊
+  agencyUnitCode    String   @map("agency_unit_code") @db.VarChar(12) // 仲介的委託單位代號 (LCA09)
+  agencyAccountNo   String   @map("agency_account_no") @db.VarChar(20) // 仲介的轉入帳號 (LCA08)
+  
+  // 帳戶用途說明
+  accountPurpose    String?  @map("account_purpose") @db.VarChar(100) // 例如：「勞工薪資轉帳」、「服務費收款」
+  
+  // 是否為主要帳戶
+  isPrimary         Boolean  @default(false) @map("is_primary") // 該仲介在該銀行的主要帳戶
+  
+  // 狀態
+  isActive          Boolean  @default(true) @map("is_active")
+  notes             String?  @map("notes") @db.Text
+  
+  // 審計欄位
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  // 確保同一個仲介在同一家銀行的同一個帳號不重複
+  @@unique([domesticAgencyId, bankId, agencyAccountNo])
+  @@index([domesticAgencyId])
+  @@index([bankId])
+  @@map("domestic_agency_bank_accounts")
+}
+
+model AgencyBilateralTradeLicense {
+  id              String   @id @default(uuid()) @db.Uuid
+  agencyId        String   @map("agency_id") @db.Uuid
+  agency          DomesticAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  
+  // 國家代碼 (ISO 3166-1 alpha-2: TH, PH, ID, VN, IN 等)
+  country         String   @db.VarChar(2) // 使用兩字母國家代碼
+  
+  // 許可證資訊
+  licenseNumber   String?  @map("license_number") @db.VarChar(50) // 許可證字號（如果有）
+  validFrom       DateTime @map("valid_from") @db.Date // 生效日期
+  validTo         DateTime @map("valid_to") @db.Date // 到期日期
+  
+  // 狀態
+  status          String   @default("ACTIVE") @db.VarChar(20) // ACTIVE, EXPIRED, REVOKED
+  
+  // 備註
+  notes           String?  @map("notes") @db.Text
+  
+  // 審計欄位
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  @@index([agencyId])
+  @@index([validTo]) // 快速查詢即將到期的許可證
+  @@map("agency_bilateral_trade_licenses")
+}
+
+model PartnerAgency {
+  id                    String   @id @default(uuid()) @db.Uuid
+  code                  String   @unique @db.VarChar(10) // 代號 (LBN01)
+  
+  // 公司名稱
+  agencyNameZh          String   @map("agency_name_zh") @db.VarChar(200) // 公司名稱-中 (LBN02)
+  agencyNameZhShort     String?  @map("agency_name_zh_short") @db.VarChar(100) // 公司名稱-中簡 (LBN04)
+  agencyNameEn          String?  @map("agency_name_en") @db.VarChar(200) // 公司名稱-英 (LBN03)
+  agencyNameEnShort     String?  @map("agency_name_en_short") @db.VarChar(100) // 公司名稱-英簡 (LBN04_E)
+  
+  // 基本聯絡資訊
+  phone                 String?  @map("phone") @db.VarChar(20) // 電話 (LBN05)
+  fax                   String?  @map("fax") @db.VarChar(20) // 傳真 (LBN06)
+  email                 String?  @map("email") @db.VarChar(100) // E-mail (LBN36)
+  
+  // 國別與地址
+  country               String?  @map("country") @db.VarChar(2) // 國別代碼 (ISO 3166-1 alpha-2)
+  countryNameZh         String?  @map("country_name_zh") @db.VarChar(20) // 國別中文 (LBN07_CODE)
+  addressZh             String?  @map("address_zh") @db.VarChar(200) // 公司地址-中 (LBN07_ADR_TC)
+  addressEn             String?  @map("address_en") @db.VarChar(200) // 公司地址-英 (LBN07_ADR_E)
+  addressShort          String?  @map("address_short") @db.VarChar(200) // 公司地址-簡 (LBN07_ADR_SC)
+  
+  // 聯絡人資訊
+  contactPerson         String?  @map("contact_person") @db.VarChar(50) // 聯絡人 (LBN29)
+  contactPhone          String?  @map("contact_phone") @db.VarChar(20) // 聯絡電話 (LBN30)
+  
+  // 寄件地址
+  mailingAddressZh      String?  @map("mailing_address_zh") @db.VarChar(200) // 寄件地址-中文 (LBN31)
+  mailingAddressEn      String?  @map("mailing_address_en") @db.VarChar(200) // 寄件地址-英文 (LBN32)
+  
+  // 負責人資訊
+  representativeName    String?  @map("representative_name") @db.VarChar(50) // 負責人姓名 (LBN12)
+  representativeNameEn  String?  @map("representative_name_en") @db.VarChar(100) // 負責人姓名-英 (LBN12_E)
+  representativeIdNo    String?  @map("representative_id_no") @db.VarChar(20) // 負責人身份證號 (LBN19)
+  representativePassport String? @map("representative_passport") @db.VarChar(20) // 負責人護照號碼 (LBN26)
+  
+  // 公司證照資訊
+  taxId                 String?  @map("tax_id") @db.VarChar(10) // 公司統一編號 (LBN14)
+  businessRegistrationNo String? @map("business_registration_no") @db.VarChar(50) // 營利事業登記證號 (LBN27)
+  permitNumber          String?  @map("permit_number") @db.VarChar(50) // 公司許可證字號 (LBN13)
+  foreignLicenseNo      String?  @map("foreign_license_no") @db.VarChar(50) // 國外執照編號 (LBN20)
+  foreignLicenseExpiry  DateTime? @map("foreign_license_expiry") @db.Date // 國外執照效期 (LBN21)
+  
+  // 勞動部認可資訊
+  molPermitNo           String?  @map("mol_permit_no") @db.VarChar(20) // 勞動部許可編號 (LBN33)
+  molValidFrom          DateTime? @map("mol_valid_from") @db.Date // 勞動部認可有效起始日 (LBN34)
+  molValidTo            DateTime? @map("mol_valid_to") @db.Date // 勞動部認可有效屆滿日 (LBN22)
+  
+  // 銀行帳戶資訊
+  payeeName             String?  @map("payee_name") @db.VarChar(100) // 收款人 (LBN40)
+  bankName              String?  @map("bank_name") @db.VarChar(100) // 銀行名稱 (LBN41)
+  bankAccountNo         String?  @map("bank_account_no") @db.VarChar(50) // 銀行帳號 (LBN42)
+  bankAddress           String?  @map("bank_address") @db.VarChar(200) // 銀行地址 (LBN43)
+  
+  // 配合貸款銀行（外鍵到 LoanBank 參考表）
+  loanBankCode          String?  @map("loan_bank_code") @db.VarChar(10) // (LBN24)
+  
+  // 狀態與備註
+  isActive              Boolean  @default(true) @map("is_active") // 使用中 (LBN25: Y/N)
+  notes                 String?  @map("notes") @db.Text // 備註 (LBN35)
+  
+  // 審計欄位
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  // Relations
+  bilateralTradeLicenses PartnerAgencyBilateralLicense[]
+  contracts             PartnerAgencyContract[]
+
+  @@map("partner_agencies")
+}
+
+model PartnerAgencyBilateralLicense {
+  id              String   @id @default(uuid()) @db.Uuid
+  agencyId        String   @map("agency_id") @db.Uuid
+  agency          PartnerAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  
+  // 互貿認證資訊
+  licenseNumber   String?  @map("license_number") @db.VarChar(50) // 認證編號
+  validFrom       DateTime @map("valid_from") @db.Date // 互貿生效日期 (LBN44)
+  validTo         DateTime @map("valid_to") @db.Date // 互貿認證效期 (LBN37)
+  
+  // 狀態
+  status          String   @default("ACTIVE") @db.VarChar(20) // ACTIVE, EXPIRED, REVOKED, SUSPENDED
+  
+  // 備註
+  notes           String?  @map("notes") @db.Text
+  
+  // 審計欄位
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  @@index([agencyId])
+  @@index([validTo]) // 快速查詢即將到期的許可證
+  @@index([status])
+  @@map("partner_agency_bilateral_licenses")
+}
+
+model PartnerAgencyContract {
+  id              String   @id @default(uuid()) @db.Uuid
+  agencyId        String   @map("agency_id") @db.Uuid
+  agency          PartnerAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  
+  // 合約資訊
+  contractNo      String   @map("contract_no") @db.VarChar(50) // 簽定勞工供應契約書NO. (LBN45)
+  contractType    String?  @map("contract_type") @db.VarChar(50) // 合約類型（勞工供應、互貿協議等）
+  signedDate      DateTime? @map("signed_date") @db.Date // 簽約日期
+  validFrom       DateTime? @map("valid_from") @db.Date // 合約生效日
+  validTo         DateTime? @map("valid_to") @db.Date // 合約到期日
+  
+  // 合約內容摘要
+  summary         String?  @map("summary") @db.Text
+  
+  // 文件附件路徑
+  documentPath    String?  @map("document_path") @db.VarChar(255)
+  
+  // 狀態
+  status          String   @default("ACTIVE") @db.VarChar(20) // DRAFT, ACTIVE, EXPIRED, TERMINATED
+  
+  // 審計欄位
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  @@index([agencyId])
+  @@index([contractNo])
+  @@index([validTo])
+  @@map("partner_agency_contracts")
+}
+
+model LoanBank {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(10) // 銀行代碼
+  nameZh    String   @map("name_zh") @db.VarChar(50) // 銀行名稱（中文）
+  nameEn    String?  @map("name_en") @db.VarChar(100) // 銀行名稱（英文）
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("loan_banks")
+}
+
+model Employee {
+  id                String   @id @default(uuid()) @db.Uuid
+  code              String   @unique @db.VarChar(18) // 代碼 (LBR01) - 可修改
+  
+  // 基本資訊
+  fullName          String   @map("full_name") @db.VarChar(50) // 中文姓名 (LBR02)
+  fullNameEn        String?  @map("full_name_en") @db.VarChar(100) // 英文姓名 (LBR16)
+  gender            String?  @map("gender") @db.VarChar(10) // 性別 (LBR28): 男/女
+  nationality       String?  @map("nationality") @db.VarChar(20) // 國籍 (LBR27)
+  dateOfBirth       DateTime? @map("date_of_birth") @db.Date // 生日 (LBR26)
+  idNumber          String?  @map("id_number") @db.VarChar(20) // 身分證字號 (LBR03) - 選填！
+  
+  // 職務資訊
+  departmentCode    String?  @map("department_code") @db.VarChar(10) // 部門代碼 (LBR45)
+  employeeNumber    String?  @map("employee_number") @db.VarChar(10) // 員工編號 (LBR47) - 可修改
+  jobTitle          String?  @map("job_title") @db.VarChar(50) // 職務名稱 (LBR07)
+  domesticAgencyId  String?  @map("domestic_agency_id") @db.Uuid // 所屬國內仲介 (LBR52)
+  domesticAgency    DomesticAgency? @relation(fields: [domesticAgencyId], references: [id], onDelete: SetNull)
+  
+  // 聯絡資訊
+  phone             String?  @map("phone") @db.VarChar(30) // 電話 (LBR04)
+  mobilePhone       String?  @map("mobile_phone") @db.VarChar(30) // 手機 (LBR48)
+  extension         String?  @map("extension") @db.VarChar(12) // 電話分機代號 (LBR18)
+  email             String?  @map("email") @db.VarChar(100) // E-mail (LBR37)
+  receiveSms        Boolean  @default(false) @map("receive_sms") // 收簡訊否 (LBR41)
+  
+  // 聯絡人資訊
+  contactPerson     String?  @map("contact_person") @db.VarChar(50) // 聯絡人 (LBR05)
+  contactPhone      String?  @map("contact_phone") @db.VarChar(30) // 聯絡電話 (LBR06)
+  
+  // 地址資訊
+  mailingAddressZh  String?  @map("mailing_address_zh") @db.VarChar(200) // 通訊住址-中文 (LBR10)
+  mailingAddressEn  String?  @map("mailing_address_en") @db.VarChar(200) // 通訊住址-英文 (LBR11)
+  residentialAddressZh String? @map("residential_address_zh") @db.VarChar(200) // 戶籍住址-中文 (LBR30)
+  residentialAddressEn String? @map("residential_address_en") @db.VarChar(200) // 戶籍住址-英文 (LBR31)
+  
+  // 緊急聯絡人
+  emergencyContact  String?  @map("emergency_contact") @db.VarChar(50) // 緊急連絡人 (LBR49)
+  emergencyPhone    String?  @map("emergency_phone") @db.VarChar(30) // 緊急連絡人電話 (LBR50)
+  
+  // 職務角色（布林值）
+  isSales           Boolean  @default(false) @map("is_sales") // 業務否 (LBR08)
+  isAdmin           Boolean  @default(false) @map("is_admin") // 行政否 (LBR09)
+  isCustomerService Boolean  @default(false) @map("is_customer_service") // 客服否 (LBR29)
+  isAccounting      Boolean  @default(false) @map("is_accounting") // 會計否 (LBR36)
+  isBilingual       Boolean  @default(false) @map("is_bilingual") // 雙語否 (LBR14)
+  
+  // 業務相關
+  employerAutoCode  String?  @map("employer_auto_code") @db.VarChar(10) // 雇主自動編號用代碼 (LBR17)
+  contractCode      String?  @map("contract_code") @db.VarChar(4) // 業務合約代碼 (LBR24)
+  contractSeqUsed   Int?     @default(0) @map("contract_seq_used") // 業務合約已用序號 (LBR25)
+  salesGroupCode    String?  @map("sales_group_code") @db.VarChar(10) // 業務分群代碼 (LBR20)
+  expertise         String?  @map("expertise") @db.VarChar(200) // 專長 (LBR21)
+  
+  // 銀行帳戶資訊
+  postalAccountNo   String?  @map("postal_account_no") @db.VarChar(12) // 劃撥帳號 (LBR34)
+  postalAccountName String?  @map("postal_account_name") @db.VarChar(100) // 劃撥戶名 (LBR35)
+  bankName          String?  @map("bank_name") @db.VarChar(100) // 匯款銀行名稱 (LBR38)
+  bankAccountName   String?  @map("bank_account_name") @db.VarChar(100) // 銀行帳戶名稱 (LBR39)
+  bankAccountNo     String?  @map("bank_account_no") @db.VarChar(20) // 匯款銀行帳號 (LBR40)
+  
+  // 到離職資訊
+  hireDate          DateTime? @map("hire_date") @db.Date // 到職日 (LBR22)
+  insuranceStartDate DateTime? @map("insurance_start_date") @db.Date // 加保日 (LBR43)
+  resignationDate   DateTime? @map("resignation_date") @db.Date // 離職日 (LBR23)
+  insuranceEndDate  DateTime? @map("insurance_end_date") @db.Date // 退保日 (LBR44)
+  
+  // 備註
+  notes             String?  @map("notes") @db.Text // 備註 (LBR32)
+  
+  // 狀態
+  isActive          Boolean  @default(true) @map("is_active") // 是否在職
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([code])
+  @@index([fullName])
+  @@index([departmentCode])
+  @@index([domesticAgencyId])
+  @@index([isActive])
+  @@map("employees")
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(10) // 部門代碼
+  nameZh    String   @map("name_zh") @db.VarChar(50) // 部門名稱（中文）
+  nameEn    String?  @map("name_en") @db.VarChar(100) // 部門名稱（英文）
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("departments")
+}
+
+// ==========================================
+// Core Models
+// ==========================================
+
+
 model InternalUser {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username     String   @unique @db.VarChar(50)
@@ -229,6 +667,7 @@ model Employer {
   healthBillZip     String? @map("health_bill_zip") @db.VarChar(10) // 健保郵遞區號
 
   phoneNumber String? @map("phone_number") @db.VarChar(20)
+  mobilePhone String? @map("mobile_phone") @db.VarChar(20) // [Added] 行動電話 (CU42/CU34)
   email       String? @db.VarChar(100)
 
   contactPerson String? @map("contact_person") @db.VarChar(50)
@@ -264,6 +703,7 @@ model Employer {
   complianceStandard   String?   @map("compliance_standard") @db.VarChar(50)
   zeroFeeEffectiveDate DateTime? @map("zero_fee_effective_date") @db.Date
   industryAttributes   Json?     @map("industry_attributes")
+  remarks              String?   @db.Text // [Added] 附註 (CU43)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -394,6 +834,8 @@ model IndividualInfo {
   responsiblePersonFather String?   @map("responsible_person_father_name") @db.VarChar(50)
   responsiblePersonMother String?   @map("responsible_person_mother_name") @db.VarChar(50)
   responsiblePersonSpouse String?   @map("responsible_person_spouse") @db.VarChar(50)
+  mobilePhone             String?   @map("mobile_phone") @db.VarChar(20) // [Added] 負責人行動電話
+
 
   // [Added] Detailed Individual Info
   englishName  String? @map("english_name") @db.VarChar(100) // 負責人英文名

@@ -22,6 +22,7 @@ import { TAIWAN_CITIES } from '@/data/taiwan-cities';
 import { toPinyin, translateCityDistrict } from '@/utils/translationUtils';
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { useEmployerCategories, useApplicationTypes, useIndustryCodes, useDomesticAgencies } from '@/hooks/useReferenceData';
 
 // Validation Schema
 const baseSchema = z.object({
@@ -32,26 +33,25 @@ const baseSchema = z.object({
     companyNameEn: z.string().optional().or(z.literal('')),
     taxId: z.string().optional().or(z.literal('')),
     phoneNumber: z.string().optional().or(z.literal('')),
-    faxNumber: z.string().optional().or(z.literal('')),
+    mobilePhone: z.string().optional().or(z.literal('')),
     email: z.string().email('Email 格式錯誤').optional().or(z.literal('')),
-    industryType: z.string().optional(),
-    industryCode: z.string().optional(),
-    capital: z.string().optional().or(z.literal('')),
 
     // Responsible Person
     responsiblePerson: z.string().optional(),
     responsiblePersonIdNo: z.string().optional(),
     responsiblePersonDob: z.string().optional(),
-    englishName: z.string().optional(), // New
-    birthPlace: z.string().optional(), // New
-    birthPlaceEn: z.string().optional(), // New
-    residenceAddress: z.string().optional(), // New
-    residenceZip: z.string().optional(), // New
-    residenceCityCode: z.string().optional(), // New
+    englishName: z.string().optional(),
+    birthPlace: z.string().optional(),
+    birthPlaceEn: z.string().optional(),
+    residenceAddress: z.string().optional(),
+    residenceZip: z.string().optional(),
+    residenceCityCode: z.string().optional(),
     responsiblePersonFather: z.string().optional(),
     responsiblePersonMother: z.string().optional(),
     responsiblePersonSpouse: z.string().optional(),
+    mobilePhoneIndividual: z.string().optional(), // [Added]
     idIssueDate: z.string().optional(),
+
     idIssuePlace: z.string().optional(),
     militaryStatus: z.string().optional(),
     militaryStatusEn: z.string().optional(),
@@ -60,9 +60,9 @@ const baseSchema = z.object({
     address: z.string().optional(),
     addressEn: z.string().optional(),
     invoiceAddress: z.string().optional(),
-    taxAddress: z.string().optional(), // New
-    healthBillAddress: z.string().optional(), // New
-    healthBillZip: z.string().optional(), // New
+    taxAddress: z.string().optional(),
+    healthBillAddress: z.string().optional(),
+    healthBillZip: z.string().optional(),
     contactPerson: z.string().optional(),
     contactPhone: z.string().optional(),
 
@@ -70,28 +70,29 @@ const baseSchema = z.object({
 
     // Factories (Array)
     factories: z.array(z.object({
-        id: z.string().optional(), // ✅ Preserve ID for updates
+        id: z.string().optional(),
         name: z.string().min(1, '廠區名稱必填'),
         factoryRegNo: z.string().optional(),
         address: z.string().optional(),
         addressEn: z.string().optional(),
         zipCode: z.string().optional(),
         cityCode: z.string().optional(),
-        laborCount: z.string().optional(), // Input as string, convert later
+        laborCount: z.string().optional(),
         foreignCount: z.string().optional()
     })).optional(),
 
-
-    // Manufacturing
+    // Manufacturing (CorporateInfo)
     factoryRegistrationNo: z.string().optional(),
+    industryType: z.string().optional(),
+    industryCode: z.string().optional(),
+    capital: z.string().optional().or(z.literal('')),
     laborInsuranceNo: z.string().optional(),
-    laborInsuranceId: z.string().optional(), // New
+    laborInsuranceId: z.string().optional(),
     healthInsuranceUnitNo: z.string().optional(),
-    healthInsuranceId: z.string().optional(), // New
-    factoryAddress: z.string().optional(), // Legacy support or main factory
-    avgDomesticWorkers: z.string().optional().or(z.literal('')),
+    healthInsuranceId: z.string().optional(),
+    faxNumber: z.string().optional().or(z.literal('')),
 
-    // Home Care
+    // Home Care (IndividualInfo specifics)
     patientName: z.string().optional(),
     patientIdNo: z.string().optional(),
     careAddress: z.string().optional(),
@@ -101,17 +102,32 @@ const baseSchema = z.object({
     institutionCode: z.string().optional(),
     bedCount: z.union([z.string(), z.number()]).optional(),
 
-    // Internal
-    referrer: z.string().optional(), // New
-    agencyCompanyId: z.string().optional(),
+    // Internal Management
+    referrer: z.string().optional(),
+    agencyId: z.string().optional(),
+    terminateDate: z.string().optional(),
 
-    // Compliance
-    allocationRate: z.string().optional(),
-    isExtra: z.boolean().optional(),
-    baseRate: z.string().optional(),
-    extraRate: z.string().optional(),
-    complianceStandard: z.string().optional(),
-    zeroFeeEffectiveDate: z.string().optional(),
+    remarks: z.string().optional(),
+
+    // Legacy / Industry Attributes
+    industryAttributes: z.object({
+        applicationType: z.string().optional(),
+        isForeigner: z.string().optional(),
+        businessRegistrationNo: z.string().optional(),
+        licenseExpiryDate: z.string().optional(),
+        managementSource: z.string().optional(),
+        developmentDate: z.string().optional(),
+        domesticAgency: z.string().optional(),
+        adminStaff: z.string().optional(),
+        salesAgent: z.string().optional(),
+        customerService: z.string().optional(),
+        professionalStaff: z.string().optional(),
+        accountant: z.string().optional(),
+        specialInstructions: z.string().optional(),
+        timingReference: z.string().optional(),
+        legacyRef95: z.string().optional(),
+        legacyRef96: z.string().optional(),
+    }).optional(),
 });
 
 const employerSchema = baseSchema.superRefine((data, ctx) => {
@@ -193,16 +209,18 @@ export default function EmployerForm({
             category: 'MANUFACTURING',
             companyName: '',
             taxId: '',
-            complianceStandard: 'NONE',
-            baseRate: '',
-            extraRate: '',
-            allocationRate: '',
-            isExtra: false,
             address: '',
             invoiceAddress: '',
             factories: []
         }) as EmployerFormData
     });
+
+    // Load reference data
+    const { categories, loading: categoriesLoading } = useEmployerCategories();
+    const { types: applicationTypes, loading: appTypesLoading } = useApplicationTypes();
+    const { codes: industryCodes, loading: industryCodesLoading } = useIndustryCodes();
+    const { agencies: domesticAgencies, loading: domesticAgenciesLoading } = useDomesticAgencies();
+
 
     // Populate City/District from initial data
     useEffect(() => {
@@ -252,16 +270,6 @@ export default function EmployerForm({
     const formData = watch();
     const selectedCategory = watch('category');
     const taxIdValue = watch('taxId');
-    const isExtraApplied = watch('isExtra') || false;
-    const baseRate = watch('baseRate');
-    const extraRate = watch('extraRate');
-
-    // Handle Extra Checkbox side effects
-    useEffect(() => {
-        if (!isExtraApplied) {
-            setValue('extraRate', '0.00');
-        }
-    }, [isExtraApplied]);
 
     // City District State
     const [selectedCity, setSelectedCity] = useState('');
@@ -284,15 +292,7 @@ export default function EmployerForm({
     };
 
 
-    // Calculate Total Allocation Rate
-    useEffect(() => {
-        if (baseRate) {
-            const base = parseFloat(baseRate);
-            const extra = isExtraApplied && extraRate ? parseFloat(extraRate) : 0;
-            const total = Math.min(0.40, base + extra).toFixed(2);
-            setValue('allocationRate', total, { shouldValidate: true });
-        }
-    }, [baseRate, extraRate, isExtraApplied]);
+
 
     // Debounced Duplicate Check
     useEffect(() => {
@@ -366,30 +366,86 @@ export default function EmployerForm({
 
     const onSubmitForm: SubmitHandler<EmployerFormData> = async (data) => {
         try {
-            // Map category to industryType for backend compatibility
-            const payload = {
-                ...data,
-                industryType: data.category,
-                // Combine address parts
+            // Map flat form data to nested Prisma structure
+            const payload: any = {
+                code: data.code,
+                shortName: data.shortName,
+                companyName: data.companyName,
+                companyNameEn: data.companyNameEn,
+                taxId: data.taxId,
+                phoneNumber: data.phoneNumber,
+                mobilePhone: data.mobilePhone,
+                email: data.email,
                 address: selectedCity || selectedDistrict ? `${selectedCity}${selectedDistrict}${data.address || ''}` : data.address,
-                // Sanitize Empty Strings to undefined for Dates/Decimals
-                allocationRate: data.allocationRate ? String(data.allocationRate) : undefined,
-                capital: data.capital ? String(data.capital) : undefined,
-                bedCount: data.bedCount ? Number(data.bedCount) : undefined,
-                avgDomesticWorkers: data.avgDomesticWorkers ? Number(data.avgDomesticWorkers) : undefined,
-                zeroFeeEffectiveDate: data.zeroFeeEffectiveDate || undefined,
-                responsiblePersonDob: data.responsiblePersonDob || undefined,
-                idIssueDate: data.idIssueDate || undefined,
-                terminateDate: (data as any).terminateDate || undefined,
-                // Ensure factories have numeric conversion if needed
-                factories: data.factories?.map(f => ({
+                addressEn: data.addressEn,
+                invoiceAddress: data.invoiceAddress,
+                taxAddress: data.taxAddress,
+                healthBillAddress: data.healthBillAddress,
+                healthBillZip: data.healthBillZip,
+                contactPerson: data.contactPerson,
+                contactPhone: data.contactPhone,
+                referrer: data.referrer,
+                agencyId: data.agencyId,
+                terminateDate: data.terminateDate,
+                industryAttributes: data.industryAttributes,
+                category: data.category,
+                remarks: data.remarks,
+            };
+
+            // Corporate Info
+            if (data.category === 'MANUFACTURING' || data.category === 'INSTITUTION') {
+                payload.corporateInfo = {
+                    factoryRegistrationNo: data.factoryRegistrationNo,
+                    industryType: data.industryType,
+                    industryCode: data.industryCode,
+                    capital: data.capital,
+                    laborInsuranceNo: data.laborInsuranceNo,
+                    laborInsuranceId: data.laborInsuranceId,
+                    healthInsuranceUnitNo: data.healthInsuranceUnitNo,
+                    healthInsuranceId: data.healthInsuranceId,
+                    faxNumber: data.faxNumber,
+                    institutionCode: data.institutionCode,
+                    bedCount: data.bedCount,
+                };
+            }
+
+            // Individual Info
+            if (data.category === 'HOME_CARE' || data.responsiblePersonIdNo) {
+                payload.individualInfo = {
+                    responsiblePersonDob: data.responsiblePersonDob,
+                    responsiblePersonIdNo: data.responsiblePersonIdNo,
+                    responsiblePersonFather: data.responsiblePersonFather,
+                    responsiblePersonMother: data.responsiblePersonMother,
+                    responsiblePersonSpouse: data.responsiblePersonSpouse,
+                    mobilePhone: data.mobilePhoneIndividual,
+                    englishName: data.englishName,
+
+                    birthPlace: data.birthPlace,
+                    birthPlaceEn: data.birthPlaceEn,
+                    residenceAddress: data.residenceAddress,
+                    residenceZip: data.residenceZip,
+                    residenceCityCode: data.residenceCityCode,
+                    idIssueDate: data.idIssueDate,
+                    idIssuePlace: data.idIssuePlace,
+                    militaryStatus: data.militaryStatus,
+                    militaryStatusEn: data.militaryStatusEn,
+                    patientName: data.patientName,
+                    patientIdNo: data.patientIdNo,
+                    careAddress: data.careAddress,
+                    relationship: data.relationship,
+                };
+            }
+
+            // Factories
+            if (data.factories && data.factories.length > 0) {
+                payload.factories = data.factories.map(f => ({
                     ...f,
                     laborCount: f.laborCount ? Number(f.laborCount) : 0,
                     foreignCount: f.foreignCount ? Number(f.foreignCount) : 0
-                }))
-            };
+                }));
+            }
 
-            await onSubmit(payload as any);
+            await onSubmit(payload);
             toast.success(isEditMode ? '更新成功' : '建立成功');
         } catch (error: any) {
             toast.error(error.message || '操作失敗');
@@ -450,28 +506,39 @@ export default function EmployerForm({
                             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Category & Code */}
-                                    <div className="space-y-3">
+                                    <div className="space-y-2">
                                         <Label className="required text-base font-semibold">雇主類型 (Employer Category)</Label>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                            {Object.entries(INDUSTRIES).map(([key, label]) => (
-                                                <div
-                                                    key={key}
-                                                    onClick={() => setValue('category', key)}
-                                                    className={cn(
-                                                        "cursor-pointer border rounded-lg p-3 text-center transition-all hover:bg-gray-50",
-                                                        formData.category === key
-                                                            ? "bg-blue-50 border-blue-500 ring-2 ring-blue-200 text-blue-700 font-medium"
-                                                            : "border-gray-200 text-gray-600"
-                                                    )}
-                                                >
-                                                    {label}
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <Select value={formData.category} onValueChange={(v) => setValue('category', v)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={categoriesLoading ? "載入中..." : "選擇雇主類型"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {categories.map(cat => (
+                                                    <SelectItem key={cat.code} value={cat.code}>
+                                                        {cat.nameZh}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="code">雇主編號 (Employer Code)</Label>
                                         <Input {...register('code')} placeholder="自訂編號 (ex: C001)" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>申請類別 (Application Type)</Label>
+                                        <Select value={formData.industryAttributes?.applicationType || '1'} onValueChange={(v) => setValue('industryAttributes.applicationType', v)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={appTypesLoading ? "載入中..." : "選擇類別"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {applicationTypes.map(type => (
+                                                    <SelectItem key={type.code} value={type.code}>
+                                                        {type.nameZh}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
                                     {/* Company Name & Tax ID */}
@@ -502,6 +569,15 @@ export default function EmployerForm({
                                         <Label htmlFor="phoneNumber">公司電話</Label>
                                         <Input {...register('phoneNumber')} />
                                     </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="mobilePhone">行動電話</Label>
+                                        <Input {...register('mobilePhone')} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email">電子郵件 (Company Email)</Label>
+                                        <Input {...register('email')} placeholder="example@company.com" />
+                                    </div>
+
                                     <div className="space-y-2">
                                         <Label htmlFor="faxNumber">公司傳真</Label>
                                         <Input {...register('faxNumber')} />
@@ -543,6 +619,16 @@ export default function EmployerForm({
                                     <div className="space-y-2">
                                         <Label>英文姓名 (English Name)</Label>
                                         <Input {...register('englishName')} placeholder="同護照" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>外籍人士 (Foreigner)</Label>
+                                        <Select value={formData.industryAttributes?.isForeigner || 'N'} onValueChange={(v) => setValue('industryAttributes.isForeigner', v)}>
+                                            <SelectTrigger><SelectValue placeholder="否/是" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="N">否 (No)</SelectItem>
+                                                <SelectItem value="Y">是 (Yes)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="required">身分證字號 (ID No.)</Label>
@@ -587,6 +673,11 @@ export default function EmployerForm({
                                         <Label>配偶姓名</Label>
                                         <Input {...register('responsiblePersonSpouse')} />
                                     </div>
+                                    <div className="space-y-2">
+                                        <Label>負責人行動電話</Label>
+                                        <Input {...register('mobilePhoneIndividual')} placeholder="09xx-xxx-xxx" />
+                                    </div>
+
 
                                     <div className="md:col-span-3 space-y-2">
                                         <Label>戶籍地址 (Residence Address)</Label>
@@ -783,12 +874,19 @@ export default function EmployerForm({
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label>行業代號</Label>
-                                        <Input {...register('industryCode')} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>國內勞工人數 (3K5 計算用)</Label>
-                                        <Input type="number" {...register('avgDomesticWorkers')} />
+                                        <Label>行業代號 (Industry Code)</Label>
+                                        <Select value={formData.industryCode} onValueChange={(v) => setValue('industryCode', v)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={industryCodesLoading ? "載入中..." : "選擇行業代號"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {industryCodes.map(code => (
+                                                    <SelectItem key={code.code} value={code.code}>
+                                                        {code.code} - {code.nameZh}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
                                     <div className="space-y-2">
@@ -808,6 +906,29 @@ export default function EmployerForm({
                                         <Label>健保單位代號 (Unit ID)</Label>
                                         <Input {...register('healthInsuranceId')} />
                                     </div>
+                                    <div className="space-y-2">
+                                        <Label>營利事業證號</Label>
+                                        <Input {...register('industryAttributes.businessRegistrationNo')} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>執照效期</Label>
+                                        <Input type="date" {...register('industryAttributes.licenseExpiryDate')} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>國內仲介</Label>
+                                        <Select value={formData.industryAttributes?.domesticAgency} onValueChange={(v) => setValue('industryAttributes.domesticAgency', v)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={domesticAgenciesLoading ? "載入中..." : "選擇主體"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {domesticAgencies.map(agency => (
+                                                    <SelectItem key={agency.code} value={agency.code}>
+                                                        {agency.code} - {agency.agencyNameShort || agency.agencyNameZh}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
                                     {selectedCategory === 'INSTITUTION' && (
                                         <>
@@ -821,46 +942,6 @@ export default function EmployerForm({
                                             </div>
                                         </>
                                     )}
-                                </div>
-
-                                <div className="border-t pt-6 mt-6">
-                                    <h4 className="font-medium mb-4">法規與配額 (Compliance)</h4>
-                                    <div className="flex flex-col md:flex-row gap-8">
-                                        <div className="flex-1 space-y-4">
-                                            <Label className="required">核配比率 (Allocation Rate)</Label>
-                                            <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
-                                                <Checkbox id="isExtra" onCheckedChange={(c: boolean) => setValue('isExtra', c)} checked={formData.isExtra} />
-                                                <Label htmlFor="isExtra" className="cursor-pointer text-blue-800">申請 Extra 案 (附加就業安定費)</Label>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs text-gray-500">工業局核定級別</Label>
-                                                    <Select value={baseRate} onValueChange={(v) => setValue('baseRate', v)}>
-                                                        <SelectTrigger><SelectValue placeholder="選擇級別" /></SelectTrigger>
-                                                        <SelectContent>{BASE_RATES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs text-gray-500">Extra 比率</Label>
-                                                    <Select value={extraRate} onValueChange={(v) => setValue('extraRate', v)} disabled={!isExtraApplied}>
-                                                        <SelectTrigger><SelectValue placeholder="選擇" /></SelectTrigger>
-                                                        <SelectContent>{EXTRA_RATES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex-1">
-                                            <Label>適用法規標準</Label>
-                                            <div className="mt-2">
-                                                <ComplianceSelector
-                                                    value={formData.complianceStandard || 'NONE'}
-                                                    onChange={(v) => setValue('complianceStandard', v)}
-                                                    effectiveDate={formData.zeroFeeEffectiveDate}
-                                                    onEffectiveDateChange={(d) => setValue('zeroFeeEffectiveDate', d)}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </TabsContent>
@@ -879,7 +960,27 @@ export default function EmployerForm({
                                     </div>
                                     <div className="space-y-2">
                                         <Label>所屬仲介公司 ID</Label>
-                                        <Input {...register('agencyCompanyId')} placeholder="若為同業委託請填寫" />
+                                        <Input {...register('agencyId')} placeholder="若為同業委託請填寫" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>來源別 (Source)</Label>
+                                        <Select value={formData.industryAttributes?.managementSource} onValueChange={(v) => setValue('industryAttributes.managementSource', v)}>
+                                            <SelectTrigger><SelectValue placeholder="來源" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="業務開發">業務開發</SelectItem>
+                                                <SelectItem value="電訪件">電訪件</SelectItem>
+                                                <SelectItem value="公關件">公關件</SelectItem>
+                                                <SelectItem value="公司件">公司件</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>開發日期</Label>
+                                        <Input type="date" {...register('industryAttributes.developmentDate')} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>行政人員 (Admin)</Label>
+                                        <Input {...register('industryAttributes.adminStaff')} />
                                     </div>
 
                                     <div className="md:col-span-2 space-y-2">
@@ -889,6 +990,30 @@ export default function EmployerForm({
                                     <div className="space-y-2">
                                         <Label>聯絡電話 (Contact Phone)</Label>
                                         <Input {...register('contactPhone')} />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <Label>附註 (Remarks)</Label>
+                                        <Textarea {...register('remarks')} rows={4} placeholder="輸入雇主相關附註資訊..." />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>業務員 (Sales Agent)</Label>
+                                        <Input {...register('industryAttributes.salesAgent')} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>客服員 (Customer Service)</Label>
+                                        <Input {...register('industryAttributes.customerService')} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>專業人員 (Professional Staff)</Label>
+                                        <Input {...register('industryAttributes.professionalStaff')} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>會計人員 (Accountant)</Label>
+                                        <Input {...register('industryAttributes.accountant')} />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <Label>特殊說明 / 接送時間 (Instructions)</Label>
+                                        <Input {...register('industryAttributes.specialInstructions')} />
                                     </div>
                                 </div>
                             </div>
