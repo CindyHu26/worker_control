@@ -64,9 +64,10 @@ Given('該招募函屬性為 {string}', setLetterType);
 Given(/^The letter type is "(.*)"$/, async function (type) { await setLetterType(type); });
 
 async function createActiveWorkers(count: number) {
+    const natID = await prisma.nationality.findUnique({ where: { code: 'ID' } }) || await prisma.nationality.create({ data: { code: 'ID', name: 'Indonesia', nameZh: '印尼' } });
     for (let i = 0; i < count; i++) {
         const worker = await prisma.worker.create({
-            data: { englishName: `Worker Active ${Date.now()}_${i}`, nationality: 'ID', dob: new Date('1990-01-01') }
+            data: { englishName: `Worker Active ${Date.now()}_${i}`, nationalityId: natID.id, dob: new Date('1990-01-01') }
         });
         await prisma.deployment.create({
             data: {
@@ -84,9 +85,10 @@ Given('目前系統中有 {int} 位移工在使用此函 (Status: Active)', crea
 Given(/^There are (\d+) active workers using this letter$/, async function (count) { await createActiveWorkers(Number(count)); });
 
 async function createTransferredWorkers(count: number) {
+    const natVN = await prisma.nationality.findUnique({ where: { code: 'VN' } }) || await prisma.nationality.create({ data: { code: 'VN', name: 'Vietnam', nameZh: '越南' } });
     for (let i = 0; i < count; i++) {
         const worker = await prisma.worker.create({
-            data: { englishName: `Worker Out ${Date.now()}_${i}`, nationality: 'VN', dob: new Date('1990-01-01') }
+            data: { englishName: `Worker Out ${Date.now()}_${i}`, nationalityId: natVN.id, dob: new Date('1990-01-01') }
         });
         await prisma.deployment.create({
             data: { workerId: worker.id, employerId: employerId, recruitmentLetterId: letterId, startDate: new Date(), endDate: new Date(), status: 'terminated' }

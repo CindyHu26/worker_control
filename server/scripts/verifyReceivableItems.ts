@@ -20,21 +20,24 @@ async function main() {
     console.log('Created Item:', item.id);
 
     // 2. Create Pricing Rules
+    // 2. Create Pricing Rules
     // Rule A: VN workers = 2000
+    const natVN = await prisma.nationality.findUnique({ where: { code: 'VN' } }) || await prisma.nationality.create({ data: { code: 'VN', name: 'Vietnam', nameZh: '越南' } });
     await prisma.receivablePricingRule.create({
         data: {
             itemId: item.id,
-            nationality: 'VN',
+            nationalityId: natVN.id,
             amount: 2000,
             description: 'VN Price',
         },
     });
 
     // Rule B: ID workers = 1500
+    const natID = await prisma.nationality.findUnique({ where: { code: 'ID' } }) || await prisma.nationality.create({ data: { code: 'ID', name: 'Indonesia', nameZh: '印尼' } });
     await prisma.receivablePricingRule.create({
         data: {
             itemId: item.id,
-            nationality: 'ID',
+            nationalityId: natID.id,
             amount: 1500,
             description: 'ID Price',
         },
@@ -44,11 +47,11 @@ async function main() {
 
     // 3. Verify Logic
     const vnRule = await prisma.receivablePricingRule.findFirst({
-        where: { itemId: item.id, nationality: 'VN' },
+        where: { itemId: item.id, nationalityId: natVN.id },
     });
 
     const idRule = await prisma.receivablePricingRule.findFirst({
-        where: { itemId: item.id, nationality: 'ID' },
+        where: { itemId: item.id, nationalityId: natID.id },
     });
 
     if (Number(vnRule?.amount) !== 2000) throw new Error('VN Price Mismatch');

@@ -13,11 +13,15 @@ async function main() {
 
     try {
         // 0. Setup Prerequisites (Worker, Employer)
+        // 0. Setup Prerequisites (Worker, Employer)
+        const nat = await prisma.nationality.findUnique({ where: { code: 'PH' } })
+            || await prisma.nationality.create({ data: { code: 'PH', name: 'Philippines', nameZh: '菲律賓' } });
+
         const worker = await prisma.worker.create({
             data: {
                 englishName: `Worker ${code}`,
                 dob: new Date('1990-01-01'),
-                nationality: 'PH',
+                nationalityId: nat.id,
             }
         });
         workerId = worker.id;

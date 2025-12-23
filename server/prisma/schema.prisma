@@ -1051,6 +1051,64 @@ model Worker {
   employerFactoryId String?          @db.Uuid
 
   @@map("workers")
+
+  // Relations
+  accommodationHistory   WorkerAccommodationHistory[]
+  relocationNotifications RelocationNotification[]
+}
+
+model WorkerAccommodationHistory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId    String   @map("worker_id") @db.Uuid
+  worker      Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  
+  // Accommodation Details
+  address        String?  @db.Text
+  dormitoryBedId String?  @map("dormitory_bed_id") @db.Uuid
+  dormitoryBed   DormitoryBed? @relation(fields: [dormitoryBedId], references: [id])
+  
+  // Timeline
+  startDate   DateTime @map("start_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
+  
+  isCurrent   Boolean  @default(false) @map("is_current")
+  
+  // Audit
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("worker_accommodation_history")
+}
+
+model RelocationNotification {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId    String   @map("worker_id") @db.Uuid
+  worker      Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  
+  // Addresses
+  oldAddress  String?  @map("old_address") @db.Text
+  newAddress  String?  @map("new_address") @db.Text
+  
+  // Government Notification Tracking
+  notificationType String   @default("CHANGE_OF_RESIDENCE") @map("notification_type") // e.g., CHANGE_OF_RESIDENCE (勞動部/移民署)
+  
+  // Timeline tracking
+  mailingDate      DateTime? @map("mailing_date") @db.Date
+  filingDate       DateTime? @map("filing_date") @db.Date
+  
+  // Receipt info (Usually from government response)
+  receiptDate      DateTime? @map("receipt_date") @db.Date
+  receiptNumber    String?   @map("receipt_number") @db.VarChar(50)
+  
+  status           String    @default("PENDING") @db.VarChar(20) // PENDING, PROCESSING, COMPLETED, REJECTED
+  
+  notes            String?   @db.Text
+  
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("relocation_notifications")
 }
 
 model EmployerRecruitmentLetter {
@@ -1912,6 +1970,7 @@ model DormitoryBed {
 
   room   DormitoryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   worker Worker?
+  accommodationHistory WorkerAccommodationHistory[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz

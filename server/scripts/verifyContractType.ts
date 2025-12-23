@@ -25,10 +25,13 @@ async function main() {
         console.log('Created ContractType:', contractType.id);
 
         // 2. Create Requisites (Worker, Employer)
+        const nat = await prisma.nationality.findUnique({ where: { code: 'VN' } })
+            || await prisma.nationality.create({ data: { code: 'VN', name: 'Vietnam', nameZh: '越南' } });
+
         const worker = await prisma.worker.create({
             data: {
                 englishName: `Worker ${code}`,
-                nationality: 'VN',
+                nationalityId: nat.id,
                 dob: new Date('1990-01-01'),
                 gender: 'female',
             },

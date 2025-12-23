@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { quotaService } from '../services/quotaService';
+import { vacateBed } from '../services/accommodationService';
 import { ResourceNotFoundError, ValidationError, BusinessRuleError } from '../types/errors';
 
 const router = Router();
@@ -156,7 +157,7 @@ router.patch('/:id', async (req, res) => {
 router.post('/:id/terminate', async (req, res) => {
     try {
         const { id } = req.params;
-        const { endDate, reason, notes } = req.body;
+        const { endDate, reason, notes, isMovingOut } = req.body;
 
         if (!endDate || !reason) {
             return res.status(400).json({ error: 'End Date and Reason are required' });
@@ -190,6 +191,12 @@ router.post('/:id/terminate', async (req, res) => {
         // Recalculate usage if linked
         if (updatedDeployment.recruitmentLetterId) {
             await quotaService.recalculateUsage(updatedDeployment.recruitmentLetterId, prisma);
+        }
+
+        // Handle Accommodation Vacation
+        if (isMovingOut) {
+            // If user checked "Moving Out", vacate the bed
+            await vacateBed(updatedDeployment.workerId, endDate);
         }
 
         res.json(updatedDeployment);
@@ -233,8 +240,8 @@ router.get('/:id/termination-check', async (req, res) => {
             unpaidBillCount: 0,
             unpaidBillTotal: 0,
 
-            hasActiveDorm: false, // Unavailable in schema
-            dormName: null,
+            hasActiveDorm: !!worker.bedId,
+            dormName: null, // Could fetch if included
             bedCode: null,
 
             hasActiveInsurance: worker.insurances.length > 0,

@@ -1,15 +1,17 @@
 import cron from 'node-cron';
 import prisma from '../prisma';
-import type { Deployment, Worker, Employer } from '@prisma/client';
+import { Prisma, type Deployment, type Worker, type Employer } from '@prisma/client';
 
 // Batch processing configuration to prevent memory overload
 const BATCH_SIZE = 100; // Process 100 records at a time
 
 // Type for Deployment with nested relations
-type DeploymentWithRelations = Deployment & {
-    worker: Worker;
-    employer: Employer;
-};
+type DeploymentWithRelations = Prisma.DeploymentGetPayload<{
+    include: {
+        worker: true;
+        employer: true;
+    }
+}>;
 
 /**
  * Creates a system notification (Comment + Mention)

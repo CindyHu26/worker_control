@@ -227,6 +227,9 @@ export default function WorkerDetailClient({ worker: initialWorker }: { worker: 
                             <button onClick={() => setShowEntryModal(true)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow transition-colors text-sm">
                                 <span className="font-bold">+</span> 安排入境
                             </button>
+                            <button onClick={() => window.location.href = `/workers/${worker.id}/relocate`} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow transition-colors text-sm">
+                                <Home size={16} /> 變更住宿
+                            </button>
                             <button onClick={() => setShowTransferModal(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow transition-colors text-sm">
                                 <ArrowRightLeft size={16} /> 轉換雇主
                             </button>
