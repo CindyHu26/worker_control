@@ -1,7 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["clientExtensions"]
-  output = "../src/generated/client"
+  output          = "../src/generated/client"
 }
 
 datasource db {
@@ -78,15 +78,15 @@ enum HealthCheckResult {
   @@map("health_check_result")
 }
 
-enum NationalityType {
-  PH
-  ID
-  VN
-  TH
-  OTHER
-
-  @@map("nationality_type")
-}
+// enum NationalityType {
+//   PH
+//   ID
+//   VN
+//   TH
+//   OTHER
+// 
+//   @@map("nationality_type")
+// }
 
 enum WorkerCategory {
   general
@@ -191,115 +191,216 @@ model EmployerCategory {
   @@map("employer_categories")
 }
 
-model ApplicationType {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique @db.VarChar(10) // e.g., "1", "2", "3"
-  nameZh    String   @map("name_zh") @db.VarChar(100) // 製造業勞工
-  nameEn    String?  @map("name_en") @db.VarChar(100)
+model JobType {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(20) // LBJ01: 代碼 (e.g., "1")
+
+  // --- Names (Multi-language) ---
+  titleZh String  @map("title_zh") @db.VarChar(100) // LBJ02: 工種名稱
+  titleEn String  @map("title_en") @db.VarChar(100) // LBJ03: 英文工種名稱
+  titleTh String? @map("title_th") @db.VarChar(100) // LBJ04: 泰文工種名稱
+  titleId String? @map("title_id") @db.VarChar(100) // LBJ05: 印文工種名稱
+  titleVn String? @map("title_vn") @db.VarChar(100) // LBJ06: 越文工種名稱
+
+  // --- Fees ---
+  employmentSecurityFee Int @default(0) @map("employment_security_fee") // LBJ07: 一般就安費
+  reentrySecurityFee    Int @default(0) @map("reentry_security_fee") // LBJ08: 重投就安費
+
+  // --- Insurance & Services ---
+  agencyAccidentInsurance    Boolean @default(false) @map("agency_accident_insurance") // LBJ09: 代辦意外險加保
+  agencyAccidentInsuranceAmt Int     @default(0) @map("agency_accident_insurance_amount") // LBJ10: 代辦意外險保額
+  agencyLaborHealthInsurance Boolean @default(false) @map("agency_labor_health_insurance") // LBJ11: 代辦勞健保加保
+  collectBankLoan            Boolean @default(false) @map("collect_bank_loan") // LBJ13: 代收銀行貸款
+
+  // --- Payroll & Compliance ---
+  payDay                 Int?    @map("pay_day") // LBJ12: 工種-發薪日
+  requiresMedicalCheckup Boolean @default(false) @map("requires_medical_checkup") // LBJ14: 每半年體檢否
+
+  // --- System Fields ---
   sortOrder Int      @default(0) @map("sort_order")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@map("application_types")
+  @@map("job_types")
 }
 
-model IndustryCode {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique @db.VarChar(10) // e.g., "2501"
-  nameZh    String   @map("name_zh") @db.VarChar(100) // 塑膠製品製造業
-  nameEn    String?  @map("name_en") @db.VarChar(100)
-  sortOrder Int      @default(0) @map("sort_order")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+model Industry {
+  id       String  @id @default(uuid()) @db.Uuid
+  code     String  @unique @db.VarChar(10) // e.g., "0116"
+  category String? @db.VarChar(5) // e.g., "A" (Industry Class)
 
-  @@map("industry_codes")
+  // Names
+  nameZh String  @map("name_zh") @db.VarChar(100) // e.g., "食用菇蕈栽培業"
+  nameEn String? @map("name_en") @db.VarChar(100) // e.g., "Growing of Mushrooms"
+  nameTh String? @map("name_th") @db.VarChar(100)
+  nameVn String? @map("name_vn") @db.VarChar(100)
+  nameId String? @map("name_id") @db.VarChar(100)
+
+  // Status
+  isOpen Boolean @default(true) @map("is_open") // "開放否" (LBQ08)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  salaryConfigs      IndustrySalaryConfig[]
+  recruitmentLetters EmployerRecruitmentLetter[]
+  jobTitles     IndustryJobTitle[]
+
+  @@map("industries")
+}
+
+model IndustrySalaryConfig {
+  id         String   @id @default(uuid()) @db.Uuid
+  industryId String   @map("industry_id") @db.Uuid
+  industry   Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  effectiveDate DateTime @map("effective_date") @db.Date // Logic applies FROM this date
+
+  // Salary Standards (Monthly)
+  technicalSalary    Int @map("technical_salary") // 技術工合理薪資 (LBQ09)
+  nonTechnicalSalary Int @map("non_technical_salary") // 非技術工合理薪資 (LBQ10)
+
+  // Special Schedule (特殊時程)
+  specialTechSalary    Int? @map("special_tech_salary") // 特殊時程技術工薪資 (LBQ11)
+  specialNonTechSalary Int? @map("special_non_tech_salary") // 特殊時程非技術工薪資 (LBQ12)
+
+  // Mid-level Skilled (中階技術)
+  midLevelSalary Int? @map("mid_level_salary") // 中階技術工薪資 (LBQ14)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([industryId])
+  @@index([effectiveDate])
+  @@map("industry_salary_configs")
+}
+
+model IndustryJobTitle {
+  id          String   @id @default(uuid()) @db.Uuid
+  industryId  String   @map("industry_id") @db.Uuid
+  industry    Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  titleZh     String   @map("title_zh") @db.VarChar(100)
+  titleEn     String?  @map("title_en") @db.VarChar(100)
+  titleTh     String?  @map("title_th") @db.VarChar(100)
+  titleVn     String?  @map("title_vn") @db.VarChar(100)
+  titleId     String?  @map("title_id") @db.VarChar(100)
+  
+  isActive    Boolean  @default(true) @map("is_active")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([industryId])
+  @@map("industry_job_titles")
+}
+
+model ContractType {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(50) // LBK01 (e.g., "1", "2")
+  name         String  @db.VarChar(100) // LBK02 (e.g., "初次招募")
+  isControlled Boolean @default(false) @map("is_controlled") // LBK03 (管制否)
+
+  description String? @db.Text // LBK04 (備註)
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  deployments Deployment[]
+
+  @@map("contract_types")
 }
 
 model DomesticAgency {
-  id                    String   @id @default(uuid()) @db.Uuid
-  code                  String   @unique @db.VarChar(10) // 代號 (CO01)
-  
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(10) // 代號 (CO01)
+
   // 公司名稱
-  agencyNameZh          String   @map("agency_name_zh") @db.VarChar(100) // 公司名稱-中 (CO02)
-  agencyNameEn          String?  @map("agency_name_en") @db.VarChar(100) // 公司名稱-英 (CO03)
-  agencyNameShort       String?  @map("agency_name_short") @db.VarChar(50) // 公司名稱-簡 (CO04)
-  
+  agencyNameZh    String  @map("agency_name_zh") @db.VarChar(100) // 公司名稱-中 (CO02)
+  agencyNameEn    String? @map("agency_name_en") @db.VarChar(100) // 公司名稱-英 (CO03)
+  agencyNameShort String? @map("agency_name_short") @db.VarChar(50) // 公司名稱-簡 (CO04)
+
   // 聯絡資訊
-  phone                 String?  @map("phone") @db.VarChar(20) // 電話 (CO05)
-  fax                   String?  @map("fax") @db.VarChar(20) // 傳真 (CO06)
-  email                 String?  @map("email") @db.VarChar(100) // E-MAIL (CO19)
-  emergencyEmail        String?  @map("emergency_email") @db.VarChar(255) // 緊急待辦收件者e-mail (CO19A)
-  website               String?  @map("website") @db.VarChar(100) // 網址 (CO32)
-  customerServicePhone  String?  @map("customer_service_phone") @db.VarChar(20) // 客戶申訴專線 (CO18)
-  emergencyPhone        String?  @map("emergency_phone") @db.VarChar(20) // 緊急連絡電話 (CO24)
-  
+  phone                String? @map("phone") @db.VarChar(20) // 電話 (CO05)
+  fax                  String? @map("fax") @db.VarChar(20) // 傳真 (CO06)
+  email                String? @map("email") @db.VarChar(100) // E-MAIL (CO19)
+  emergencyEmail       String? @map("emergency_email") @db.VarChar(255) // 緊急待辦收件者e-mail (CO19A)
+  website              String? @map("website") @db.VarChar(100) // 網址 (CO32)
+  customerServicePhone String? @map("customer_service_phone") @db.VarChar(20) // 客戶申訴專線 (CO18)
+  emergencyPhone       String? @map("emergency_phone") @db.VarChar(20) // 緊急連絡電話 (CO24)
+
   // 地址資訊
-  zipCode               String?  @map("zip_code") @db.VarChar(5) // 郵遞區號 (CO07_POST)
-  cityCode              String?  @map("city_code") @db.VarChar(3) // 縣市別代碼 (CO07_CITY)
-  addressZh             String?  @map("address_zh") @db.VarChar(200) // 公司地址-中 (CO07_ADR_TC)
-  addressEn             String?  @map("address_en") @db.VarChar(200) // 公司地址-英 (CO07_ADR_E)
-  
+  zipCode   String? @map("zip_code") @db.VarChar(5) // 郵遞區號 (CO07_POST)
+  cityCode  String? @map("city_code") @db.VarChar(3) // 縣市別代碼 (CO07_CITY)
+  addressZh String? @map("address_zh") @db.VarChar(200) // 公司地址-中 (CO07_ADR_TC)
+  addressEn String? @map("address_en") @db.VarChar(200) // 公司地址-英 (CO07_ADR_E)
+
   // 負責人資訊
-  representativeName    String?  @map("representative_name") @db.VarChar(50) // 負責人姓名 (CO12)
-  representativeNameEn  String?  @map("representative_name_en") @db.VarChar(100) // 負責人姓名-英 (CO12_E)
-  representativeIdNo    String?  @map("representative_id_no") @db.VarChar(20) // 負責人身份證號 (CO17)
+  representativeName     String? @map("representative_name") @db.VarChar(50) // 負責人姓名 (CO12)
+  representativeNameEn   String? @map("representative_name_en") @db.VarChar(100) // 負責人姓名-英 (CO12_E)
+  representativeIdNo     String? @map("representative_id_no") @db.VarChar(20) // 負責人身份證號 (CO17)
   representativePassport String? @map("representative_passport") @db.VarChar(20) // 負責人護照號碼 (CO21)
-  checkPayableTo        String?  @map("check_payable_to") @db.VarChar(50) // 請款開立支票抬頭 (CO34)
-  
+  checkPayableTo         String? @map("check_payable_to") @db.VarChar(50) // 請款開立支票抬頭 (CO34)
+
   // 公司證照資訊
-  taxId                 String?  @map("tax_id") @db.VarChar(10) // 公司統一編號 (CO14)
-  taxRegistrationNo     String?  @map("tax_registration_no") @db.VarChar(20) // 稅籍編號 (CO31)
-  permitNumber          String?  @map("permit_number") @db.VarChar(20) // 公司許可證字號 (CO13)
-  permitValidFrom       DateTime? @map("permit_valid_from") @db.Date // 公司許可證效期-起 (CO16)
-  permitValidTo         DateTime? @map("permit_valid_to") @db.Date // 公司許可證效期-訖 (CO15)
-  businessRegistrationNo String? @map("business_registration_no") @db.VarChar(50) // 營利事業登記證號 (CO20)
-  
+  taxId                  String?   @map("tax_id") @db.VarChar(10) // 公司統一編號 (CO14)
+  taxRegistrationNo      String?   @map("tax_registration_no") @db.VarChar(20) // 稅籍編號 (CO31)
+  permitNumber           String?   @map("permit_number") @db.VarChar(20) // 公司許可證字號 (CO13)
+  permitValidFrom        DateTime? @map("permit_valid_from") @db.Date // 公司許可證效期-起 (CO16)
+  permitValidTo          DateTime? @map("permit_valid_to") @db.Date // 公司許可證效期-訖 (CO15)
+  businessRegistrationNo String?   @map("business_registration_no") @db.VarChar(50) // 營利事業登記證號 (CO20)
+
   // 銀行帳戶資訊
-  postalAccountNo       String?  @map("postal_account_no") @db.VarChar(20) // 郵政劃撥帳號 (CO22)
-  postalAccountName     String?  @map("postal_account_name") @db.VarChar(100) // 郵政劃撥帳號-戶名 (CO23)
-  bankName              String?  @map("bank_name") @db.VarChar(100) // 匯款銀行名稱 (CO25)
-  bankCode              String?  @map("bank_code") @db.VarChar(3) // 銀行總行代號 (CO26)
-  bankBranchCode        String?  @map("bank_branch_code") @db.VarChar(4) // 銀行分支單位代號 (CO27)
-  bankAccountNo         String?  @map("bank_account_no") @db.VarChar(20) // 銀行帳號 (CO28)
-  bankAccountName       String?  @map("bank_account_name") @db.VarChar(100) // 銀行帳戶名稱 (CO29)
-  
+  postalAccountNo   String? @map("postal_account_no") @db.VarChar(20) // 郵政劃撥帳號 (CO22)
+  postalAccountName String? @map("postal_account_name") @db.VarChar(100) // 郵政劃撥帳號-戶名 (CO23)
+  bankName          String? @map("bank_name") @db.VarChar(100) // 匯款銀行名稱 (CO25)
+  bankCode          String? @map("bank_code") @db.VarChar(3) // 銀行總行代號 (CO26)
+  bankBranchCode    String? @map("bank_branch_code") @db.VarChar(4) // 銀行分支單位代號 (CO27)
+  bankAccountNo     String? @map("bank_account_no") @db.VarChar(20) // 銀行帳號 (CO28)
+  bankAccountName   String? @map("bank_account_name") @db.VarChar(100) // 銀行帳戶名稱 (CO29)
+
   // 內部管理
-  accountant            String?  @map("accountant") @db.VarChar(50) // 帳務會計 (CO30)
-  isActive              Boolean  @default(true) @map("is_active")
-  sortOrder             Int      @default(0) @map("sort_order")
-  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  
+  accountant String?  @map("accountant") @db.VarChar(50) // 帳務會計 (CO30)
+  isActive   Boolean  @default(true) @map("is_active")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
   // Relations
   bilateralTradeLicenses AgencyBilateralTradeLicense[]
-  bankAccounts          DomesticAgencyBankAccount[]
-  employees             Employee[]
+  bankAccounts           DomesticAgencyBankAccount[]
+  employees              Employee[]
 
   @@map("domestic_agencies")
 }
 
 model Bank {
-  id            String   @id @default(uuid()) @db.Uuid
-  code          String   @unique @db.VarChar(12) // 銀行編號 (LCA01)
-  
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(12) // 銀行編號 (LCA01)
+
   // 銀行名稱
-  bankName      String   @map("bank_name") @db.VarChar(100) // 銀行名稱 (LCA02)
-  bankNameEn    String?  @map("bank_name_en") @db.VarChar(100) // 銀行名稱-英文 (LCA02_E)
-  
+  bankName   String  @map("bank_name") @db.VarChar(100) // 銀行名稱 (LCA02)
+  bankNameEn String? @map("bank_name_en") @db.VarChar(100) // 銀行名稱-英文 (LCA02_E)
+
   // 聯絡資訊
-  contactPerson String?  @map("contact_person") @db.VarChar(50) // 連絡人 (LCA03)
-  phone         String?  @map("phone") @db.VarChar(30) // 電話 (LCA04)
-  fax           String?  @map("fax") @db.VarChar(30) // 傳真 (LCA05)
-  address       String?  @map("address") @db.VarChar(200) // 地址 (LCA07)
-  
+  contactPerson String? @map("contact_person") @db.VarChar(50) // 連絡人 (LCA03)
+  phone         String? @map("phone") @db.VarChar(30) // 電話 (LCA04)
+  fax           String? @map("fax") @db.VarChar(30) // 傳真 (LCA05)
+  address       String? @map("address") @db.VarChar(200) // 地址 (LCA07)
+
   // 備註
-  notes         String?  @map("notes") @db.VarChar(200) // 備註 (LCA06)
-  
+  notes String? @map("notes") @db.VarChar(200) // 備註 (LCA06)
+
   // 狀態
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
   // Relations
   agencyAccounts DomesticAgencyBankAccount[]
 
@@ -307,33 +408,33 @@ model Bank {
 }
 
 model DomesticAgencyBankAccount {
-  id                String   @id @default(uuid()) @db.Uuid
-  
+  id String @id @default(uuid()) @db.Uuid
+
   // 外鍵
-  domesticAgencyId  String   @map("domestic_agency_id") @db.Uuid
-  domesticAgency    DomesticAgency @relation(fields: [domesticAgencyId], references: [id], onDelete: Cascade)
-  
-  bankId            String   @map("bank_id") @db.Uuid
-  bank              Bank @relation(fields: [bankId], references: [id], onDelete: Cascade)
-  
+  domesticAgencyId String         @map("domestic_agency_id") @db.Uuid
+  domesticAgency   DomesticAgency @relation(fields: [domesticAgencyId], references: [id], onDelete: Cascade)
+
+  bankId String @map("bank_id") @db.Uuid
+  bank   Bank   @relation(fields: [bankId], references: [id], onDelete: Cascade)
+
   // 該國內仲介在該銀行的專屬資訊
-  agencyUnitCode    String   @map("agency_unit_code") @db.VarChar(12) // 仲介的委託單位代號 (LCA09)
-  agencyAccountNo   String   @map("agency_account_no") @db.VarChar(20) // 仲介的轉入帳號 (LCA08)
-  
+  agencyUnitCode  String @map("agency_unit_code") @db.VarChar(12) // 仲介的委託單位代號 (LCA09)
+  agencyAccountNo String @map("agency_account_no") @db.VarChar(20) // 仲介的轉入帳號 (LCA08)
+
   // 帳戶用途說明
-  accountPurpose    String?  @map("account_purpose") @db.VarChar(100) // 例如：「勞工薪資轉帳」、「服務費收款」
-  
+  accountPurpose String? @map("account_purpose") @db.VarChar(100) // 例如：「勞工薪資轉帳」、「服務費收款」
+
   // 是否為主要帳戶
-  isPrimary         Boolean  @default(false) @map("is_primary") // 該仲介在該銀行的主要帳戶
-  
+  isPrimary Boolean @default(false) @map("is_primary") // 該仲介在該銀行的主要帳戶
+
   // 狀態
-  isActive          Boolean  @default(true) @map("is_active")
-  notes             String?  @map("notes") @db.Text
-  
+  isActive Boolean @default(true) @map("is_active")
+  notes    String? @map("notes") @db.Text
+
   // 審計欄位
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
   // 確保同一個仲介在同一家銀行的同一個帳號不重複
   @@unique([domesticAgencyId, bankId, agencyAccountNo])
   @@index([domesticAgencyId])
@@ -342,127 +443,127 @@ model DomesticAgencyBankAccount {
 }
 
 model AgencyBilateralTradeLicense {
-  id              String   @id @default(uuid()) @db.Uuid
-  agencyId        String   @map("agency_id") @db.Uuid
-  agency          DomesticAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  
+  id       String         @id @default(uuid()) @db.Uuid
+  agencyId String         @map("agency_id") @db.Uuid
+  agency   DomesticAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
   // 國家代碼 (ISO 3166-1 alpha-2: TH, PH, ID, VN, IN 等)
-  country         String   @db.VarChar(2) // 使用兩字母國家代碼
-  
+  country String @db.VarChar(2) // 使用兩字母國家代碼
+
   // 許可證資訊
-  licenseNumber   String?  @map("license_number") @db.VarChar(50) // 許可證字號（如果有）
-  validFrom       DateTime @map("valid_from") @db.Date // 生效日期
-  validTo         DateTime @map("valid_to") @db.Date // 到期日期
-  
+  licenseNumber String?  @map("license_number") @db.VarChar(50) // 許可證字號（如果有）
+  validFrom     DateTime @map("valid_from") @db.Date // 生效日期
+  validTo       DateTime @map("valid_to") @db.Date // 到期日期
+
   // 狀態
-  status          String   @default("ACTIVE") @db.VarChar(20) // ACTIVE, EXPIRED, REVOKED
-  
+  status String @default("ACTIVE") @db.VarChar(20) // ACTIVE, EXPIRED, REVOKED
+
   // 備註
-  notes           String?  @map("notes") @db.Text
-  
+  notes String? @map("notes") @db.Text
+
   // 審計欄位
-  createdBy       String?  @map("created_by") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
   @@index([agencyId])
   @@index([validTo]) // 快速查詢即將到期的許可證
   @@map("agency_bilateral_trade_licenses")
 }
 
 model PartnerAgency {
-  id                    String   @id @default(uuid()) @db.Uuid
-  code                  String   @unique @db.VarChar(10) // 代號 (LBN01)
-  
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(10) // 代號 (LBN01)
+
   // 公司名稱
-  agencyNameZh          String   @map("agency_name_zh") @db.VarChar(200) // 公司名稱-中 (LBN02)
-  agencyNameZhShort     String?  @map("agency_name_zh_short") @db.VarChar(100) // 公司名稱-中簡 (LBN04)
-  agencyNameEn          String?  @map("agency_name_en") @db.VarChar(200) // 公司名稱-英 (LBN03)
-  agencyNameEnShort     String?  @map("agency_name_en_short") @db.VarChar(100) // 公司名稱-英簡 (LBN04_E)
-  
+  agencyNameZh      String  @map("agency_name_zh") @db.VarChar(200) // 公司名稱-中 (LBN02)
+  agencyNameZhShort String? @map("agency_name_zh_short") @db.VarChar(100) // 公司名稱-中簡 (LBN04)
+  agencyNameEn      String? @map("agency_name_en") @db.VarChar(200) // 公司名稱-英 (LBN03)
+  agencyNameEnShort String? @map("agency_name_en_short") @db.VarChar(100) // 公司名稱-英簡 (LBN04_E)
+
   // 基本聯絡資訊
-  phone                 String?  @map("phone") @db.VarChar(20) // 電話 (LBN05)
-  fax                   String?  @map("fax") @db.VarChar(20) // 傳真 (LBN06)
-  email                 String?  @map("email") @db.VarChar(100) // E-mail (LBN36)
-  
+  phone String? @map("phone") @db.VarChar(20) // 電話 (LBN05)
+  fax   String? @map("fax") @db.VarChar(20) // 傳真 (LBN06)
+  email String? @map("email") @db.VarChar(100) // E-mail (LBN36)
+
   // 國別與地址
-  country               String?  @map("country") @db.VarChar(2) // 國別代碼 (ISO 3166-1 alpha-2)
-  countryNameZh         String?  @map("country_name_zh") @db.VarChar(20) // 國別中文 (LBN07_CODE)
-  addressZh             String?  @map("address_zh") @db.VarChar(200) // 公司地址-中 (LBN07_ADR_TC)
-  addressEn             String?  @map("address_en") @db.VarChar(200) // 公司地址-英 (LBN07_ADR_E)
-  addressShort          String?  @map("address_short") @db.VarChar(200) // 公司地址-簡 (LBN07_ADR_SC)
-  
+  country       String? @map("country") @db.VarChar(2) // 國別代碼 (ISO 3166-1 alpha-2)
+  countryNameZh String? @map("country_name_zh") @db.VarChar(20) // 國別中文 (LBN07_CODE)
+  addressZh     String? @map("address_zh") @db.VarChar(200) // 公司地址-中 (LBN07_ADR_TC)
+  addressEn     String? @map("address_en") @db.VarChar(200) // 公司地址-英 (LBN07_ADR_E)
+  addressShort  String? @map("address_short") @db.VarChar(200) // 公司地址-簡 (LBN07_ADR_SC)
+
   // 聯絡人資訊
-  contactPerson         String?  @map("contact_person") @db.VarChar(50) // 聯絡人 (LBN29)
-  contactPhone          String?  @map("contact_phone") @db.VarChar(20) // 聯絡電話 (LBN30)
-  
+  contactPerson String? @map("contact_person") @db.VarChar(50) // 聯絡人 (LBN29)
+  contactPhone  String? @map("contact_phone") @db.VarChar(20) // 聯絡電話 (LBN30)
+
   // 寄件地址
-  mailingAddressZh      String?  @map("mailing_address_zh") @db.VarChar(200) // 寄件地址-中文 (LBN31)
-  mailingAddressEn      String?  @map("mailing_address_en") @db.VarChar(200) // 寄件地址-英文 (LBN32)
-  
+  mailingAddressZh String? @map("mailing_address_zh") @db.VarChar(200) // 寄件地址-中文 (LBN31)
+  mailingAddressEn String? @map("mailing_address_en") @db.VarChar(200) // 寄件地址-英文 (LBN32)
+
   // 負責人資訊
-  representativeName    String?  @map("representative_name") @db.VarChar(50) // 負責人姓名 (LBN12)
-  representativeNameEn  String?  @map("representative_name_en") @db.VarChar(100) // 負責人姓名-英 (LBN12_E)
-  representativeIdNo    String?  @map("representative_id_no") @db.VarChar(20) // 負責人身份證號 (LBN19)
+  representativeName     String? @map("representative_name") @db.VarChar(50) // 負責人姓名 (LBN12)
+  representativeNameEn   String? @map("representative_name_en") @db.VarChar(100) // 負責人姓名-英 (LBN12_E)
+  representativeIdNo     String? @map("representative_id_no") @db.VarChar(20) // 負責人身份證號 (LBN19)
   representativePassport String? @map("representative_passport") @db.VarChar(20) // 負責人護照號碼 (LBN26)
-  
+
   // 公司證照資訊
-  taxId                 String?  @map("tax_id") @db.VarChar(10) // 公司統一編號 (LBN14)
-  businessRegistrationNo String? @map("business_registration_no") @db.VarChar(50) // 營利事業登記證號 (LBN27)
-  permitNumber          String?  @map("permit_number") @db.VarChar(50) // 公司許可證字號 (LBN13)
-  foreignLicenseNo      String?  @map("foreign_license_no") @db.VarChar(50) // 國外執照編號 (LBN20)
-  foreignLicenseExpiry  DateTime? @map("foreign_license_expiry") @db.Date // 國外執照效期 (LBN21)
-  
+  taxId                  String?   @map("tax_id") @db.VarChar(10) // 公司統一編號 (LBN14)
+  businessRegistrationNo String?   @map("business_registration_no") @db.VarChar(50) // 營利事業登記證號 (LBN27)
+  permitNumber           String?   @map("permit_number") @db.VarChar(50) // 公司許可證字號 (LBN13)
+  foreignLicenseNo       String?   @map("foreign_license_no") @db.VarChar(50) // 國外執照編號 (LBN20)
+  foreignLicenseExpiry   DateTime? @map("foreign_license_expiry") @db.Date // 國外執照效期 (LBN21)
+
   // 勞動部認可資訊
-  molPermitNo           String?  @map("mol_permit_no") @db.VarChar(20) // 勞動部許可編號 (LBN33)
-  molValidFrom          DateTime? @map("mol_valid_from") @db.Date // 勞動部認可有效起始日 (LBN34)
-  molValidTo            DateTime? @map("mol_valid_to") @db.Date // 勞動部認可有效屆滿日 (LBN22)
-  
+  molPermitNo  String?   @map("mol_permit_no") @db.VarChar(20) // 勞動部許可編號 (LBN33)
+  molValidFrom DateTime? @map("mol_valid_from") @db.Date // 勞動部認可有效起始日 (LBN34)
+  molValidTo   DateTime? @map("mol_valid_to") @db.Date // 勞動部認可有效屆滿日 (LBN22)
+
   // 銀行帳戶資訊
-  payeeName             String?  @map("payee_name") @db.VarChar(100) // 收款人 (LBN40)
-  bankName              String?  @map("bank_name") @db.VarChar(100) // 銀行名稱 (LBN41)
-  bankAccountNo         String?  @map("bank_account_no") @db.VarChar(50) // 銀行帳號 (LBN42)
-  bankAddress           String?  @map("bank_address") @db.VarChar(200) // 銀行地址 (LBN43)
-  
+  payeeName     String? @map("payee_name") @db.VarChar(100) // 收款人 (LBN40)
+  bankName      String? @map("bank_name") @db.VarChar(100) // 銀行名稱 (LBN41)
+  bankAccountNo String? @map("bank_account_no") @db.VarChar(50) // 銀行帳號 (LBN42)
+  bankAddress   String? @map("bank_address") @db.VarChar(200) // 銀行地址 (LBN43)
+
   // 配合貸款銀行（外鍵到 LoanBank 參考表）
-  loanBankCode          String?  @map("loan_bank_code") @db.VarChar(10) // (LBN24)
-  
+  loanBankCode String? @map("loan_bank_code") @db.VarChar(10) // (LBN24)
+
   // 狀態與備註
-  isActive              Boolean  @default(true) @map("is_active") // 使用中 (LBN25: Y/N)
-  notes                 String?  @map("notes") @db.Text // 備註 (LBN35)
-  
+  isActive Boolean @default(true) @map("is_active") // 使用中 (LBN25: Y/N)
+  notes    String? @map("notes") @db.Text // 備註 (LBN35)
+
   // 審計欄位
-  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
   // Relations
   bilateralTradeLicenses PartnerAgencyBilateralLicense[]
-  contracts             PartnerAgencyContract[]
+  contracts              PartnerAgencyContract[]
 
   @@map("partner_agencies")
 }
 
 model PartnerAgencyBilateralLicense {
-  id              String   @id @default(uuid()) @db.Uuid
-  agencyId        String   @map("agency_id") @db.Uuid
-  agency          PartnerAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  
+  id       String        @id @default(uuid()) @db.Uuid
+  agencyId String        @map("agency_id") @db.Uuid
+  agency   PartnerAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
   // 互貿認證資訊
-  licenseNumber   String?  @map("license_number") @db.VarChar(50) // 認證編號
-  validFrom       DateTime @map("valid_from") @db.Date // 互貿生效日期 (LBN44)
-  validTo         DateTime @map("valid_to") @db.Date // 互貿認證效期 (LBN37)
-  
+  licenseNumber String?  @map("license_number") @db.VarChar(50) // 認證編號
+  validFrom     DateTime @map("valid_from") @db.Date // 互貿生效日期 (LBN44)
+  validTo       DateTime @map("valid_to") @db.Date // 互貿認證效期 (LBN37)
+
   // 狀態
-  status          String   @default("ACTIVE") @db.VarChar(20) // ACTIVE, EXPIRED, REVOKED, SUSPENDED
-  
+  status String @default("ACTIVE") @db.VarChar(20) // ACTIVE, EXPIRED, REVOKED, SUSPENDED
+
   // 備註
-  notes           String?  @map("notes") @db.Text
-  
+  notes String? @map("notes") @db.Text
+
   // 審計欄位
-  createdBy       String?  @map("created_by") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
   @@index([agencyId])
   @@index([validTo]) // 快速查詢即將到期的許可證
   @@index([status])
@@ -470,31 +571,31 @@ model PartnerAgencyBilateralLicense {
 }
 
 model PartnerAgencyContract {
-  id              String   @id @default(uuid()) @db.Uuid
-  agencyId        String   @map("agency_id") @db.Uuid
-  agency          PartnerAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  
+  id       String        @id @default(uuid()) @db.Uuid
+  agencyId String        @map("agency_id") @db.Uuid
+  agency   PartnerAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
   // 合約資訊
-  contractNo      String   @map("contract_no") @db.VarChar(50) // 簽定勞工供應契約書NO. (LBN45)
-  contractType    String?  @map("contract_type") @db.VarChar(50) // 合約類型（勞工供應、互貿協議等）
-  signedDate      DateTime? @map("signed_date") @db.Date // 簽約日期
-  validFrom       DateTime? @map("valid_from") @db.Date // 合約生效日
-  validTo         DateTime? @map("valid_to") @db.Date // 合約到期日
-  
+  contractNo   String    @map("contract_no") @db.VarChar(50) // 簽定勞工供應契約書NO. (LBN45)
+  contractType String?   @map("contract_type") @db.VarChar(50) // 合約類型（勞工供應、互貿協議等）
+  signedDate   DateTime? @map("signed_date") @db.Date // 簽約日期
+  validFrom    DateTime? @map("valid_from") @db.Date // 合約生效日
+  validTo      DateTime? @map("valid_to") @db.Date // 合約到期日
+
   // 合約內容摘要
-  summary         String?  @map("summary") @db.Text
-  
+  summary String? @map("summary") @db.Text
+
   // 文件附件路徑
-  documentPath    String?  @map("document_path") @db.VarChar(255)
-  
+  documentPath String? @map("document_path") @db.VarChar(255)
+
   // 狀態
-  status          String   @default("ACTIVE") @db.VarChar(20) // DRAFT, ACTIVE, EXPIRED, TERMINATED
-  
+  status String @default("ACTIVE") @db.VarChar(20) // DRAFT, ACTIVE, EXPIRED, TERMINATED
+
   // 審計欄位
-  createdBy       String?  @map("created_by") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
   @@index([agencyId])
   @@index([contractNo])
   @@index([validTo])
@@ -514,79 +615,79 @@ model LoanBank {
 }
 
 model Employee {
-  id                String   @id @default(uuid()) @db.Uuid
-  code              String   @unique @db.VarChar(18) // 代碼 (LBR01) - 可修改
-  
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(18) // 代碼 (LBR01) - 可修改
+
   // 基本資訊
-  fullName          String   @map("full_name") @db.VarChar(50) // 中文姓名 (LBR02)
-  fullNameEn        String?  @map("full_name_en") @db.VarChar(100) // 英文姓名 (LBR16)
-  gender            String?  @map("gender") @db.VarChar(10) // 性別 (LBR28): 男/女
-  nationality       String?  @map("nationality") @db.VarChar(20) // 國籍 (LBR27)
-  dateOfBirth       DateTime? @map("date_of_birth") @db.Date // 生日 (LBR26)
-  idNumber          String?  @map("id_number") @db.VarChar(20) // 身分證字號 (LBR03) - 選填！
-  
+  fullName    String    @map("full_name") @db.VarChar(50) // 中文姓名 (LBR02)
+  fullNameEn  String?   @map("full_name_en") @db.VarChar(100) // 英文姓名 (LBR16)
+  gender      String?   @map("gender") @db.VarChar(10) // 性別 (LBR28): 男/女
+  nationality String?   @map("nationality") @db.VarChar(20) // 國籍 (LBR27)
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date // 生日 (LBR26)
+  idNumber    String?   @map("id_number") @db.VarChar(20) // 身分證字號 (LBR03) - 選填！
+
   // 職務資訊
-  departmentCode    String?  @map("department_code") @db.VarChar(10) // 部門代碼 (LBR45)
-  employeeNumber    String?  @map("employee_number") @db.VarChar(10) // 員工編號 (LBR47) - 可修改
-  jobTitle          String?  @map("job_title") @db.VarChar(50) // 職務名稱 (LBR07)
-  domesticAgencyId  String?  @map("domestic_agency_id") @db.Uuid // 所屬國內仲介 (LBR52)
-  domesticAgency    DomesticAgency? @relation(fields: [domesticAgencyId], references: [id], onDelete: SetNull)
-  
+  departmentCode   String?         @map("department_code") @db.VarChar(10) // 部門代碼 (LBR45)
+  employeeNumber   String?         @map("employee_number") @db.VarChar(10) // 員工編號 (LBR47) - 可修改
+  jobTitle         String?         @map("job_title") @db.VarChar(50) // 職務名稱 (LBR07)
+  domesticAgencyId String?         @map("domestic_agency_id") @db.Uuid // 所屬國內仲介 (LBR52)
+  domesticAgency   DomesticAgency? @relation(fields: [domesticAgencyId], references: [id], onDelete: SetNull)
+
   // 聯絡資訊
-  phone             String?  @map("phone") @db.VarChar(30) // 電話 (LBR04)
-  mobilePhone       String?  @map("mobile_phone") @db.VarChar(30) // 手機 (LBR48)
-  extension         String?  @map("extension") @db.VarChar(12) // 電話分機代號 (LBR18)
-  email             String?  @map("email") @db.VarChar(100) // E-mail (LBR37)
-  receiveSms        Boolean  @default(false) @map("receive_sms") // 收簡訊否 (LBR41)
-  
+  phone       String? @map("phone") @db.VarChar(30) // 電話 (LBR04)
+  mobilePhone String? @map("mobile_phone") @db.VarChar(30) // 手機 (LBR48)
+  extension   String? @map("extension") @db.VarChar(12) // 電話分機代號 (LBR18)
+  email       String? @map("email") @db.VarChar(100) // E-mail (LBR37)
+  receiveSms  Boolean @default(false) @map("receive_sms") // 收簡訊否 (LBR41)
+
   // 聯絡人資訊
-  contactPerson     String?  @map("contact_person") @db.VarChar(50) // 聯絡人 (LBR05)
-  contactPhone      String?  @map("contact_phone") @db.VarChar(30) // 聯絡電話 (LBR06)
-  
+  contactPerson String? @map("contact_person") @db.VarChar(50) // 聯絡人 (LBR05)
+  contactPhone  String? @map("contact_phone") @db.VarChar(30) // 聯絡電話 (LBR06)
+
   // 地址資訊
-  mailingAddressZh  String?  @map("mailing_address_zh") @db.VarChar(200) // 通訊住址-中文 (LBR10)
-  mailingAddressEn  String?  @map("mailing_address_en") @db.VarChar(200) // 通訊住址-英文 (LBR11)
+  mailingAddressZh     String? @map("mailing_address_zh") @db.VarChar(200) // 通訊住址-中文 (LBR10)
+  mailingAddressEn     String? @map("mailing_address_en") @db.VarChar(200) // 通訊住址-英文 (LBR11)
   residentialAddressZh String? @map("residential_address_zh") @db.VarChar(200) // 戶籍住址-中文 (LBR30)
   residentialAddressEn String? @map("residential_address_en") @db.VarChar(200) // 戶籍住址-英文 (LBR31)
-  
+
   // 緊急聯絡人
-  emergencyContact  String?  @map("emergency_contact") @db.VarChar(50) // 緊急連絡人 (LBR49)
-  emergencyPhone    String?  @map("emergency_phone") @db.VarChar(30) // 緊急連絡人電話 (LBR50)
-  
+  emergencyContact String? @map("emergency_contact") @db.VarChar(50) // 緊急連絡人 (LBR49)
+  emergencyPhone   String? @map("emergency_phone") @db.VarChar(30) // 緊急連絡人電話 (LBR50)
+
   // 職務角色（布林值）
-  isSales           Boolean  @default(false) @map("is_sales") // 業務否 (LBR08)
-  isAdmin           Boolean  @default(false) @map("is_admin") // 行政否 (LBR09)
-  isCustomerService Boolean  @default(false) @map("is_customer_service") // 客服否 (LBR29)
-  isAccounting      Boolean  @default(false) @map("is_accounting") // 會計否 (LBR36)
-  isBilingual       Boolean  @default(false) @map("is_bilingual") // 雙語否 (LBR14)
-  
+  isSales           Boolean @default(false) @map("is_sales") // 業務否 (LBR08)
+  isAdmin           Boolean @default(false) @map("is_admin") // 行政否 (LBR09)
+  isCustomerService Boolean @default(false) @map("is_customer_service") // 客服否 (LBR29)
+  isAccounting      Boolean @default(false) @map("is_accounting") // 會計否 (LBR36)
+  isBilingual       Boolean @default(false) @map("is_bilingual") // 雙語否 (LBR14)
+
   // 業務相關
-  employerAutoCode  String?  @map("employer_auto_code") @db.VarChar(10) // 雇主自動編號用代碼 (LBR17)
-  contractCode      String?  @map("contract_code") @db.VarChar(4) // 業務合約代碼 (LBR24)
-  contractSeqUsed   Int?     @default(0) @map("contract_seq_used") // 業務合約已用序號 (LBR25)
-  salesGroupCode    String?  @map("sales_group_code") @db.VarChar(10) // 業務分群代碼 (LBR20)
-  expertise         String?  @map("expertise") @db.VarChar(200) // 專長 (LBR21)
-  
+  employerAutoCode String? @map("employer_auto_code") @db.VarChar(10) // 雇主自動編號用代碼 (LBR17)
+  contractCode     String? @map("contract_code") @db.VarChar(4) // 業務合約代碼 (LBR24)
+  contractSeqUsed  Int?    @default(0) @map("contract_seq_used") // 業務合約已用序號 (LBR25)
+  salesGroupCode   String? @map("sales_group_code") @db.VarChar(10) // 業務分群代碼 (LBR20)
+  expertise        String? @map("expertise") @db.VarChar(200) // 專長 (LBR21)
+
   // 銀行帳戶資訊
-  postalAccountNo   String?  @map("postal_account_no") @db.VarChar(12) // 劃撥帳號 (LBR34)
-  postalAccountName String?  @map("postal_account_name") @db.VarChar(100) // 劃撥戶名 (LBR35)
-  bankName          String?  @map("bank_name") @db.VarChar(100) // 匯款銀行名稱 (LBR38)
-  bankAccountName   String?  @map("bank_account_name") @db.VarChar(100) // 銀行帳戶名稱 (LBR39)
-  bankAccountNo     String?  @map("bank_account_no") @db.VarChar(20) // 匯款銀行帳號 (LBR40)
-  
+  postalAccountNo   String? @map("postal_account_no") @db.VarChar(12) // 劃撥帳號 (LBR34)
+  postalAccountName String? @map("postal_account_name") @db.VarChar(100) // 劃撥戶名 (LBR35)
+  bankName          String? @map("bank_name") @db.VarChar(100) // 匯款銀行名稱 (LBR38)
+  bankAccountName   String? @map("bank_account_name") @db.VarChar(100) // 銀行帳戶名稱 (LBR39)
+  bankAccountNo     String? @map("bank_account_no") @db.VarChar(20) // 匯款銀行帳號 (LBR40)
+
   // 到離職資訊
-  hireDate          DateTime? @map("hire_date") @db.Date // 到職日 (LBR22)
+  hireDate           DateTime? @map("hire_date") @db.Date // 到職日 (LBR22)
   insuranceStartDate DateTime? @map("insurance_start_date") @db.Date // 加保日 (LBR43)
-  resignationDate   DateTime? @map("resignation_date") @db.Date // 離職日 (LBR23)
-  insuranceEndDate  DateTime? @map("insurance_end_date") @db.Date // 退保日 (LBR44)
-  
+  resignationDate    DateTime? @map("resignation_date") @db.Date // 離職日 (LBR23)
+  insuranceEndDate   DateTime? @map("insurance_end_date") @db.Date // 退保日 (LBR44)
+
   // 備註
-  notes             String?  @map("notes") @db.Text // 備註 (LBR32)
-  
+  notes String? @map("notes") @db.Text // 備註 (LBR32)
+
   // 狀態
-  isActive          Boolean  @default(true) @map("is_active") // 是否在職
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  isActive  Boolean  @default(true) @map("is_active") // 是否在職
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([code])
   @@index([fullName])
@@ -611,7 +712,6 @@ model Department {
 // ==========================================
 // Core Models
 // ==========================================
-
 
 model InternalUser {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -709,9 +809,10 @@ model Employer {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  laborCounts EmployerLaborCount[]
+  laborCounts          EmployerLaborCount[]
   industryRecognitions IndustryRecognition[]
   recruitmentProofs    RecruitmentProof[]
+  officialDocuments    OfficialDocument[]
 
   // Soft Delete
   isDeleted Boolean   @default(false) @map("is_deleted")
@@ -774,11 +875,14 @@ model EmployerFactory {
   foreignCount Int? @default(0) // 該廠外勞人數
 
   createdAt DateTime @default(now()) @map("created_at")
-  
-  // Relations
-  deployments Deployment[] 
-  industryRecognitions IndustryRecognition[] 
 
+  // Relations
+  deployments          Deployment[]
+  industryRecognitions IndustryRecognition[]
+  workers              Worker[]
+
+  // [Added] Recruitment Letter Relation
+  recruitmentLetters EmployerRecruitmentLetter[] @relation("LetterWorkFactory")
 
   @@map("employer_factories")
 }
@@ -836,7 +940,6 @@ model IndividualInfo {
   responsiblePersonSpouse String?   @map("responsible_person_spouse") @db.VarChar(50)
   mobilePhone             String?   @map("mobile_phone") @db.VarChar(20) // [Added] 負責人行動電話
 
-
   // [Added] Detailed Individual Info
   englishName  String? @map("english_name") @db.VarChar(100) // 負責人英文名
   birthPlace   String? @map("birth_place") @db.VarChar(50)
@@ -862,13 +965,18 @@ model IndividualInfo {
 }
 
 model Worker {
-  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  englishName String          @map("english_name") @db.VarChar(100)
-  chineseName String?         @map("chinese_name") @db.VarChar(50)
-  dob         DateTime        @db.Date
-  nationality NationalityType
-  category    WorkerCategory  @default(general)
-  gender      GenderType?
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  englishName String   @map("english_name") @db.VarChar(100)
+  chineseName String?  @map("chinese_name") @db.VarChar(50)
+  dob         DateTime @db.Date
+
+  // [Modified] Nationality (Dynamic)
+  nationalityId String?      @map("nationality_id") @db.Uuid
+  nationality   Nationality? @relation(fields: [nationalityId], references: [id])
+  // REMOVED: nationality NationalityType
+
+  category WorkerCategory @default(general)
+  gender   GenderType?
 
   mobilePhone    String?   @map("mobile_phone") @db.VarChar(50)
   foreignAddress String?   @map("foreign_address") @db.Text
@@ -914,6 +1022,7 @@ model Worker {
   deployments         Deployment[]
   healthChecks        HealthCheck[]
   incidents           Incident[]
+  officialDocuments   OfficialDocument[]
   serviceAssignments  ServiceAssignment[]
   insurances          WorkerInsurance[]
   addressHistory      WorkerAddressHistory[]
@@ -936,21 +1045,23 @@ model Worker {
   medCheck30moDeadline  DateTime? @map("med_check_30mo_deadline") @db.Date
 
   // Dormitory Bed
-  bedId String? @unique @map("bed_id") @db.Uuid
-  bed   DormitoryBed? @relation(fields: [bedId], references: [id])
+  bedId             String?          @unique @map("bed_id") @db.Uuid
+  bed               DormitoryBed?    @relation(fields: [bedId], references: [id])
+  EmployerFactory   EmployerFactory? @relation(fields: [employerFactoryId], references: [id])
+  employerFactoryId String?          @db.Uuid
 
   @@map("workers")
 }
 
 model EmployerRecruitmentLetter {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employerId    String   @map("employer_id") @db.Uuid
-  
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employerId String @map("employer_id") @db.Uuid
+
   // --- 1. 最終產出 (招募函本身) ---
-  letterNumber  String   @unique @map("letter_number") @db.VarChar(50) // 發文號碼 (勞動發事字...)
-  issueDate     DateTime @map("issue_date") @db.Date // 發文日期
-  expiryDate    DateTime @map("expiry_date") @db.Date // 招募效期
-  validUntil    DateTime @map("valid_until") @db.Date @default(now()) // 有效期限 (通常同 expiryDate) - Added default to avoid migration issue on existing rows if any
+  letterNumber String   @unique @map("letter_number") @db.VarChar(50) // 發文號碼 (勞動發事字...)
+  issueDate    DateTime @map("issue_date") @db.Date // 發文日期
+  expiryDate   DateTime @map("expiry_date") @db.Date // 招募效期
+  validUntil   DateTime @default(now()) @map("valid_until") @db.Date // 有效期限 (通常同 expiryDate) - Added default to avoid migration issue on existing rows if any
 
   // --- [Phase 1 New Relations] ---
   industryRecognitionId String?              @map("industry_recognition_id") @db.Uuid
@@ -962,60 +1073,75 @@ model EmployerRecruitmentLetter {
   // --- 2. 步驟一：工業局核定 (Industrial Bureau) ---
   // [DEPRECATED] Use relation industryRecognition instead
   // 證明你是3K產業，並核定級別 (A+, A, B, C, D)
-  industrialBureauRef   String?  @map("industrial_bureau_ref") @db.VarChar(50) // 工業局核定函號
-  industrialBureauDate  DateTime? @map("industrial_bureau_date") @db.Date // 工業局發文日
-  industryTier          String?   @map("industry_tier") @db.VarChar(10) // 核定級別 (e.g., "B級")
+  industrialBureauRef  String?   @map("industrial_bureau_ref") @db.VarChar(50) // 工業局核定函號
+  industrialBureauDate DateTime? @map("industrial_bureau_date") @db.Date // 工業局發文日
+  industryTier         String?   @map("industry_tier") @db.VarChar(10) // 核定級別 (e.g., "B級")
 
   // --- 3. 步驟二：國內求才 (Domestic Recruitment) ---
   // 必須先去公立就業服務站求才，拿到「求才證明書」
-  domesticRecruitmentRef String? @map("domestic_recruitment_ref") @db.VarChar(50) // [新] 求才證明書序號
+  domesticRecruitmentRef  String?   @map("domestic_recruitment_ref") @db.VarChar(50) // [新] 求才證明書序號
   domesticRecruitmentDate DateTime? @map("domestic_recruitment_date") @db.Date // [新] 求才登記日/證明書發文日
-  
+
   // --- 4. 步驟三：規費繳納 (Review Fee) ---
   // 申請招募許可前，要去郵局劃撥審查費
-  reviewFeeReceiptNo     String? @map("review_fee_receipt_no") @db.VarChar(50) // [新] 審查費收據號碼 (郵政劃撥單號)
-  reviewFeePayDate       DateTime? @map("review_fee_pay_date") @db.Date // [新] 繳費日期
-  reviewFeeAmount        Int     @default(200) @map("review_fee_amount") // 金額 (通常每人200元)
+  reviewFeeReceiptNo String?   @map("review_fee_receipt_no") @db.VarChar(50) // [新] 審查費收據號碼 (郵政劃撥單號)
+  reviewFeePayDate   DateTime? @map("review_fee_pay_date") @db.Date // [新] 繳費日期
+  reviewFeeAmount    Int       @default(200) @map("review_fee_amount") // 金額 (通常每人200元)
 
   // --- 5. 名額與計算 ---
-  approvedQuota Int      @default(0) @map("approved_quota") // 核准名額 (總計)
-  usedQuota     Int      @default(0) @map("used_quota")     // 已用名額 (快取)
-  
+  approvedQuota Int @default(0) @map("approved_quota") // 核准名額 (總計)
+  usedQuota     Int @default(0) @map("used_quota") // 已用名額 (快取)
+
   // Legacy / Details
-  submissionDate         DateTime? @map("submission_date") @db.Date // 送件日 (行政填寫)
+  submissionDate           DateTime? @map("submission_date") @db.Date // 送件日 (行政填寫)
   laborMinistryReceiptDate DateTime? @map("labor_ministry_receipt_date") @db.Date // 勞動部收文日期
-  
+
   // --- Legacy / Details ---
-  issueUnit     String?  @default("勞動部") @map("issue_unit") @db.VarChar(50) // 發文單位
-  issueWord     String?  @default("勞動發事字") @map("issue_word") @db.VarChar(50) // 發文字
-  caseNumber    String?  @map("case_number") @db.VarChar(50) // 案號
+  issueUnit  String? @default("勞動部") @map("issue_unit") @db.VarChar(50) // 發文單位
+  issueWord  String? @default("勞動發事字") @map("issue_word") @db.VarChar(50) // 發文字
+  caseNumber String? @map("case_number") @db.VarChar(50) // 案號
 
   // Hierarchy (for split letters)
-  parentLetterId String? @map("parent_letter_id") @db.Uuid 
-  parentLetter   EmployerRecruitmentLetter? @relation("LetterHierarchy", fields: [parentLetterId], references: [id])
+  parentLetterId String?                     @map("parent_letter_id") @db.Uuid
+  parentLetter   EmployerRecruitmentLetter?  @relation("LetterHierarchy", fields: [parentLetterId], references: [id])
   childLetters   EmployerRecruitmentLetter[] @relation("LetterHierarchy")
 
   // Work Location & Job Info
-  workAddress   String?  @map("work_address") @db.Text // 外勞工作地址
-  jobType       String?  @map("job_type") @db.VarChar(50) // 工種代碼 (e.g., 製造業勞工)
-  jobTitle      String?  @map("job_title") @db.VarChar(100) // 職務名稱 (e.g., 塑膠產品製造職員)
-  industryCode  String?  @map("industry_code") @db.VarChar(50) // 所屬行業別 (e.g., 22->塑膠製品)
+  workAddress  String? @map("work_address") @db.Text // 外勞工作地址
+  jobType      String? @map("job_type") @db.VarChar(50) // 工種代碼 (e.g., 製造業勞工)
+  jobTitle     String? @map("job_title") @db.VarChar(100) // 職務名稱 (e.g., 塑膠產品製造職員)
+  industryCode String? @map("industry_code") @db.VarChar(50) // 所屬行業別 (e.g., 22->塑膠製品)
 
   // Project / Bureau Info
-  projectCode   String?  @map("project_code") @db.VarChar(50) // 專案代號 (e.g., x1-03...)
+  projectCode String? @map("project_code") @db.VarChar(50) // 專案代號 (e.g., x1-03...)
   // industrialBureauRef removed as it is defined above
-  
+
   // Quota Management - Moved to top
-  
+
   // Gender Constraints (Legacy support)
-  quotaMale     Int      @default(0) @map("quota_male")
-  quotaFemale   Int      @default(0) @map("quota_female")
+  quotaMale   Int @default(0) @map("quota_male")
+  quotaFemale Int @default(0) @map("quota_female")
+
+  // [NEW] Project & Attributes
+  recruitmentProjectType String? @map("recruitment_project_type") @db.VarChar(100) // 公告專案 (LBE24)
+  applyForRehiringBonus  Boolean @default(false) @map("apply_for_rehiring_bonus") // 承接再提高5% (LBE71)
+
+  // [NEW] Industry Link
+  industryId String?   @map("industry_id") @db.Uuid
+  industry   Industry? @relation(fields: [industryId], references: [id])
+
+  // [NEW] Work Address Logic
+  workAddressType      String?          @map("work_address_type") @db.VarChar(50) // FACTORY, COMPANY, FAMILY, OR_APPLICANT
+  workAddressFactoryId String?          @map("work_address_factory_id") @db.Uuid
+  workAddressFactory   EmployerFactory? @relation("LetterWorkFactory", fields: [workAddressFactoryId], references: [id])
 
   // Other Attributes
-  recruitmentType String? @map("recruitment_type") @db.VarChar(20) // 招募別 (初招/重招/遞補)
-  nationality     String? @map("nationality") @db.VarChar(20) // 指定國籍 (印尼/越南...)
-  canCirculate    Boolean @default(true) @map("can_circulate") // 可循環否
-  remarks         String? @db.Text // 備註說明
+  recruitmentType String?      @map("recruitment_type") @db.VarChar(20) // 招募別 (初招/重招/遞補)
+  nationalityId   String?      @map("nationality_id") @db.Uuid
+  nationality     Nationality? @relation(fields: [nationalityId], references: [id])
+  // REMOVED: nationality     NationalityType?
+  canCirculate    Boolean      @default(true) @map("can_circulate") // 可循環否
+  remarks         String?      @db.Text // 備註說明
 
   // Relations
   employer    Employer     @relation(fields: [employerId], references: [id], onDelete: Cascade)
@@ -1080,6 +1206,8 @@ model Deployment {
 
   jobDescription    String?   @map("job_description") @db.Text
   entryDate         DateTime? @map("entry_date") @db.Date
+  // [New] Handover Date (交工日)
+  handoverDate      DateTime? @map("handover_date") @db.Date
   entryReportSerial String?   @map("entry_report_serial") @db.VarChar(50)
   flightNumber      String?   @map("flight_number") @db.VarChar(20)
   flightArrivalDate DateTime? @map("flight_arrival_date") @db.Date
@@ -1088,8 +1216,17 @@ model Deployment {
   shift             String?   @map("shift") @db.VarChar(50)
 
   // Overseas Recruitment Workflow Fields
-  overseasCheckStatus   String?   @map("overseas_check_status") @db.VarChar(20)
-  overseasCheckDate     DateTime? @map("overseas_check_date") @db.Date
+  overseasCheckStatus String?   @map("overseas_check_status") @db.VarChar(20)
+  overseasCheckDate   DateTime? @map("overseas_check_date") @db.Date
+
+  // [Added] Dynamic Contract Type
+  contractTypeId String?       @map("contract_type_id") @db.Uuid
+  contractType   ContractType? @relation(fields: [contractTypeId], references: [id])
+
+  // [NEW] Dynamic Termination Reason
+  contractEndReasonId String?            @map("contract_end_reason_id") @db.Uuid
+  contractEndReason   ContractEndReason? @relation(fields: [contractEndReasonId], references: [id])
+
   docVerificationStatus String?   @map("doc_verification_status") @db.VarChar(20)
   docSubmissionDate     DateTime? @map("doc_submission_date") @db.Date
   docVerifiedDate       DateTime? @map("doc_verified_date") @db.Date
@@ -1101,15 +1238,14 @@ model Deployment {
   terminationReason String? @map("termination_reason") @db.VarChar(50)
   terminationNotes  String? @map("termination_notes") @db.Text
 
-
   // Contract / Salary Info
-  basicSalary   Decimal? @map("basic_salary") @db.Decimal(10, 2)
-  foodAmount    Decimal? @map("food_amount") @db.Decimal(10, 2)
-  foodStatus    String?  @map("food_status") @db.VarChar(50)
+  basicSalary Decimal? @map("basic_salary") @db.Decimal(10, 2)
+  foodAmount  Decimal? @map("food_amount") @db.Decimal(10, 2)
+  foodStatus  String?  @map("food_status") @db.VarChar(50)
 
   // [New] Specific Factory Location
-  factoryId         String?          @map("factory_id") @db.Uuid
-  factory           EmployerFactory? @relation(fields: [factoryId], references: [id])
+  factoryId String?          @map("factory_id") @db.Uuid
+  factory   EmployerFactory? @relation(fields: [factoryId], references: [id])
 
   worker            Worker                     @relation(fields: [workerId], references: [id])
   employer          Employer                   @relation(fields: [employerId], references: [id])
@@ -1123,7 +1259,6 @@ model Deployment {
   permitDetails WorkerPermitDetail[]
   insurances    WorkerInsurance[]
 
-
   // Soft Delete
   isDeleted Boolean   @default(false) @map("is_deleted")
   deletedAt DateTime? @map("deleted_at")
@@ -1136,22 +1271,23 @@ model Deployment {
 // ==========================================
 
 model IndustryRecognition {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employerId String   @map("employer_id") @db.Uuid
-  factoryId  String?  @map("factory_id") @db.Uuid // Optional: link to specific factory if multi-site
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employerId String  @map("employer_id") @db.Uuid
+  factoryId  String? @map("factory_id") @db.Uuid // Optional: link to specific factory if multi-site
 
   bureauRefNumber String   @unique @map("bureau_ref_number") @db.VarChar(50) // 工業局函號
   issueDate       DateTime @map("issue_date") @db.Date // 發文日期
-  
-  // Tier Management
-  tier          String   @map("tier") @db.VarChar(10) // A+, A, B, C, D
-  expiryDate    DateTime? @map("expiry_date") @db.Date // 效期 (usually 3 years?)
-  allocationRate Decimal? @map("allocation_rate") @db.Decimal(5, 2) // e.g. 0.20
 
-  fileUrl       String?   @map("file_url") @db.Text
+  // Tier Management
+  tier           String    @map("tier") @db.VarChar(10) // A+, A, B, C, D
+  expiryDate     DateTime? @map("expiry_date") @db.Date // 效期 (usually 3 years?)
+  allocationRate Decimal?  @map("allocation_rate") @db.Decimal(5, 2) // e.g. 0.20
+  extraRate      Decimal?  @default(0) @map("extra_rate") @db.Decimal(5, 2) // [NEW] Extra Quota Rate (e.g. 0.20)
+
+  fileUrl String? @map("file_url") @db.Text
 
   // Stats
-  approvedQuota Int @default(0) @map("approved_quota") 
+  approvedQuota Int @default(0) @map("approved_quota")
   usedQuota     Int @default(0) @map("used_quota")
 
   employer        Employer         @relation(fields: [employerId], references: [id], onDelete: Cascade)
@@ -1171,16 +1307,16 @@ model IndustryRecognition {
 }
 
 model RecruitmentProof {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employerId String   @map("employer_id") @db.Uuid
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employerId String @map("employer_id") @db.Uuid
 
   receiptNumber String   @unique @map("receipt_number") @db.VarChar(50) // 求才證明序號
   registerDate  DateTime @map("register_date") @db.Date // 求才登記日
   issueDate     DateTime @map("issue_date") @db.Date // 證明書發文日
-  
-  jobCenter     String?  @map("job_center") @db.VarChar(50) // 受理公立就業服務機構
-  status        String   @default("VALID") @db.VarChar(20) // VALID, EXPIRED, USED
-  
+
+  jobCenter String? @map("job_center") @db.VarChar(50) // 受理公立就業服務機構
+  status    String  @default("VALID") @db.VarChar(20) // VALID, EXPIRED, USED
+
   // Fees
   reviewFeeReceiptNo String?   @map("review_fee_receipt_no") @db.VarChar(50) // 審查費收據號碼
   reviewFeePayDate   DateTime? @map("review_fee_pay_date") @db.Date
@@ -1230,8 +1366,6 @@ model WorkerPermitDetail {
 
   @@map("worker_permit_details")
 }
-
-
 
 model HealthCheck {
   id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -1363,10 +1497,10 @@ model WorkerEvent {
   id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workerId  String          @map("worker_id") @db.Uuid
   eventType WorkerEventType @map("event_type")
-  
-  eventDate       DateTime? @map("event_date") @db.Date // 發生日期
-  reportDate      DateTime? @map("report_date") @db.Date // 通報日期/登記日
-  
+
+  eventDate  DateTime? @map("event_date") @db.Date // 發生日期
+  reportDate DateTime? @map("report_date") @db.Date // 通報日期/登記日
+
   bureauRefNumber String?   @map("bureau_ref_number") @db.VarChar(50) // 核備文號
   bureauRefDate   DateTime? @map("bureau_ref_date") @db.Date // 核備函文日期
 
@@ -1469,9 +1603,21 @@ model Hospital {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code       String?   @unique @db.VarChar(50)
   name       String    @db.VarChar(255)
+  // [Added] Basic Info
+  shortName  String?   @map("short_name") @db.VarChar(50) // LBB04
+  address    String?   @db.Text // LBB06
   city       String?   @db.VarChar(50)
   country    String?   @db.VarChar(50)
   validUntil DateTime? @map("valid_until") @db.Date
+
+  // [Added] Contact Info
+  phone         String? @db.VarChar(50) // LBB07
+  fax           String? @db.VarChar(50) // LBB10
+  contactPerson String? @map("contact_person") @db.VarChar(50) // LBB09
+
+  // [Added] Legacy / Config
+  assessmentCode String? @map("assessment_code") @db.VarChar(50) // LBB11
+  sortOrder      Int     @default(999) @map("sort_order") // LBB12
 
   isGeneral  Boolean @default(false) @map("is_general")
   isXray     Boolean @default(false) @map("is_xray")
@@ -1485,18 +1631,18 @@ model Hospital {
 
 // Tax Configuration (Annual Parameters)
 model TaxConfig {
-  id                            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  year                          Int      @unique
-  minWage                       Int      @map("min_wage")
-  minWageThresholdMultiplier    Float    @default(1.5) @map("min_wage_threshold_multiplier")
-  standardDeduction             Int      @map("standard_deduction")
-  salaryDeduction               Int      @map("salary_deduction")
-  personalExemption             Int      @map("personal_exemption")
-  taxRateResident               Float    @map("tax_rate_resident")
-  nonResidentLowRate            Float    @map("non_resident_low_rate")
-  nonResidentHighRate           Float    @map("non_resident_high_rate")
-  effectiveDate                 DateTime @map("effective_date") @db.Date
-  notes                         String?  @db.Text
+  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  year                       Int      @unique
+  minWage                    Int      @map("min_wage")
+  minWageThresholdMultiplier Float    @default(1.5) @map("min_wage_threshold_multiplier")
+  standardDeduction          Int      @map("standard_deduction")
+  salaryDeduction            Int      @map("salary_deduction")
+  personalExemption          Int      @map("personal_exemption")
+  taxRateResident            Float    @map("tax_rate_resident")
+  nonResidentLowRate         Float    @map("non_resident_low_rate")
+  nonResidentHighRate        Float    @map("non_resident_high_rate")
+  effectiveDate              DateTime @map("effective_date") @db.Date
+  notes                      String?  @db.Text
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -1504,19 +1650,84 @@ model TaxConfig {
   @@map("tax_configs")
 }
 
+model IncomeTaxCategory {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(10) // e.g., "50", "9A"
+
+  name   String  @db.VarChar(100) // e.g., "薪資所得"
+  nameEn String? @map("name_en") @db.VarChar(100)
+
+  // Tax Rates
+  taxRateNonResident Decimal @default(0) @map("tax_rate_non_resident") @db.Decimal(5, 2) // e.g., 20.00
+
+  description String? @db.Text
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("income_tax_categories")
+}
+
 // Fee Items (Official Fees by Nationality)
-model FeeItem {
-  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String  @db.VarChar(255)
-  defaultAmount Int     @map("default_amount")
-  category      String  @db.VarChar(50) // 'official_fee', 'service_fee', etc.
-  nationality   String? @db.VarChar(10) // Null = applies to all
-  description   String? @db.Text
+model ReceivableItem {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(20) // LAA01: Item Code
+
+  // Names (Multi-language)
+  nameZh String  @map("name_zh") @db.VarChar(100) // LAA02
+  nameEn String  @map("name_en") @db.VarChar(100) // LAA02_2
+  nameTh String? @map("name_th") @db.VarChar(100) // LAA02_1
+  nameId String? @map("name_id") @db.VarChar(100) // LAA02_3
+  nameVn String? @map("name_vn") @db.VarChar(100) // LAA02_4
+
+  // Accounting Settings
+  debitAccountCode  String? @map("debit_account_code") @db.VarChar(50) // LAA12
+  creditAccountCode String? @map("credit_account_code") @db.VarChar(50) // LAA16
+
+  // Type & Config
+  itemCategory       String? @map("item_category") @db.VarChar(50) // LAA13 (e.g., "flight", "medical", "service_fee")
+  isDailyCalculation Boolean @default(false) @map("is_daily_calculation") // LAA14
+  isActive           Boolean @default(true) @map("is_active") // LAA15
+
+  // Relations
+  pricingRules ReceivablePricingRule[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@map("fee_items")
+  @@map("receivable_items")
+}
+
+model ReceivablePricingRule {
+  id     String         @id @default(uuid()) @db.Uuid
+  itemId String         @map("item_id") @db.Uuid
+  item   ReceivableItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  // --- Conditions (Null = "Any") ---
+  // REMOVED: nationality    NationalityType? // Enum: VN, ID, PH, TH...
+  nationalityId String?      @map("nationality_id") @db.Uuid
+  nationality   Nationality? @relation(fields: [nationalityId], references: [id])
+  // REMOVED: nationality    NationalityType?
+  gender        GenderType? // Enum: male, female
+  employerId    String?      @map("employer_id") @db.Uuid // Special price for specific employer
+
+  // Tenure-based pricing (e.g., Year 1 vs Year 2 service fee)
+  minTenureMonths Int? @map("min_tenure_months") // e.g., 1 (Month 1-12)
+  maxTenureMonths Int? @map("max_tenure_months") // e.g., 12
+
+  // --- Price ---
+  amount      Decimal @db.Decimal(10, 2)
+  description String? @db.Text // Internal note for this rule
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Indexes for fast lookup
+  @@index([itemId])
+  @@index([employerId])
+  @@map("receivable_pricing_rules")
 }
 
 // Insurance Tiers (Labor + Health Insurance Rates by Salary Grade)
@@ -1534,15 +1745,69 @@ model InsuranceTier {
   @@map("insurance_tiers")
 }
 
-// Document Templates (Contracts, Forms, etc.)
+// ==========================================
+// Document System (Dynamic & Multi-language)
+// ==========================================
+
+model Nationality {
+  id     String  @id @default(uuid()) @db.Uuid
+  code   String  @unique @db.VarChar(10) // e.g., "PH", "VN", "TH"
+  name   String  @db.VarChar(100) // Local Name (e.g., "Philippines")
+  nameZh String  @map("name_zh") @db.VarChar(100) // "菲律賓"
+  nameEn String? @map("name_en") @db.VarChar(100)
+
+  countryCode String? @map("country_code") @db.VarChar(3) // ISO Code
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+
+  // Relations
+  workers            Worker[]
+  templates          DocumentTemplate[]
+  // [Added] Inverse relations
+  pricingRules       ReceivablePricingRule[]
+  recruitmentLetters EmployerRecruitmentLetter[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("nationalities")
+}
+
+model DocumentRequirement {
+  id       String  @id @default(uuid()) @db.Uuid
+  code     String  @unique @db.VarChar(50) // e.g., "LABOR_CONTRACT"
+  name     String  @db.VarChar(100) // e.g., "勞動契約"
+  category String? @db.VarChar(50) // e.g., "Entry", "Medical"
+
+  isRequired Boolean @default(false) @map("is_required")
+
+  templates DocumentTemplate[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("document_requirements")
+}
+
+// Document Templates (Physical Files)
 model DocumentTemplate {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String   @db.VarChar(255)
-  category    String   @db.VarChar(100) // 'entry_packet', 'contract', 'permit_app', etc.
-  filePath    String   @map("file_path") @db.Text
-  nationality String?  @db.VarChar(10) // Null = applies to all
-  isActive    Boolean  @default(true) @map("is_active")
-  description String?  @db.Text
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String @db.VarChar(255) // Specific version name e.g. "Labor Contract (Thai)"
+  filePath String @map("file_path") @db.Text
+
+  // Links
+  documentRequirementId String?              @map("document_requirement_id") @db.Uuid
+  documentRequirement   DocumentRequirement? @relation(fields: [documentRequirementId], references: [id])
+
+  nationalityId String?      @map("nationality_id") @db.Uuid
+  nationality   Nationality? @relation(fields: [nationalityId], references: [id])
+
+  language String? @db.VarChar(20) // e.g., "zh-TW", "en", "th"
+  version  String? @db.VarChar(20) // e.g., "v1.0"
+
+  isActive    Boolean @default(true) @map("is_active")
+  description String? @db.Text
+  category    String? @db.VarChar(50)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -1551,16 +1816,16 @@ model DocumentTemplate {
 }
 
 model AgencyCompany {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String   @db.VarChar(100)
-  licenseNo String?  @map("license_no") @db.VarChar(50)
-  taxId     String?  @map("tax_id") @db.VarChar(20)
-  address   String?  @db.Text
-  phone     String?  @db.VarChar(20)
-  fax       String?  @db.VarChar(20)
-  email     String?  @db.VarChar(100)
+  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String  @db.VarChar(100)
+  licenseNo         String? @map("license_no") @db.VarChar(50)
+  taxId             String? @map("tax_id") @db.VarChar(20)
+  address           String? @db.Text
+  phone             String? @db.VarChar(20)
+  fax               String? @db.VarChar(20)
+  email             String? @db.VarChar(100)
   responsiblePerson String? @map("responsible_person") @db.VarChar(50)
-  isDefault Boolean  @default(false) @map("is_default")
+  isDefault         Boolean @default(false) @map("is_default")
 
   employers Employer[]
 
@@ -1571,13 +1836,13 @@ model AgencyCompany {
 }
 
 model ForeignAgency {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String   @db.VarChar(100)
-  code      String?  @db.VarChar(50)
-  address   String?  @db.Text
-  country   String?  @db.VarChar(50)
-  
-  workers   Worker[]
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name    String  @db.VarChar(100)
+  code    String? @db.VarChar(50)
+  address String? @db.Text
+  country String? @db.VarChar(50)
+
+  workers Worker[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -1585,46 +1850,43 @@ model ForeignAgency {
   @@map("foreign_agencies")
 }
 
-
 model PayrollRecord {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workerId  String   @map("worker_id") @db.Uuid
-  worker    Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId String @map("worker_id") @db.Uuid
+  worker   Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
   payDate      DateTime @map("pay_date") @db.Date
   salaryAmount Decimal  @map("salary_amount") @db.Decimal(10, 2)
   bonusAmount  Decimal  @map("bonus_amount") @db.Decimal(10, 2)
   taxWithheld  Decimal  @map("tax_withheld") @db.Decimal(10, 2)
-  
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("payroll_records")
 }
 
-
 model Dormitory {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name           String @db.VarChar(100)
-  address        String? @db.Text
-  landlordName   String? @map("landlord_name") @db.VarChar(50)
-  accommodationType String? @map("accommodation_type") @db.VarChar(50)
-  totalArea      Decimal? @map("total_area") @db.Decimal(10, 2)
-  capacity       Int?     @default(0)
-  bathroomCount  Int?     @map("bathroom_count") @default(0)
-  waterHeaterCount Int?   @map("water_heater_count") @default(0)
-  hasFireExtinguisher Boolean @map("has_fire_extinguisher") @default(false)
-  hasFireAlarm   Boolean @map("has_fire_alarm") @default(false)
-  fireSafetyExpiry DateTime? @map("fire_safety_expiry") @db.Date
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String    @db.VarChar(100)
+  address             String?   @db.Text
+  landlordName        String?   @map("landlord_name") @db.VarChar(50)
+  accommodationType   String?   @map("accommodation_type") @db.VarChar(50)
+  totalArea           Decimal?  @map("total_area") @db.Decimal(10, 2)
+  capacity            Int?      @default(0)
+  bathroomCount       Int?      @default(0) @map("bathroom_count")
+  waterHeaterCount    Int?      @default(0) @map("water_heater_count")
+  hasFireExtinguisher Boolean   @default(false) @map("has_fire_extinguisher")
+  hasFireAlarm        Boolean   @default(false) @map("has_fire_alarm")
+  fireSafetyExpiry    DateTime? @map("fire_safety_expiry") @db.Date
 
-  rooms          DormitoryRoom[]
+  rooms DormitoryRoom[]
 
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("dormitories")
 }
-
 
 model DormitoryRoom {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -1632,32 +1894,30 @@ model DormitoryRoom {
   roomNumber  String   @map("room_number") @db.VarChar(20)
   capacity    Int      @default(0)
   area        Decimal? @db.Decimal(10, 2) // Added for compliance checks
-  
-  dormitory   Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
-  beds        DormitoryBed[]
 
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  dormitory Dormitory      @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
+  beds      DormitoryBed[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("dormitory_rooms")
 }
 
 model DormitoryBed {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  roomId    String   @map("room_id") @db.Uuid
-  bedCode   String   @map("bed_code") @db.VarChar(20)
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roomId     String  @map("room_id") @db.Uuid
+  bedCode    String  @map("bed_code") @db.VarChar(20)
   isOccupied Boolean @default(false) @map("is_occupied")
 
-  room      DormitoryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  worker    Worker?
+  room   DormitoryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  worker Worker?
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("dormitory_beds")
 }
-
-
 
 // ... existing code ...
 
@@ -1669,9 +1929,110 @@ model ComplianceRule {
   description   String?  @db.Text
   effectiveDate DateTime @default(now()) @map("effective_date") @db.Date
 
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("compliance_rules")
 }
 
+model OfficialAgency {
+  id      String  @id @default(uuid()) @db.Uuid
+  code    String  @unique @db.VarChar(50) // e.g., "MOL", "NIA"
+  name    String  @db.VarChar(100) // e.g., "Ministry of Labor"
+  nameEn  String? @map("name_en") @db.VarChar(100)
+  address String? @db.Text
+  phone   String? @db.VarChar(50)
+  website String? @db.VarChar(200)
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  personnel OfficialAgencyPerson[]
+
+  @@map("official_agencies")
+}
+
+model OfficialAgencyPerson {
+  id       String         @id @default(uuid()) @db.Uuid
+  agencyId String         @map("agency_id") @db.Uuid
+  agency   OfficialAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  // Personal Info
+  name    String  @db.VarChar(50)
+  nameEn  String? @map("name_en") @db.VarChar(100)
+  title   String? @db.VarChar(100) // e.g., "Minister", "Director"
+  titleEn String? @map("title_en") @db.VarChar(100)
+
+  // Tenure & Status
+  startDate DateTime? @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
+
+  // Delegate/Acting Logic
+  isActing    Boolean @default(false) @map("is_acting") // 代行
+  actingNotes String? @map("acting_notes") @db.Text // 代行說明
+
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("official_agency_personnel")
+}
+
+model ContractEndReason {
+  id     String  @id @default(uuid()) @db.Uuid
+  code   String  @unique @db.VarChar(50) // e.g., "HAA", "HEE"
+  name   String  @db.VarChar(100) // e.g., "聘僱期滿"
+  nameEn String? @map("name_en") @db.VarChar(100)
+
+  description String? @db.Text
+
+  // Logic Helpers
+  isAbnormal Boolean @default(false) @map("is_abnormal") // e.g., Runaway, Repatriated
+  category   String? @db.VarChar(50) // e.g., "Medical", "Performance", "Legal", "Personal"
+
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  deployments Deployment[]
+
+  @@map("contract_end_reasons")
+}
+
+model OfficialDocument {
+  id         String   @id @default(uuid()) @db.Uuid
+  employerId String   @map("employer_id") @db.Uuid
+  employer   Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  // Optional: Link to a specific worker (e.g., Runaway letter for Worker A)
+  workerId String? @map("worker_id") @db.Uuid
+  worker   Worker? @relation(fields: [workerId], references: [id])
+
+  // Document Info
+  documentType String    @map("document_type") @db.VarChar(50) // e.g., "RUNAWAY", "TRANSFER", "INDUSTRIAL_BUREAU"
+  docNumber    String    @map("doc_number") @db.VarChar(50) // 函文號碼
+  issueDate    DateTime  @map("issue_date") @db.Date // 發文日期
+  expiryDate   DateTime? @map("expiry_date") @db.Date // 效期
+
+  issuingAgency String? @map("issuing_agency") @db.VarChar(100) // 發文單位 (e.g., 勞動部)
+  title         String? @db.VarChar(200) // 函文說明/標題
+  description   String? @db.Text
+
+  // File Link (for uploaded PDF)
+  filePath String? @map("file_path") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([employerId])
+  @@index([workerId])
+  @@index([docNumber])
+  @@map("official_documents")
+}

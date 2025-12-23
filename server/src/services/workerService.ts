@@ -94,7 +94,7 @@ export const analyzeWorkerHealth = async (workerId: string) => {
     // 1. Check Personal Info
     if (!worker.englishName) criticalMissing.push('Missing English Name');
     if (!worker.dob) criticalMissing.push('Missing DOB');
-    if (!worker.nationality) criticalMissing.push('Missing Nationality');
+    if (!worker.nationalityId) criticalMissing.push('Missing Nationality');
 
     // 2. Check Passport
     const currentPassport = worker.passports[0];
@@ -182,7 +182,7 @@ export const getWorkerDashboardData = async (workerId: string) => {
             id: worker.id,
             nameEn: worker.englishName,
             nameCh: worker.chineseName,
-            nationality: worker.nationality,
+            nationality: worker.nationalityId,
             mobile: worker.mobilePhone,
             passportNo: currentPassport?.passportNumber,
             passportExpiry: currentPassport?.expiryDate,

@@ -27,18 +27,18 @@ router.get('/employer-categories', async (req, res) => {
  * GET /api/reference/application-types
  * Returns all active application types
  */
-router.get('/application-types', async (req, res) => {
-    try {
-        const types = await prisma.applicationType.findMany({
-            where: { isActive: true },
-            orderBy: { sortOrder: 'asc' }
-        });
-        res.json(types);
-    } catch (error: any) {
-        console.error('Error fetching application types:', error);
-        res.status(500).json({ error: 'Failed to fetch application types' });
-    }
-});
+// router.get('/application-types', async (req, res) => {
+//     try {
+//         const types = await prisma.applicationType.findMany({
+//             where: { isActive: true },
+//             orderBy: { sortOrder: 'asc' }
+//         });
+//         res.json(types);
+//     } catch (error: any) {
+//         console.error('Error fetching application types:', error);
+//         res.status(500).json({ error: 'Failed to fetch application types' });
+//     }
+// });
 
 /**
  * GET /api/reference/industry-codes
@@ -46,9 +46,9 @@ router.get('/application-types', async (req, res) => {
  */
 router.get('/industry-codes', async (req, res) => {
     try {
-        const codes = await prisma.industryCode.findMany({
-            where: { isActive: true },
-            orderBy: { sortOrder: 'asc' }
+        const codes = await prisma.industry.findMany({
+            where: { isOpen: true },
+            orderBy: { code: 'asc' }
         });
         res.json(codes);
     } catch (error: any) {
