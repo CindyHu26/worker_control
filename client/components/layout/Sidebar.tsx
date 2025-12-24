@@ -47,7 +47,7 @@ export default function Sidebar() {
     return (
         <aside
             className={`
-                bg-slate-900 text-white flex flex-col transition-all duration-300 relative z-20 flex-shrink-0
+                bg-slate-900 text-white flex flex-col transition-all duration-300 relative z-40 flex-shrink-0
                 ${collapsed ? 'w-20' : 'w-[280px]'} 
                 shadow-2xl border-r border-slate-800
             `}
@@ -58,7 +58,7 @@ export default function Sidebar() {
                     setCollapsed(!collapsed);
                     setHoveredItem(null);
                 }}
-                className="absolute -right-3 top-9 bg-blue-600 rounded-full p-1.5 text-white shadow-xl hover:bg-blue-500 transition-transform active:scale-95 z-50 border-2 border-slate-900"
+                className="absolute -right-3 top-9 bg-blue-600 rounded-full p-1.5 text-white shadow-xl hover:bg-blue-500 transition-transform active:scale-95 z-[60] border-2 border-slate-900"
             >
                 {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>

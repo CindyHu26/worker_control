@@ -107,7 +107,11 @@ router.use('/job-types', jobTypeRoutes);
 router.use('/industries', industryRoutes);
 router.use('/domestic-agencies', domesticAgencyRoutes);
 router.use('/employees', employeeRoutes);
-router.use('/banks', bankRoutes);
+import partnerAgencyRoutes from './partnerAgencies';
 
+// ... (imports)
+
+router.use('/banks', bankRoutes);
+router.use('/partner-agencies', partnerAgencyRoutes);
 
 export default router;
