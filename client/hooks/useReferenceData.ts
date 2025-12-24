@@ -45,14 +45,23 @@ export function useEmployerCategories() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/reference/employer-categories')
-            .then(res => res.json())
+        fetch('/api/reference/employer-categories', { credentials: 'include' })
+            .then(res => {
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                return res.json();
+            })
             .then(data => {
-                setCategories(data);
+                if (Array.isArray(data)) {
+                    setCategories(data);
+                } else {
+                    setCategories([]);
+                    setError('Invalid data format');
+                }
                 setLoading(false);
             })
             .catch(err => {
                 setError(err.message);
+                setCategories([]);
                 setLoading(false);
             });
     }, []);
@@ -66,14 +75,23 @@ export function useApplicationTypes() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/reference/application-types')
-            .then(res => res.json())
+        fetch('/api/reference/application-types', { credentials: 'include' })
+            .then(res => {
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                return res.json();
+            })
             .then(data => {
-                setTypes(data);
+                if (Array.isArray(data)) {
+                    setTypes(data);
+                } else {
+                    setTypes([]);
+                    setError('Invalid data format');
+                }
                 setLoading(false);
             })
             .catch(err => {
                 setError(err.message);
+                setTypes([]);
                 setLoading(false);
             });
     }, []);
@@ -87,14 +105,23 @@ export function useIndustryCodes() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/reference/industry-codes')
-            .then(res => res.json())
+        fetch('/api/reference/industry-codes', { credentials: 'include' })
+            .then(res => {
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                return res.json();
+            })
             .then(data => {
-                setCodes(data);
+                if (Array.isArray(data)) {
+                    setCodes(data);
+                } else {
+                    setCodes([]);
+                    setError('Invalid data format');
+                }
                 setLoading(false);
             })
             .catch(err => {
                 setError(err.message);
+                setCodes([]);
                 setLoading(false);
             });
     }, []);
@@ -108,14 +135,23 @@ export function useDomesticAgencies() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/reference/domestic-agencies')
-            .then(res => res.json())
+        fetch('/api/reference/domestic-agencies', { credentials: 'include' })
+            .then(res => {
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                return res.json();
+            })
             .then(data => {
-                setAgencies(data);
+                if (Array.isArray(data)) {
+                    setAgencies(data);
+                } else {
+                    setAgencies([]);
+                    setError('Invalid data format');
+                }
                 setLoading(false);
             })
             .catch(err => {
                 setError(err.message);
+                setAgencies([]);
                 setLoading(false);
             });
     }, []);
