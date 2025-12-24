@@ -82,3 +82,10 @@ TestResults/
 *_files/
 *.html
 old_sample_to_imigrant/
+
+# Server Runtime Storage
+server/storage/*
+!server/storage/.gitkeep
+!server/storage/uploads/
+server/storage/uploads/*
+!server/storage/uploads/.gitkeep

@@ -8,7 +8,7 @@ import {
     Stethoscope, Activity, Building2,
     DollarSign, Receipt, Calculator, ClipboardList,
     Home, Bed, Zap,
-    ArrowRightLeft, Users2, History, Search
+    ArrowRightLeft, Users2, History, Search, Landmark
 } from 'lucide-react';
 
 // Data Definition
@@ -88,7 +88,8 @@ const categories = [
             { title: '工種設定', desc: '維護工種資料與費用設定', icon: Briefcase, href: '/job-types' },
             { title: '行業別設定', desc: '維護行業別代碼與多語言名稱', icon: Building2, href: '/industries' },
             { title: '行業職稱', desc: '維護各行業別下的標準職稱', icon: Users2, href: '/industry-job-titles' },
-            { title: '國內仲介公司', desc: '管理使用系統的仲介公司資料', icon: Building2, href: '/domestic-agencies' }
+            { title: '國內仲介公司', desc: '管理使用系統的仲介公司資料', icon: Building2, href: '/domestic-agencies' },
+            { title: '銀行管理', desc: '維護銀行代碼與分行資料', icon: Landmark, href: '/banks' }
         ]
     }
 ];

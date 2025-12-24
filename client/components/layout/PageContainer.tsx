@@ -66,6 +66,18 @@ const maxWidthClasses = {
 };
 
 /**
+ * Standard Table Wrapper for consistent horizontal scrolling
+ * Usage: <TableWrapper><Table>...</Table></TableWrapper>
+ */
+export function TableWrapper({ children, className = '' }: { children: ReactNode; className?: string }) {
+    return (
+        <div className={`w-full max-w-full overflow-x-auto border rounded-md ${className}`}>
+            {children}
+        </div>
+    );
+}
+
+/**
  * Universal page layout wrapper for admin system
  * Optimized for landscape screens with wide horizontal layout
  */
@@ -91,8 +103,9 @@ export default function PageContainer({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className={`mx-auto px-6 py-6 ${maxWidthClasses[maxWidth]}`}>
+        <div className="min-h-screen bg-gray-50 pb-10">
+            <div className={`mx-auto px-4 md:px-8 py-8 ${maxWidthClasses[maxWidth]}`}>
+
                 {/* Breadcrumbs */}
                 {breadcrumbs && breadcrumbs.length > 0 && (
                     <nav className="flex items-center gap-2 text-sm text-gray-600 mb-4">

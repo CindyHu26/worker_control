@@ -45,6 +45,7 @@ import jobTypeRoutes from './jobTypes';
 import industryRoutes from './industries';
 import domesticAgencyRoutes from './domesticAgencies';
 import employeeRoutes from './employees';
+import bankRoutes from './banks';
 
 const router = Router();
 
@@ -106,6 +107,7 @@ router.use('/job-types', jobTypeRoutes);
 router.use('/industries', industryRoutes);
 router.use('/domestic-agencies', domesticAgencyRoutes);
 router.use('/employees', employeeRoutes);
+router.use('/banks', bankRoutes);
 
 
 export default router;

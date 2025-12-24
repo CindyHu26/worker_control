@@ -441,3 +441,71 @@ export const EmployerSearchParamsSchema = PaginationParamsSchema.extend({
     category: z.enum(['ALL', 'MANUFACTURING', 'HOME_CARE', 'INSTITUTION']).optional()
 });
 export type EmployerSearchParams = z.infer<typeof EmployerSearchParamsSchema>;
+
+// =====================================================
+// Bank DTOs
+// =====================================================
+
+/**
+ * Bank Response
+ */
+export const BankResponseSchema = z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    bankName: z.string(),
+    bankNameEn: z.string().nullable(),
+    contactPerson: z.string().nullable(),
+    phone: z.string().nullable(),
+    fax: z.string().nullable(),
+    address: z.string().nullable(),
+    notes: z.string().nullable(),
+    isActive: z.boolean(),
+    createdAt: z.string().datetime().or(z.date()),
+    updatedAt: z.string().datetime().or(z.date())
+});
+export type BankResponse = z.infer<typeof BankResponseSchema>;
+
+/**
+ * Bank List Item
+ */
+export const BankListItemSchema = z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    bankName: z.string(),
+    bankNameEn: z.string().nullable(),
+    phone: z.string().nullable(),
+    contactPerson: z.string().nullable(),
+    isActive: z.boolean()
+});
+export type BankListItem = z.infer<typeof BankListItemSchema>;
+
+/**
+ * Create Bank Input
+ */
+export const CreateBankInputSchema = z.object({
+    code: z.string().min(1, 'Bank code is required'),
+    bankName: z.string().min(1, 'Bank name is required'),
+    bankNameEn: z.string().optional(),
+    contactPerson: z.string().optional(),
+    phone: z.string().optional(),
+    fax: z.string().optional(),
+    address: z.string().optional(),
+    notes: z.string().optional(),
+    isActive: z.boolean().optional().default(true)
+});
+export type CreateBankInput = z.infer<typeof CreateBankInputSchema>;
+
+/**
+ * Update Bank Input
+ */
+export const UpdateBankInputSchema = CreateBankInputSchema.partial();
+export type UpdateBankInput = z.infer<typeof UpdateBankInputSchema>;
+
+/**
+ * Bank Search Params
+ */
+export const BankSearchParamsSchema = PaginationParamsSchema.extend({
+    q: z.string().optional(), // Keyword search
+    isActive: z.enum(['true', 'false']).optional()
+});
+export type BankSearchParams = z.infer<typeof BankSearchParamsSchema>;
