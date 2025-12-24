@@ -12,6 +12,8 @@ import documentRoutes from './documents';
 import deploymentRoutes from './deployments';
 import permitRoutes from './permits';
 import templatesRoutes from './templates';
+import partnerAgencyContractRoutes from './partnerAgencyContracts';
+import partnerAgencyRoutes from './partnerAgencies';
 
 // import evaluationRoutes from './evaluation';
 import usersRoutes from './users';
@@ -23,6 +25,7 @@ import settingsRoutes from './settings';
 import notificationsRoutes from './notifications';
 import exportsRoutes from './exports';
 import industryJobTitlesRouter from './industryJobTitles';
+import loanBankRoutes from './loanBanks';
 import kanbanRoutes from './kanban';
 import searchRoutes from './search';
 import quotaRoutes from './quota';
@@ -41,15 +44,20 @@ import workerDocumentRoutes from './workerDocuments';
 import referenceDataRoutes from './referenceData';
 import relocationRoutes from './relocation';
 import employerCategoryRoutes from './employerCategories';
+import contractTypeRoutes from './contractTypes';
+import countryRoutes from './countries';
 import jobTypeRoutes from './jobTypes';
 import industryRoutes from './industries';
 import domesticAgencyRoutes from './domesticAgencies';
 import employeeRoutes from './employees';
 import bankRoutes from './banks';
 
+import departmentRoutes from './departments';
+
 const router = Router();
 
-
+router.use('/partner-agency-contracts', partnerAgencyContractRoutes);
+router.use('/departments', departmentRoutes);
 
 router.use('/auth', authRoutes);
 
@@ -107,11 +115,10 @@ router.use('/job-types', jobTypeRoutes);
 router.use('/industries', industryRoutes);
 router.use('/domestic-agencies', domesticAgencyRoutes);
 router.use('/employees', employeeRoutes);
-import partnerAgencyRoutes from './partnerAgencies';
-
-// ... (imports)
-
 router.use('/banks', bankRoutes);
 router.use('/partner-agencies', partnerAgencyRoutes);
 
+router.use('/loan-banks', loanBankRoutes);
+router.use('/contract-types', contractTypeRoutes);
+router.use('/countries', countryRoutes);
 export default router;

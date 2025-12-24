@@ -20,9 +20,10 @@ Tracking implementation status for all models defined in `schema.prisma`.
 | `DomesticAgency` | ✅ | Reference | `/domestic-agencies` |
 | `Bank` | ✅ | Reference | `/banks` |
 | `PartnerAgency` | ✅ | Reference | `/partner-agencies` |
-| `Department` | 💤 | Reference | - |
-| `LoanBank` | 💤 | Reference | - |
-| `ContractType` | 💤 | Reference | - |
+| `Department` | ✅ | Reference | `/departments` |
+| `LoanBank` | ✅ | Reference | `/loan-banks` |
+| `ContractType` | ✅ | Reference | `/contract-types` |
+| `Country` | ✅ | Reference | `/countries` |
 
 ## 👥 Personnel & Organizations
 | Model Name | Status | Type | Path |
@@ -40,7 +41,7 @@ Tracking implementation status for all models defined in `schema.prisma`.
 | `Deployment` | ✅ | Core | `/deployments` |
 | `WorkerPassport` | ✅ | History | `/workers/[id]` |
 | `WorkerArc` | ✅ | History | `/workers/[id]` |
-| `PartnerAgencyContract` | 💤 | Doc | - |
+| `PartnerAgencyContract` | ✅ | Doc | `/partner-agency-contracts` |
 
 ## 🛠️ Infrastructure & Others
 | Model Name | Status | Type | Path |

@@ -7,8 +7,9 @@ import {
     Plane, Stamp, FileCheck, LogOut, Files,
     Stethoscope, Activity, Building2,
     DollarSign, Receipt, Calculator, ClipboardList,
-    Home, Bed, Zap,
-    ArrowRightLeft, Users2, History, Search, Landmark
+    Home, Bed, Zap, Settings, Shield,
+    ArrowRightLeft, Users2, History, Search, Landmark,
+    Globe2
 } from 'lucide-react';
 
 // Data Definition
@@ -84,13 +85,18 @@ const categories = [
         bg: 'bg-gray-100',
         text: 'text-gray-800',
         items: [
+            { title: '部門管理', desc: '維護公司內部部門組織', icon: Users, href: '/departments' },
             { title: '雇主類別', desc: '維護雇主分類代碼與名稱', icon: Files, href: '/employer-categories' },
             { title: '工種設定', desc: '維護工種資料與費用設定', icon: Briefcase, href: '/job-types' },
             { title: '行業別設定', desc: '維護行業別代碼與多語言名稱', icon: Building2, href: '/industries' },
             { title: '行業職稱', desc: '維護各行業別下的標準職稱', icon: Users2, href: '/industry-job-titles' },
             { title: '國內仲介公司', desc: '管理使用系統的仲介公司資料', icon: Building2, href: '/domestic-agencies' },
             { title: '國外仲介公司', desc: '管理合作的國外仲介資料', icon: Plane, href: '/partner-agencies' },
-            { title: '銀行管理', desc: '維護銀行代碼與分行資料', icon: Landmark, href: '/banks' }
+            { title: '互貿合約管理', desc: '維護國外仲介合約與授權', icon: FileCheck, href: '/partner-agency-contracts' },
+            { title: '銀行管理', desc: '維護銀行代碼與分行資料', icon: Landmark, href: '/banks' },
+            { title: '貸款銀行管理', desc: '維護外勞貸款銀行資料', icon: DollarSign, href: '/loan-banks' },
+            { title: '合約類別', desc: '維護系統合約分類', icon: FileCheck, href: '/contract-types' },
+            { title: '國別管理', desc: '維護外勞來源國與代碼', icon: Globe2, href: '/countries' }
         ]
     }
 ];

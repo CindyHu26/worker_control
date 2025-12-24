@@ -316,6 +316,20 @@ model ContractType {
   @@map("contract_types")
 }
 
+model Country {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(10) // ISO code e.g., "PH", "VN" (LBW04)
+  nameZh    String   @map("name_zh") @db.VarChar(50) // e.g., "菲律賓" (LBW01)
+  nameEn    String?  @map("name_en") @db.VarChar(50) // e.g., "Philippines" (LBW02)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("countries")
+}
+
 model DomesticAgency {
   id   String @id @default(uuid()) @db.Uuid
   code String @unique @db.VarChar(10) // 代號 (CO01)
