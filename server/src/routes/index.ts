@@ -124,8 +124,10 @@ router.use('/countries', countryRoutes);
 
 import billingPlanRoutes from './billingPlans';
 import candidateRoutes from './candidates';
+import interviewRoutes from './interviews';
 
 router.use('/candidates', candidateRoutes);
 router.use('/billing-plans', billingPlanRoutes);
+router.use('/api', interviewRoutes); // Mounted at /api for /api/job-orders and /api/interviews
 
 export default router;

@@ -1543,8 +1543,18 @@ model WorkerAddressHistory {
 model JobOrder {
   id                       String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employerId               String         @map("employer_id") @db.Uuid
+  
+  // Basic Info (Added for Phase 0.2)
+  title       String   @default("General Worker") @db.VarChar(200)
+  description String?  @db.Text
+  skillRequirements String? @map("skill_requirements") @db.Text
+  workLocation String?  @map("work_location") @db.VarChar(200)
+  jobType      String?  @map("job_type") @db.VarChar(100)
+  requiredCount Int    @map("required_count") @default(1)
+
+  // Legacy/Other Fields
   orderDate                DateTime       @default(now()) @map("order_date") @db.Date
-  requiredWorkers          Int            @map("required_workers")
+  requiredWorkers          Int            @map("required_workers") @default(1)
   expectedArrivalDate      DateTime?      @map("expected_arrival_date") @db.Date
   localRecruitmentDeadline DateTime?      @map("local_recruitment_deadline") @db.Date
   status                   JobOrderStatus @default(open)
@@ -1613,12 +1623,17 @@ model Interview {
 model InterviewCandidate {
   id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   interviewId String          @map("interview_id") @db.Uuid
-  workerId    String          @map("worker_id") @db.Uuid
+  
+  // Link to Candidate OR Worker
+  candidateId String?         @map("candidate_id") @db.Uuid
+  workerId    String?         @map("worker_id") @db.Uuid
+  
   result      CandidateResult @default(pending)
   remarks     String?         @db.Text
 
-  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  worker    Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  interview Interview  @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  candidate Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  worker    Worker?    @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -2273,6 +2288,9 @@ model Candidate {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
   
+  // Relations
+  interviewCandidates InterviewCandidate[]
+
   @@index([passportNo])
   @@index([status])
   @@index([nationality])
