@@ -34,7 +34,8 @@ const categories = [
         text: 'text-indigo-800',
         items: [
             { title: '國內求才證明', desc: '國內招募與求才登記', icon: Megaphone, href: '/recruitment-proofs' },
-            { title: '入國通報', desc: '通報勞工局與案號登錄', icon: Plane, href: '/govt/entry-report' },
+            { title: '入國通報', desc: '入境後3/15日法定申報', icon: Plane, href: '/entry-filings' },
+            { title: '衛政通報', desc: '法定傳染病異常通報', icon: Stethoscope, href: '/medical-exceptions' },
             { title: '簽證申請', desc: '駐台辦事處函文製作', icon: Stamp, href: '/govt/visa' },
             { title: '聘僱許可申請', desc: '勞動部許可函申請', icon: FileCheck, href: '/govt/permit' },
             { title: '離境報備', desc: '解約與離境搭機安排', icon: LogOut, href: '/govt/departure' },

@@ -1070,8 +1070,88 @@ model Worker {
   @@map("workers")
 
   // Relations
-  accommodationHistory   WorkerAccommodationHistory[]
+  accommodationHistory    WorkerAccommodationHistory[]
   relocationNotifications RelocationNotification[]
+  entryFiling             EntryFiling?
+  medicalExceptions       MedicalException[]
+}
+
+// 入境申報追蹤 (Phase 4.1)
+model EntryFiling {
+  id          String   @id @default(uuid()) @db.Uuid
+  workerId    String   @unique @map("worker_id") @db.Uuid
+  
+  // 入境資訊
+  entryDate   DateTime @map("entry_date") @db.Date
+  flightNo    String?  @map("flight_no") @db.VarChar(20)
+  visaNo      String?  @map("visa_no") @db.VarChar(50)
+  
+  // 3日內: 入國通報
+  entryReportDate      DateTime? @map("entry_report_date") @db.Date
+  entryReportRefNo     String?   @map("entry_report_ref_no") @db.VarChar(50)
+  entryReportStatus    String    @default("PENDING") @map("entry_report_status") @db.VarChar(20)
+  
+  // 3日內: 入境健檢
+  initialExamDate      DateTime? @map("initial_exam_date") @db.Date
+  initialExamHospital  String?   @map("initial_exam_hospital") @db.VarChar(100)
+  initialExamResult    String?   @map("initial_exam_result") @db.VarChar(20)
+  
+  // 15日內: 居留證申請
+  arcApplyDate         DateTime? @map("arc_apply_date") @db.Date
+  arcReceiptNo         String?   @map("arc_receipt_no") @db.VarChar(50)
+  arcNo                String?   @map("arc_no") @db.VarChar(20)
+  arcStatus            String    @default("PENDING") @map("arc_status") @db.VarChar(20)
+  
+  // 15日內: 聘僱許可申請
+  permitApplyDate      DateTime? @map("permit_apply_date") @db.Date
+  permitReceiptNo      String?   @map("permit_receipt_no") @db.VarChar(50)
+  permitNo             String?   @map("permit_no") @db.VarChar(50)
+  permitStatus         String    @default("PENDING") @map("permit_status") @db.VarChar(20)
+  
+  // 整體合規狀態
+  overallCompliance    String    @default("PENDING") @map("overall_compliance") @db.VarChar(20)
+  
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  
+  worker      Worker    @relation(fields: [workerId], references: [id])
+  
+  @@index([overallCompliance])
+  @@index([entryDate])
+  @@map("entry_filings")
+}
+
+// 衛政通報異常 (Phase 4.2)
+model MedicalException {
+  id              String   @id @default(uuid()) @db.Uuid
+  workerId        String   @map("worker_id") @db.Uuid
+  healthCheckId   String?  @map("health_check_id") @db.Uuid
+  
+  // 異常資訊
+  diagnosisDate   DateTime  @map("diagnosis_date") @db.Date
+  diseaseType     String    @map("disease_type") @db.VarChar(100)
+  description     String?   @db.Text
+  
+  // 通報狀態
+  healthDeptNotified    Boolean   @default(false) @map("health_dept_notified")
+  healthDeptNotifyDate  DateTime? @map("health_dept_notify_date") @db.Date
+  employerNotified      Boolean   @default(false) @map("employer_notified")
+  employerNotifyDate    DateTime? @map("employer_notify_date") @db.Date
+  
+  // 處理狀態
+  treatmentStatus   String    @default("PENDING") @map("treatment_status") @db.VarChar(30)
+  resolutionDate    DateTime? @map("resolution_date") @db.Date
+  remarks           String?   @db.Text
+  
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  
+  worker            Worker       @relation(fields: [workerId], references: [id])
+  healthCheck       HealthCheck? @relation(fields: [healthCheckId], references: [id])
+  
+  @@index([treatmentStatus])
+  @@index([diseaseType])
+  @@map("medical_exceptions")
 }
 
 model WorkerAccommodationHistory {
@@ -1456,6 +1536,8 @@ model HealthCheck {
 
   worker     Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
   deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  
+  medicalExceptions MedicalException[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz

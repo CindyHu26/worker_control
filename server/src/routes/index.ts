@@ -133,4 +133,9 @@ router.use('/api', interviewRoutes); // Mounted at /api for /api/job-orders and 
 import overseasProgressRoutes from './overseas-progress';
 router.use('/overseas-progress', overseasProgressRoutes);
 
+import entryFilingRoutes from './entry-filings';
+import medicalExceptionRoutes from './medical-exceptions';
+router.use('/entry-filings', entryFilingRoutes);
+router.use('/medical-exceptions', medicalExceptionRoutes);
+
 export default router;
