@@ -168,8 +168,14 @@ enum WorkerEventType {
   CONTRACT_RENEWAL
   DEATH
   OTHER
-
+  
   @@map("worker_event_type")
+}
+
+enum EmployerType {
+  BUSINESS // 事業單位 (需統編、公司名、勞保證號) -> 適用製造業、營造業、海洋漁撈
+  INDIVIDUAL // 自然人 (需身分證、戶籍地址) -> 適用家庭看護、家庭幫傭
+  INSTITUTION // 機構 (需統編、機構代碼、床位數) -> 適用養護機構
 }
 
 
@@ -180,13 +186,25 @@ enum WorkerEventType {
 // ==========================================
 
 model EmployerCategory {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique @db.VarChar(20) // e.g., "MANUFACTURING"
-  nameZh    String   @map("name_zh") @db.VarChar(50) // 製造業
-  nameEn    String?  @map("name_en") @db.VarChar(50)
+  id        String       @id @default(uuid()) @db.Uuid
+  code      String       @unique @db.VarChar(20) // e.g., "MANUFACTURING"
+  nameZh    String       @map("name_zh") @db.VarChar(50) // 製造業
+  nameEn    String?      @map("name_en") @db.VarChar(50)
+  
+  // [Added] Core Fields
+  type      EmployerType @default(BUSINESS)
+
+  // [Added] UI Config
+  iconName    String? @map("icon_name") @db.VarChar(50) // e.g., "Building", "User"
+  color       String? @db.VarChar(20) // e.g., "blue", "green"
+  description String? @db.Text
+
   sortOrder Int      @default(0) @map("sort_order")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  
+  // Relations
+  employers Employer[]
 
   @@map("employer_categories")
 }
@@ -794,6 +812,10 @@ model Employer {
   // Relations to Details
   corporateInfo  CorporateInfo?
   individualInfo IndividualInfo?
+
+  // [Added] Relation to Category
+  employerCategoryId String?           @map("employer_category_id") @db.Uuid
+  category           EmployerCategory? @relation(fields: [employerCategoryId], references: [id])
 
   // Existing Relations
   recruitmentLetters EmployerRecruitmentLetter[]

@@ -5,6 +5,10 @@ export interface EmployerCategory {
     code: string;
     nameZh: string;
     nameEn: string | null;
+    type: 'BUSINESS' | 'INDIVIDUAL' | 'INSTITUTION';
+    iconName: string | null;
+    color: string | null;
+    description: string | null;
     sortOrder: number;
     isActive: boolean;
 }

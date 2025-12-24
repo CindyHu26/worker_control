@@ -67,6 +67,7 @@ const baseSchema = z.object({
     contactPhone: z.string().optional(),
 
     category: z.string(),
+    categoryType: z.string().optional(), // 'BUSINESS' | 'INDIVIDUAL' | 'INSTITUTION'
 
     // Factories (Array)
     factories: z.array(z.object({
@@ -131,7 +132,11 @@ const baseSchema = z.object({
 });
 
 const employerSchema = baseSchema.superRefine((data, ctx) => {
-    if (data.category === 'HOME_CARE') {
+    // Determine type: Use hidden field categoryType or infer from known codes if fallback needed
+    const isIndividual = data.categoryType === 'INDIVIDUAL';
+    const isBusiness = data.categoryType === 'BUSINESS' || data.categoryType === 'INSTITUTION' || !data.categoryType; // Default to business if unknown
+
+    if (isIndividual) {
         // Household: Must have ID No, Must NOT have Tax ID
         if (data.taxId && data.taxId.trim() !== '') {
             ctx.addIssue({
@@ -269,7 +274,21 @@ export default function EmployerForm({
 
     const formData = watch();
     const selectedCategory = watch('category');
+    const selectedCategoryType = watch('categoryType');
     const taxIdValue = watch('taxId');
+
+    const isIndividual = selectedCategoryType === 'INDIVIDUAL';
+    const isBusiness = selectedCategoryType === 'BUSINESS' || selectedCategoryType === 'INSTITUTION';
+
+    // Update categoryType when category changes
+    useEffect(() => {
+        if (selectedCategory && categories.length > 0) {
+            const cat = categories.find(c => c.code === selectedCategory);
+            if (cat) {
+                setValue('categoryType', cat.type || 'BUSINESS'); // Default to BUSINESS if type missing
+            }
+        }
+    }, [selectedCategory, categories, setValue]);
 
     // City District State
     const [selectedCity, setSelectedCity] = useState('');
@@ -328,9 +347,17 @@ export default function EmployerForm({
             'companyName', 'taxId', 'responsiblePerson', 'phoneNumber',
             'address', 'contactPerson', 'contactPhone'
         ];
-        if (selectedCategory === 'MANUFACTURING') {
+
+        const isIndividual = selectedCategoryType === 'INDIVIDUAL';
+        const isBusiness = selectedCategoryType === 'BUSINESS' || selectedCategoryType === 'INSTITUTION';
+
+        if (isBusiness) {
             fields.push('factoryRegistrationNo', 'laborInsuranceNo', 'industryCode', 'avgDomesticWorkers');
-        } else if (selectedCategory === 'HOME_CARE') {
+        } else if (isIndividual) {
+            // Remove taxId from required checks for Individual
+            const taxIdIndex = fields.indexOf('taxId');
+            if (taxIdIndex > -1) fields.splice(taxIdIndex, 1);
+
             fields.push('patientName', 'patientIdNo', 'careAddress');
         }
 
@@ -393,7 +420,7 @@ export default function EmployerForm({
             };
 
             // Corporate Info
-            if (data.category === 'MANUFACTURING' || data.category === 'INSTITUTION') {
+            if (isBusiness) {
                 payload.corporateInfo = {
                     factoryRegistrationNo: data.factoryRegistrationNo,
                     industryType: data.industryType,
@@ -410,7 +437,7 @@ export default function EmployerForm({
             }
 
             // Individual Info
-            if (data.category === 'HOME_CARE' || data.responsiblePersonIdNo) {
+            if (isIndividual || data.responsiblePersonIdNo) {
                 payload.individualInfo = {
                     responsiblePersonDob: data.responsiblePersonDob,
                     responsiblePersonIdNo: data.responsiblePersonIdNo,
@@ -553,12 +580,14 @@ export default function EmployerForm({
                                     </div>
 
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="taxId" className="required">統一編號 (TAX ID)</Label>
-                                        <Input {...register('taxId')} placeholder="8碼統編" />
-                                        {errors.taxId && <p className="text-red-500 text-xs">{errors.taxId.message}</p>}
-                                        {taxIdStatus.error && <p className="text-amber-500 text-xs">{taxIdStatus.error}</p>}
-                                    </div>
+                                    {!isIndividual && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="taxId" className="required">統一編號 (TAX ID)</Label>
+                                            <Input {...register('taxId')} placeholder="8碼統編" />
+                                            {errors.taxId && <p className="text-red-500 text-xs">{errors.taxId.message}</p>}
+                                            {taxIdStatus.error && <p className="text-amber-500 text-xs">{taxIdStatus.error}</p>}
+                                        </div>
+                                    )}
                                     <div className="space-y-2">
                                         <Label htmlFor="capital">資本額 (Capital)</Label>
                                         <Input {...register('capital')} placeholder="0" />
@@ -778,7 +807,7 @@ export default function EmployerForm({
                             </div>
 
                             {/* Factories List */}
-                            {selectedCategory === 'MANUFACTURING' && (
+                            {(selectedCategoryType === 'BUSINESS' || selectedCategoryType === 'INSTITUTION') && (
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                                     <div className="flex justify-between items-center mb-4">
                                         <h3 className="font-semibold text-lg flex items-center gap-2">

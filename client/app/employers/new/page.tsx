@@ -5,26 +5,35 @@ import PageContainer from '@/components/layout/PageContainer';
 import EmployerForm from '@/components/employers/EmployerForm';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Building, User, Building2 } from 'lucide-react';
+import {
+    Building, User, Building2, Factory, HardHat, Ship, HeartHandshake, Home
+} from 'lucide-react';
 import { getEmployerBreadcrumbs } from '@/lib/breadcrumbs';
 import { toast } from 'sonner';
 import { apiPost } from '@/lib/api';
-import { INDUSTRIES, IndustryKey } from '@/lib/leadConstants';
+import { useEmployerCategories } from '@/hooks/useReferenceData';
 
-const INDUSTRY_CONFIG: Record<string, { icon: any, color: string, description: string }> = {
-    MANUFACTURING: { icon: Building, color: 'blue', description: '工廠、製造業雇主\n需填寫工廠登記證號與行業別' },
-    HOME_CARE: { icon: User, color: 'green', description: '家庭類類雇主\n需填寫被看護人資料與照護地點' },
-    INSTITUTION: { icon: Building2, color: 'purple', description: '安養院、護理之家\n需填寫機構代碼與床位數' },
-    CONSTRUCTION: { icon: Building2, color: 'orange', description: '營造工程項目\n需填寫工程地點與期限' },
-    FISHERY: { icon: Building, color: 'cyan', description: '海洋漁撈作業' },
-    AGRICULTURE: { icon: User, color: 'emerald', description: '農務、畜牧作業' },
-    OTHER: { icon: Building2, color: 'slate', description: '其他類別雇主' }
+const ICON_MAP: Record<string, any> = {
+    'Factory': Factory,
+    'HardHat': HardHat,
+    'Ship': Ship,
+    'UserHeart': HeartHandshake,
+    'Home': Home,
+    'Building2': Building2,
+    'Building': Building,
+    'User': User
 };
 
 /**
  * Category Selection Modal Component
  */
 function CategorySelectionWizard({ onSelect }: { onSelect: (category: string) => void }) {
+    const { categories, loading } = useEmployerCategories();
+
+    if (loading) {
+        return <div className="text-center py-10">載入中...</div>;
+    }
+
     return (
         <div className="space-y-6">
             <div className="text-center">
@@ -33,31 +42,29 @@ function CategorySelectionWizard({ onSelect }: { onSelect: (category: string) =>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Object.entries(INDUSTRIES).map(([key, label]) => {
-                    const config = INDUSTRY_CONFIG[key] || { icon: Building, color: 'slate', description: '通用雇主類型' };
-                    const Icon = config.icon;
+                {categories.map((cat) => {
+                    const Icon = ICON_MAP[cat.iconName || 'Building'] || Building;
+                    const colorClass = cat.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                        cat.color === 'green' ? 'bg-green-50 text-green-600' :
+                            cat.color === 'purple' ? 'bg-purple-50 text-purple-600' :
+                                cat.color === 'orange' ? 'bg-orange-50 text-orange-600' :
+                                    cat.color === 'cyan' ? 'bg-cyan-50 text-cyan-600' :
+                                        cat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
+                                            cat.color === 'pink' ? 'bg-pink-50 text-pink-600' :
+                                                'bg-slate-50 text-slate-600';
 
                     return (
                         <button
-                            key={key}
+                            key={cat.code}
                             type="button"
-                            onClick={() => onSelect(key)}
+                            onClick={() => onSelect(cat.code)}
                             className="bg-white p-8 rounded-xl shadow-sm border-2 border-gray-200 hover:border-blue-500 hover:shadow-lg transition group text-left flex flex-col items-start"
                         >
-                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition
-                                ${config.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                                    config.color === 'green' ? 'bg-green-50 text-green-600' :
-                                        config.color === 'purple' ? 'bg-purple-50 text-purple-600' :
-                                            config.color === 'orange' ? 'bg-orange-50 text-orange-600' :
-                                                config.color === 'cyan' ? 'bg-cyan-50 text-cyan-600' :
-                                                    config.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
-                                                        'bg-slate-50 text-slate-600'
-                                }`}
-                            >
+                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition ${colorClass}`}>
                                 <Icon size={28} />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">{label}</h3>
-                            <p className="text-gray-500 text-sm whitespace-pre-line">{config.description}</p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">{cat.nameZh}</h3>
+                            <p className="text-gray-500 text-sm whitespace-pre-line">{cat.description || cat.nameEn}</p>
                         </button>
                     );
                 })}

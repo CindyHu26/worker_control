@@ -82,6 +82,7 @@ TestResults/
 *_files/
 *.html
 old_sample_to_imigrant/
+server/public/
 
 # Server Runtime Storage
 server/storage/*
@@ -89,3 +90,4 @@ server/storage/*
 !server/storage/uploads/
 server/storage/uploads/*
 !server/storage/uploads/.gitkeep
+public_data/
