@@ -9,7 +9,7 @@ import {
     DollarSign, Receipt, Calculator, ClipboardList,
     Home, Bed, Zap, Settings, Shield,
     ArrowRightLeft, Users2, History, Search, Landmark,
-    Globe2
+    Globe2, Megaphone
 } from 'lucide-react';
 
 // Data Definition
@@ -30,6 +30,7 @@ const categories = [
         bg: 'bg-indigo-50',
         text: 'text-indigo-800',
         items: [
+            { title: '國內求才證明', desc: '國內招募與求才登記', icon: Megaphone, href: '/recruitment-proofs' },
             { title: '入國通報', desc: '通報勞工局與案號登錄', icon: Plane, href: '/govt/entry-report' },
             { title: '簽證申請', desc: '駐台辦事處函文製作', icon: Stamp, href: '/govt/visa' },
             { title: '聘僱許可申請', desc: '勞動部許可函申請', icon: FileCheck, href: '/govt/permit' },

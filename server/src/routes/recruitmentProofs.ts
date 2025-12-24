@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { z } from 'zod';
+import { domesticRecruitmentService } from '../services/domesticRecruitmentService';
 
 const router = Router();
 
@@ -16,15 +17,16 @@ const RecruitmentProofSchema = z.object({
     reviewFeePayDate: z.string().optional().transform(str => str ? new Date(str) : undefined),
 });
 
-// GET all for employer
+// GET all (optional employerId filter)
 router.get('/', async (req, res) => {
     const { employerId, valid } = req.query;
-    if (!employerId || typeof employerId !== 'string') {
-        return res.status(400).json({ error: 'employerId is required' });
-    }
 
     try {
-        const where: any = { employerId };
+        const where: any = {};
+
+        if (employerId && typeof employerId === 'string') {
+            where.employerId = employerId;
+        }
 
         if (valid === 'true') {
             where.status = 'VALID';
@@ -34,6 +36,9 @@ router.get('/', async (req, res) => {
             where,
             orderBy: { issueDate: 'desc' },
             include: {
+                employer: {
+                    select: { companyName: true }
+                },
                 recruitmentLetters: {
                     select: { id: true, letterNumber: true }
                 }
@@ -50,12 +55,23 @@ router.post('/', async (req, res) => {
     try {
         const data = RecruitmentProofSchema.parse(req.body);
 
+        // Check Wait Period Logic
+        const validation = await domesticRecruitmentService.validateWaitPeriod(
+            data.employerId,
+            data.registerDate,
+            data.issueDate
+        );
+
+        if (!validation.valid) {
+            return res.status(400).json({ error: validation.error });
+        }
+
         // Check duplicate
         const existing = await prisma.recruitmentProof.findUnique({
             where: { receiptNumber: data.receiptNumber }
         });
         if (existing) {
-            return res.status(400).json({ error: 'Receipt number exists' });
+            return res.status(400).json({ error: 'Receipt number exists (求才證明書號重複)' });
         }
 
         const newRecord = await prisma.recruitmentProof.create({
@@ -71,9 +87,9 @@ router.post('/', async (req, res) => {
             }
         });
         res.json(newRecord);
-    } catch (error) {
-        console.log(error);
-        res.status(400).json({ error: 'Invalid data' });
+    } catch (error: any) {
+        console.error(error);
+        res.status(400).json({ error: error.message || 'Invalid data' });
     }
 });
 

@@ -34,7 +34,8 @@ export default function Sidebar() {
         { href: '/health', label: '體檢管理', subLabel: 'Health Checks', icon: FileText }, // Added
 
         { href: '/workers', label: '移工管理', subLabel: 'Workers', icon: Users },
-        { href: '/employers', label: '雇主管理', subLabel: 'Employers', icon: Building2 }, // Updated Icon to Building2 to differentiate
+        { href: '/employers', label: '雇主管理', subLabel: 'Employers', icon: Building2 },
+        { href: '/recruitment-proofs', label: '國內求才', subLabel: 'Ind. Recruitment', icon: Megaphone }, // Updated Icon to Building2 to differentiate
     ];
 
     const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>, label: string) => {
