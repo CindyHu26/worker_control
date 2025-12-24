@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
+import { apiPost, apiPut } from '@/lib/api';
 
 const formSchema = z.object({
     code: z.string().min(1, '代號為必填').max(10),
@@ -133,25 +134,17 @@ export function DomesticAgencyForm({ initialData, isEdit = false }: DomesticAgen
     const onSubmit = async (values: FormValues) => {
         try {
             const url = isEdit && initialData
-                ? `/api/domestic-agencies/${initialData.id}`
-                : '/api/domestic-agencies';
+                ? `http://localhost:3001/api/domestic-agencies/${initialData.id}`
+                : 'http://localhost:3001/api/domestic-agencies';
 
-            const method = isEdit ? 'PUT' : 'POST';
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                },
-                body: JSON.stringify(values),
-            });
-
-            if (!response.ok) {
-                throw new Error('儲存國內仲介公司失敗');
+            if (isEdit) {
+                await apiPut(url, values);
+                toast.success('國內仲介公司更新成功');
+            } else {
+                await apiPost(url, values);
+                toast.success('國內仲介公司建立成功');
             }
 
-            toast.success(isEdit ? '國內仲介公司更新成功' : '國內仲介公司建立成功');
             router.push('/domestic-agencies');
             router.refresh();
         } catch (error) {

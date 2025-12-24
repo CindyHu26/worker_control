@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
+import { apiPost, apiPut } from '@/lib/api';
 
 const formSchema = z.object({
     code: z.string().min(1, '行業代碼為必填').max(10),
@@ -63,25 +64,17 @@ export function IndustryForm({ initialData, isEdit = false }: IndustryFormProps)
     const onSubmit = async (values: FormValues) => {
         try {
             const url = isEdit && initialData
-                ? `/api/industries/${initialData.id}`
-                : '/api/industries';
+                ? `http://localhost:3001/api/industries/${initialData.id}`
+                : 'http://localhost:3001/api/industries';
 
-            const method = isEdit ? 'PUT' : 'POST';
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                },
-                body: JSON.stringify(values),
-            });
-
-            if (!response.ok) {
-                throw new Error('儲存行業別失敗');
+            if (isEdit) {
+                await apiPut(url, values);
+                toast.success('行業別更新成功');
+            } else {
+                await apiPost(url, values);
+                toast.success('行業別建立成功');
             }
 
-            toast.success(isEdit ? '行業別更新成功' : '行業別建立成功');
             router.push('/industries');
             router.refresh();
         } catch (error) {

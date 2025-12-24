@@ -14,6 +14,8 @@ import {
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
+import { apiGet, apiDelete } from '@/lib/api';
+import TableWrapper from '@/components/ui/TableWrapper';
 
 interface EmployerCategory {
     id: string;
@@ -32,13 +34,7 @@ export default function EmployerCategoriesPage() {
     const fetchCategories = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/employer-categories?search=${searchTerm}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                }
-            });
-            if (!res.ok) throw new Error('Failed to fetch');
-            const data = await res.json();
+            const data = await apiGet(`http://localhost:3001/api/employer-categories?search=${searchTerm}`);
             setCategories(data.data);
         } catch (error) {
             console.error(error);
@@ -59,14 +55,7 @@ export default function EmployerCategoriesPage() {
         if (!confirm(`確定要刪除類別 "${name}" 嗎？`)) return;
 
         try {
-            const res = await fetch(`/api/employer-categories/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                }
-            });
-            if (!res.ok) throw new Error('Failed to delete');
-
+            await apiDelete(`http://localhost:3001/api/employer-categories/${id}`);
             toast.success("類別刪除成功。");
             fetchCategories();
         } catch (error) {
@@ -96,7 +85,7 @@ export default function EmployerCategoriesPage() {
                 />
             </div>
 
-            <div className="border rounded-md bg-white">
+            <TableWrapper>
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -152,7 +141,7 @@ export default function EmployerCategoriesPage() {
                         )}
                     </TableBody>
                 </Table>
-            </div>
+            </TableWrapper>
         </div>
     );
 }

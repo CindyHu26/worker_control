@@ -47,7 +47,7 @@ export default function Sidebar() {
     return (
         <aside
             className={`
-                bg-slate-900 text-white flex flex-col transition-all duration-300 relative z-20
+                bg-slate-900 text-white flex flex-col transition-all duration-300 relative z-20 flex-shrink-0
                 ${collapsed ? 'w-20' : 'w-[280px]'} 
                 shadow-2xl border-r border-slate-800
             `}

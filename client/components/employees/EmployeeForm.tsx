@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
+import { apiPost, apiPut, apiGet } from '@/lib/api';
 
 const formSchema = z.object({
     code: z.string().min(1, '代碼為必填').max(18),
@@ -144,13 +145,8 @@ export function EmployeeForm({ initialData, isEdit = false }: EmployeeFormProps)
         // Fetch agencies for dropdown
         const fetchAgencies = async () => {
             try {
-                const res = await fetch('/api/domestic-agencies', {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setAgencies(data.data || []);
-                }
+                const data = await apiGet('http://localhost:3001/api/domestic-agencies');
+                setAgencies(data.data || []);
             } catch (error) {
                 console.error('Failed to fetch agencies:', error);
             }
@@ -173,21 +169,17 @@ export function EmployeeForm({ initialData, isEdit = false }: EmployeeFormProps)
     const onSubmit = async (values: FormValues) => {
         try {
             const url = isEdit && initialData
-                ? `/api/employees/${initialData.id}`
-                : '/api/employees';
+                ? `http://localhost:3001/api/employees/${initialData.id}`
+                : 'http://localhost:3001/api/employees';
 
-            const response = await fetch(url, {
-                method: isEdit ? 'PUT' : 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                },
-                body: JSON.stringify(values),
-            });
+            if (isEdit) {
+                await apiPut(url, values);
+                toast.success('員工資料更新成功');
+            } else {
+                await apiPost(url, values);
+                toast.success('員工資料建立成功');
+            }
 
-            if (!response.ok) throw new Error('儲存員工資料失敗');
-
-            toast.success(isEdit ? '員工資料更新成功' : '員工資料建立成功');
             router.push('/employees');
             router.refresh();
         } catch (error) {

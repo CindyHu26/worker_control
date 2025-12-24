@@ -13,7 +13,7 @@ const createSchema = z.object({
     // Contact Info
     phone: z.string().max(20).optional().nullable(),
     fax: z.string().max(20).optional().nullable(),
-    email: z.string().email('請輸入有效的電子郵件').max(100).optional().nullable(),
+    email: z.string().email('請輸入有效的電子郵件').or(z.literal('')).optional().nullable(),
     emergencyEmail: z.string().max(255).optional().nullable(),
     website: z.string().max(100).optional().nullable(),
     customerServicePhone: z.string().max(20).optional().nullable(),

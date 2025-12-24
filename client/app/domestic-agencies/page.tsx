@@ -14,6 +14,8 @@ import {
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
+import { apiGet, apiDelete } from '@/lib/api';
+import TableWrapper from '@/components/ui/TableWrapper';
 
 interface DomesticAgency {
     id: string;
@@ -34,13 +36,7 @@ export default function DomesticAgenciesPage() {
     const fetchAgencies = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/domestic-agencies?search=${searchTerm}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                }
-            });
-            if (!res.ok) throw new Error('Failed to fetch');
-            const data = await res.json();
+            const data = await apiGet(`http://localhost:3001/api/domestic-agencies?search=${searchTerm}`);
             setAgencies(data.data);
         } catch (error) {
             console.error(error);
@@ -61,14 +57,7 @@ export default function DomesticAgenciesPage() {
         if (!confirm(`確定要刪除國內仲介公司 "${name}" 嗎？`)) return;
 
         try {
-            const res = await fetch(`/api/domestic-agencies/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                }
-            });
-            if (!res.ok) throw new Error('Failed to delete');
-
+            await apiDelete(`http://localhost:3001/api/domestic-agencies/${id}`);
             toast.success("國內仲介公司刪除成功");
             fetchAgencies();
         } catch (error) {
@@ -98,7 +87,7 @@ export default function DomesticAgenciesPage() {
                 />
             </div>
 
-            <div className="border rounded-md bg-white">
+            <TableWrapper>
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -158,7 +147,7 @@ export default function DomesticAgenciesPage() {
                         )}
                     </TableBody>
                 </Table>
-            </div>
+            </TableWrapper>
         </div>
     );
 }
