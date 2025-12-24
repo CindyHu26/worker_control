@@ -137,7 +137,7 @@ router.post('/', async (req: Request, res: Response) => {
         res.status(201).json(newEmployee);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as any).errors });
+            return res.status(400).json({ errors: (error as any).issues });
         }
         console.error('Error creating employee:', error);
         res.status(500).json({ error: 'Failed to create employee' });
@@ -184,7 +184,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         res.json(updatedEmployee);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as any).errors });
+            return res.status(400).json({ errors: (error as any).issues });
         }
         console.error('Error updating employee:', error);
         res.status(500).json({ error: 'Failed to update employee' });

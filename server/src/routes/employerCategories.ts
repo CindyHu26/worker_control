@@ -48,7 +48,7 @@ router.post('/', async (req: Request, res: Response) => {
         res.status(201).json(newCategory);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as any).errors });
+            return res.status(400).json({ errors: (error as any).issues });
         }
         console.error('Error creating employer category:', error);
         res.status(500).json({ error: 'Failed to create employer category' });
@@ -62,7 +62,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         res.json(updatedCategory);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as any).errors });
+            return res.status(400).json({ errors: (error as any).issues });
         }
         console.error('Error updating employer category:', error);
         res.status(500).json({ error: 'Failed to update employer category' });

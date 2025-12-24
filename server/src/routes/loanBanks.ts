@@ -48,7 +48,7 @@ router.post('/', async (req, res) => {
         res.status(201).json(newBank);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as z.ZodError).errors });
+            return res.status(400).json({ errors: (error as z.ZodError).issues });
         }
         res.status(500).json({ error: '建立貸款銀行失敗' });
     }
@@ -62,7 +62,7 @@ router.patch('/:id', async (req, res) => {
         res.json(updatedBank);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as z.ZodError).errors });
+            return res.status(400).json({ errors: (error as z.ZodError).issues });
         }
         res.status(500).json({ error: '更新貸款銀行失敗' });
     }

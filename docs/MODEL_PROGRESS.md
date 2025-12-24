@@ -24,6 +24,7 @@ Tracking implementation status for all models defined in `schema.prisma`.
 | `LoanBank` | ✅ | Reference | `/loan-banks` |
 | `ContractType` | ✅ | Reference | `/contract-types` |
 | `Country` | ✅ | Reference | `/countries` |
+| `CollectionPlan` | ✅ | Reference | `/collection-plans` |
 
 ## 👥 Personnel & Organizations
 | Model Name | Status | Type | Path |

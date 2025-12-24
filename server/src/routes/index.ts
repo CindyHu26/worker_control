@@ -51,6 +51,7 @@ import industryRoutes from './industries';
 import domesticAgencyRoutes from './domesticAgencies';
 import employeeRoutes from './employees';
 import bankRoutes from './banks';
+import collectionPlanRoutes from './collectionPlans';
 
 import departmentRoutes from './departments';
 
@@ -121,4 +122,5 @@ router.use('/partner-agencies', partnerAgencyRoutes);
 router.use('/loan-banks', loanBankRoutes);
 router.use('/contract-types', contractTypeRoutes);
 router.use('/countries', countryRoutes);
+router.use('/collection-plans', collectionPlanRoutes);
 export default router;

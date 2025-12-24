@@ -94,7 +94,7 @@ router.post('/', async (req, res) => {
         res.status(201).json(result);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: error.errors });
+            return res.status(400).json({ errors: error.issues });
         }
         console.error(error);
         res.status(500).json({ error: 'Failed to create partner agency' });
@@ -115,7 +115,7 @@ router.patch('/:id', async (req, res) => {
         res.json(result);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: error.errors });
+            return res.status(400).json({ errors: error.issues });
         }
         res.status(500).json({ error: 'Failed to update partner agency' });
     }

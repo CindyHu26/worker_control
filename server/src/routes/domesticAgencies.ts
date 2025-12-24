@@ -101,7 +101,7 @@ router.post('/', async (req: Request, res: Response) => {
         res.status(201).json(newAgency);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as any).errors });
+            return res.status(400).json({ errors: (error as any).issues });
         }
         console.error('Error creating domestic agency:', error);
         res.status(500).json({ error: 'Failed to create domestic agency' });
@@ -125,7 +125,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         res.json(updatedAgency);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as any).errors });
+            return res.status(400).json({ errors: (error as any).issues });
         }
         console.error('Error updating domestic agency:', error);
         res.status(500).json({ error: 'Failed to update domestic agency' });

@@ -61,7 +61,7 @@ router.post('/', async (req: Request, res: Response) => {
         res.status(201).json(newJobTitle);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as any).errors });
+            return res.status(400).json({ errors: (error as any).issues });
         }
         console.error('Error creating industry job title:', error);
         res.status(500).json({ error: 'Failed to create industry job title' });
@@ -84,7 +84,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         res.json(updatedJobTitle);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ errors: (error as any).errors });
+            return res.status(400).json({ errors: (error as any).issues });
         }
         console.error('Error updating industry job title:', error);
         res.status(500).json({ error: 'Failed to update industry job title' });
