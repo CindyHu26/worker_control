@@ -121,4 +121,8 @@ router.use('/partner-agencies', partnerAgencyRoutes);
 router.use('/loan-banks', loanBankRoutes);
 router.use('/contract-types', contractTypeRoutes);
 router.use('/countries', countryRoutes);
+
+import billingPlanRoutes from './billingPlans';
+router.use('/billing-plans', billingPlanRoutes);
+
 export default router;

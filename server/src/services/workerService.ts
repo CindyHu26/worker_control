@@ -1,5 +1,5 @@
-import { PrismaClient, Prisma } from '@prisma/client';
 import prisma from '../prisma';
+import { billingService } from './billingGeneratorService';
 
 export const renewPassport = async (workerId: string, newPassportData: {
     passportNumber: string,
@@ -7,7 +7,12 @@ export const renewPassport = async (workerId: string, newPassportData: {
     expiryDate: Date | string,
     issuePlace?: string
 }) => {
-    return await prisma.$transaction(async (tx: any) => {
+    // Check for active deployment first
+    const activeDeployment = await prisma.deployment.findFirst({
+        where: { workerId, status: 'active' }
+    });
+
+    const result = await prisma.$transaction(async (tx: any) => {
         // 1. Archive current passport
         await tx.workerPassport.updateMany({
             where: { workerId, isCurrent: true },
@@ -29,6 +34,13 @@ export const renewPassport = async (workerId: string, newPassportData: {
 
         return newPassport;
     });
+
+    // 3. Trigger Review (Outside Transaction)
+    if (activeDeployment) {
+        await billingService.flagForReview(activeDeployment.id, '護照資訊更新 (Passport Updated)');
+    }
+
+    return result;
 };
 
 export const updatePassport = async (passportId: string, data: {
@@ -39,7 +51,7 @@ export const updatePassport = async (passportId: string, data: {
     isVerified?: boolean
 }) => {
     // Only for data correction
-    return await prisma.workerPassport.update({
+    const result = await prisma.workerPassport.update({
         where: { id: passportId },
         data: {
             ...data,
@@ -47,6 +59,18 @@ export const updatePassport = async (passportId: string, data: {
             expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined
         }
     });
+
+    // Also trigger update if this was the current passport
+    if (result.isCurrent) {
+        const activeDeployment = await prisma.deployment.findFirst({
+            where: { workerId: result.workerId, status: 'active' }
+        });
+        if (activeDeployment) {
+            await billingService.flagForReview(activeDeployment.id, '護照資訊修正 (Passport Modified)');
+        }
+    }
+
+    return result;
 };
 
 export const renewArc = async (workerId: string, newArcData: {
@@ -107,15 +131,10 @@ export const analyzeWorkerHealth = async (workerId: string) => {
             const monthsLeft = (new Date(currentPassport.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30);
             if (monthsLeft < 6) issues.push(`Passport expiring soon (${Math.floor(monthsLeft)} months)`);
         }
-
-        // Data Integrity Check (Simple Name check if implicit rule exists, but mostly manual verification)
     }
 
     // 3. Check ARC
     const currentArc = worker.arcs[0];
-    // ARC is only critical if they are already in country or "active" deployment? 
-    // Assuming strictly required for "Ready" status if they are deployed. 
-    // We'll just check existence.
     if (!currentArc) {
         issues.push('No Active ARC (Required for residency)');
     } else {
@@ -171,9 +190,6 @@ export const getWorkerDashboardData = async (workerId: string) => {
     const currentPassport = worker.passports[0] || null;
     const currentArc = worker.arcs[0] || null;
 
-    // Helper to find specific permit documents
-    // Assuming we just want to display SOME permit info, or we need specific types logic which isn't fully clear without PermitDocument types enum.
-    // For now, let's grab the first available permit detail's document.
     const activePermit = currentDeployment?.permitDetails?.[0]?.permitDocument;
 
     // 3. Flatten for Frontend "Old System" view
@@ -197,8 +213,8 @@ export const getWorkerDashboardData = async (workerId: string) => {
         },
         permits: {
             recruitmentNo: currentDeployment?.recruitmentLetter?.letterNumber,
-            entryPermitNo: '', // Entry Permit logic needs 'PermitDocument' with type 'ENTRY'?
-            employmentPermitNo: activePermit?.permitNumber, // Most recent permit
+            entryPermitNo: '',
+            employmentPermitNo: activePermit?.permitNumber,
             employmentPermitDate: activePermit?.issueDate,
         },
         dates: {
@@ -208,4 +224,3 @@ export const getWorkerDashboardData = async (workerId: string) => {
         }
     };
 }
-

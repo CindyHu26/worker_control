@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import prisma from '../prisma';
+import { billingService } from './billingGeneratorService';
 
 /**
  * Assign a bed to a worker, creating a history record.
@@ -27,8 +28,6 @@ export const assignBed = async (workerId: string, bedId: string, startDate: Date
         });
 
         // 3. Create History Record
-        // Find current active history to close it? No, this function assumes clean state.
-        // But for safety, let's close any open history just in case, though relocateWorker is preferred.
         await tx.workerAccommodationHistory.updateMany({
             where: { workerId: workerId, isCurrent: true },
             data: { isCurrent: false, endDate: start }
@@ -89,7 +88,12 @@ export const relocateWorker = async (
     newLocation: { bedId?: string, address?: string },
     effectiveDate: Date | string
 ) => {
-    return await prisma.$transaction(async (tx) => {
+    // Check for active deployment
+    const activeDeployment = await prisma.deployment.findFirst({
+        where: { workerId, status: 'active' }
+    });
+
+    const result = await prisma.$transaction(async (tx) => {
         const date = new Date(effectiveDate);
 
         // 1. Get current location for notification
@@ -164,6 +168,12 @@ export const relocateWorker = async (
 
         return newHistory;
     });
+
+    if (activeDeployment) {
+        await billingService.flagForReview(activeDeployment.id, '住宿異動 (Accommodation Changed)');
+    }
+
+    return result;
 };
 
 export const getAccommodationHistory = async (workerId: string) => {

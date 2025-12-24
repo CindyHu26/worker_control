@@ -2153,6 +2153,13 @@ enum BillingItemStatus {
   @@map("billing_item_status")
 }
 
+enum BillingReviewStatus {
+  NORMAL
+  NEEDS_REVIEW
+
+  @@map("billing_review_status")
+}
+
 model BillingPlan {
   id           String @id @default(uuid()) @db.Uuid
   deploymentId String @unique @map("deployment_id") @db.Uuid
@@ -2160,6 +2167,10 @@ model BillingPlan {
 
   totalAmount Int               @default(0) @map("total_amount")
   status      BillingPlanStatus @default(PENDING)
+
+  // Review Mechanism
+  reviewStatus BillingReviewStatus @default(NORMAL) @map("review_status")
+  reviewReason String?             @map("review_reason") @db.VarChar(255)
 
   notes String? @db.Text
 
@@ -2187,7 +2198,25 @@ model BillingPlanItem {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
+  logs      BillingModificationLog[]
+
   @@index([billingPlanId])
   @@index([billingDate])
   @@map("billing_plan_items")
+}
+
+model BillingModificationLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  planItemId  String   @map("plan_item_id") @db.Uuid
+  
+  oldAmount   Int      @map("old_amount")
+  newAmount   Int      @map("new_amount")
+  
+  reason      String?  @db.VarChar(255)
+  modifiedBy  String?  @map("modified_by") @db.VarChar(100)
+  modifiedAt  DateTime @default(now()) @map("modified_at") @db.Timestamptz
+
+  item        BillingPlanItem @relation(fields: [planItemId], references: [id], onDelete: Cascade)
+
+  @@map("billing_modification_logs")
 }
