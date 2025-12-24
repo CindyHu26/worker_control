@@ -123,6 +123,9 @@ router.use('/contract-types', contractTypeRoutes);
 router.use('/countries', countryRoutes);
 
 import billingPlanRoutes from './billingPlans';
+import candidateRoutes from './candidates';
+
+router.use('/candidates', candidateRoutes);
 router.use('/billing-plans', billingPlanRoutes);
 
 export default router;

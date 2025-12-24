@@ -19,6 +19,7 @@ const categories = [
         bg: 'bg-blue-50',
         text: 'text-blue-800',
         items: [
+            { title: '候選人管理', desc: '履歷匯入與人才庫', icon: UserPlus, href: '/candidates' },
             { title: '移工管理', desc: '基本資料、證件與合約', icon: Users, href: '/workers' },
             { title: '雇主管理', desc: '雇主資料與需求追蹤', icon: Briefcase, href: '/employers' },
             { title: '招募單管理', desc: '國外引進與履歷挑選', icon: FileText, href: '/recruitment' },

@@ -2220,3 +2220,61 @@ model BillingModificationLog {
 
   @@map("billing_modification_logs")
 }
+
+
+// ==========================================
+// Candidate Management (Phase 0)
+// ==========================================
+
+enum CandidateStatus {
+  NEW
+  INTERVIEW
+  SELECTED
+  REJECTED
+  WITHDRAWN
+
+  @@map("candidate_status")
+}
+
+model Candidate {
+  id          String   @id @default(uuid()) @db.Uuid
+  
+  // Basic Info
+  nameZh      String   @map("name_zh") @db.VarChar(100)
+  nameEn      String?  @map("name_en") @db.VarChar(100)
+  gender      GenderType
+  birthDate   DateTime @map("birth_date") @db.Date
+  nationality String   @map("nationality") @db.VarChar(3) // ISO 3166-1 alpha-3
+  
+  // Passport
+  passportNo  String   @unique @map("passport_no") @db.VarChar(50)
+  passportExpiry DateTime? @map("passport_expiry") @db.Date
+  
+  // Physical
+  height      Int?     // cm
+  weight      Int?     // kg
+  bloodType   String?  @map("blood_type") @db.VarChar(5)
+  
+  // Background
+  maritalStatus    String?  @map("marital_status") @db.VarChar(20) // SINGLE, MARRIED, DIVORCED
+  education        String?  @db.VarChar(100)
+  skills           String?  @db.Text // JSON array or comma-separated
+  workExperience   String?  @map("work_experience") @db.Text
+  
+  // Status
+  status      CandidateStatus @default(NEW)
+  remarks     String?  @db.Text
+  
+  // Source tracking
+  sourceAgencyId String? @map("source_agency_id") @db.Uuid
+  importDate     DateTime @default(now()) @map("import_date") @db.Timestamptz
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  @@index([passportNo])
+  @@index([status])
+  @@index([nationality])
+  @@map("candidates")
+}

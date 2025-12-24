@@ -10,7 +10,7 @@
 
 | 藍圖項目 | 實作狀態 | 系統對應模組/功能 | 備註 |
 | :--- | :---: | :--- | :--- |
-| **0.1 履歷匯入** | ⚪ 尚未實作 | - | 規劃支援 Excel 匯入與 AI 解析。 |
+| **0.1 履歷匯入** | ✅ 已完成 | `Candidate`, `candidateService`, `/candidates` | 支援 Excel 批次匯入、護照重複檢核、狀態管理 (NEW/INTERVIEW/SELECTED/REJECTED)。 |
 | **0.2 面試紀錄** | ⚪ 尚未實作 | - | 需建立 `Candidate` 與 `InterviewRecord` 實體。 |
 
 ## 🟢 階段 1：雇主資格與前置作業 (Qualifications)
