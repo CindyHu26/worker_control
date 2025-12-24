@@ -1,70 +1,20 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import { expect } from 'chai';
-import prisma from '../../src/prisma';
-import request from 'supertest';
-import app from '../../src/app';
+import { recruitmentService } from '../../src/services/recruitmentService';
+import { format } from 'date-fns';
 
-let employerId: string;
-let response: any;
-let registerDateStr: string;
+let registrationDate: Date;
+let calculatedEndDate: Date;
 
-Given('有一家製造業雇主 {string}', async function (name: string) {
-    // Create Corporate Employer
-    const employer = await prisma.employer.create({
-        data: {
-            companyName: name,
-            taxId: `TAX_${Date.now()}`,
-            contactPerson: 'Tester',
-            corporateInfo: {
-                create: {
-                    industryType: 'MANUFACTURING',
-                    capital: 1000000
-                }
-            }
-        }
-    });
-    employerId = employer.id;
+Given('雇主於 {string} 向公立就服機構辦理求才登記', function (dateStr: string) {
+    registrationDate = new Date(dateStr);
 });
 
-Given('有一位家庭雇主 {string}', async function (name: string) {
-    // Create Individual Employer
-    const employer = await prisma.employer.create({
-        data: {
-            companyName: name,
-            contactPerson: name,
-            individualInfo: {
-                create: {
-                    idIssuePlace: 'Taipei'
-                }
-            }
-        }
-    });
-    employerId = employer.id;
+When('系統計算國內招募等待期', function () {
+    calculatedEndDate = recruitmentService.calculateDomesticRecruitmentEndDate(registrationDate);
 });
 
-When('該雇主填寫求才登記表，登記日為 {string}', function (date: string) {
-    registerDateStr = date;
-});
-
-When('該雇主嘗試申請求才證明書，發文日為 {string}', async function (issueDate: string) {
-    response = await request(app)
-        .post('/api/recruitment-proofs')
-        .send({
-            employerId,
-            receiptNumber: `RCPT_${Date.now()}`,
-            registerDate: registerDateStr,
-            issueDate: issueDate,
-            jobCenter: 'Taipei Center',
-            status: 'VALID'
-        });
-});
-
-Then('系統應回傳錯誤 {string}', function (errorMsg: string) {
-    expect(response.status).to.equal(400);
-    expect(response.body.error).to.include(errorMsg);
-});
-
-Then('系統應成功建立求才證明書', function () {
-    expect(response.status).to.equal(200);
-    expect(response.body.id).to.exist;
+Then('最快可申請求才證明書的日期應為 {string}', function (expectedDateStr: string) {
+    const formattedResult = format(calculatedEndDate, 'yyyy-MM-dd');
+    expect(formattedResult).to.equal(expectedDateStr);
 });

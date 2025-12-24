@@ -1,5 +1,5 @@
 import prisma from '../prisma';
-import { Prisma } from '../generated/client';
+import { Prisma } from '@prisma/client';
 
 export const getJobTypes = async (page: number = 1, pageSize: number = 20, search?: string) => {
     const skip = (page - 1) * pageSize;

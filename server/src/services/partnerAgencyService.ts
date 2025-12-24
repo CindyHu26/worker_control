@@ -1,5 +1,5 @@
 import prisma from '../prisma';
-import { Prisma } from '../generated/client';
+import { Prisma } from '@prisma/client';
 
 interface PartnerAgencyFilter {
     page?: number;

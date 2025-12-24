@@ -70,3 +70,4 @@
 *   **基礎資料管理 (Master Data)**：國家、銀行、合約類型、行業別等完整 CRUD。
 *   **帳務稽核 (Audit Log)**：`BillingModificationLog` 紀錄所有金額調整細節。
 *   **智慧紅綠燈**：移工詳情頁的資料完整度檢查。
+*   **國內招募求才**：`RecruitmentProof` 21天/7天等待期檢核與完整 CRUD。

@@ -2,7 +2,7 @@ import { Client } from 'minio';
 import archiver from 'archiver';
 import { Response } from 'express';
 import prisma from '../prisma';
-import { Prisma } from '../generated/client';
+import { Prisma } from '@prisma/client';
 
 const minioClient = new Client({
     endPoint: 'localhost',

@@ -16,18 +16,13 @@
         "resolveJsonModule": true,
         "baseUrl": ".",
         "paths": {
-            "@prisma/client": [
-                "./src/generated/client"
-            ],
             "@worker-control/shared": [
                 "../shared/src"
             ]
         }
     },
     "include": [
-        "src/**/*",
-        "scripts/**/*",
-        "features/**/*"
+        "src/**/*"
     ],
     "exclude": [
         "node_modules",

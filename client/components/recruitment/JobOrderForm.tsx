@@ -118,6 +118,31 @@ export default function JobOrderForm({ onSuccess }: JobOrderFormProps) {
                         onChange={e => setFormData({ ...formData, orderDate: e.target.value })}
                         required
                     />
+                    {/* Date Calculation Logic */}
+                    {formData.orderDate && (
+                        <div className="mt-2 text-sm">
+                            <div className="flex justify-between text-gray-600">
+                                <span>預計招募期滿日:</span>
+                                <span className="font-medium text-indigo-600">
+                                    {(() => {
+                                        const regDate = new Date(formData.orderDate);
+                                        const cutoff = new Date('2023-06-01');
+                                        const isNewRule = regDate >= cutoff;
+                                        const days = isNewRule ? 7 : 21;
+                                        const endDate = new Date(regDate);
+                                        endDate.setDate(endDate.getDate() + days);
+                                        return endDate.toISOString().split('T')[0];
+                                    })()}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                                {new Date(formData.orderDate) >= new Date('2023-06-01')
+                                    ? "💡 依據 112/6/1 新制，招募期間已縮短為 7 日"
+                                    : "⚠️ 適用舊制，需等待 21 日"
+                                }
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 <div>

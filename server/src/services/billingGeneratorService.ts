@@ -1,5 +1,5 @@
 import prisma from '../prisma';
-import { Prisma } from '../generated/client';
+import { Prisma } from '@prisma/client';
 import { addMonths, differenceInDays, differenceInMonths, differenceInYears, endOfMonth, isBefore, isSameMonth, parseISO, startOfMonth } from 'date-fns';
 
 export class BillingGeneratorService {
