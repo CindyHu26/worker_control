@@ -173,44 +173,6 @@ enum WorkerEventType {
   @@map("worker_event_type")
 }
 
-enum CollectionPlanCategory {
-  household  // 家庭類
-  corporate  // 公司類
-
-  @@map("collection_plan_category")
-}
-
-enum SalaryCalculationMethod {
-  entry_date      // 1: 入境日
-  handover_date   // 2: 交工日
-  handover_next   // 3: 交工日之次日
-  monthly         // 4: 月份式
-  entry_plus_one  // 5: 入境日+1天
-
-  @@map("salary_calculation_method")
-}
-
-enum CollectionTarget {
-  worker                  // 1: 外勞
-  employer_account        // 2: 雇主-立往來客戶帳
-  sales_account           // 3: 業務員-立往來客戶帳
-  employer_worker_account // 4: 雇主-立在外勞帳
-  sales_worker_account    // 5: 業務員-立在外勞帳
-
-  @@map("collection_target")
-}
-
-enum WorkerSourceType {
-  all                  // 全部來源
-  renewal_transfer     // A: 期滿續聘/轉換/承接/中階
-  renewal_transfer_mid // B: 期滿續聘/轉換/中階
-  new_entry            // 1: 入境任用
-  renewal              // 2: 期滿續聘
-  transfer             // 3: 期滿轉換
-  mid_skilled          // C: 中階技工
-
-  @@map("worker_source_type")
-}
 
 // Models
 
@@ -856,6 +818,9 @@ model Employer {
   complianceStandard   String?   @map("compliance_standard") @db.VarChar(50)
   zeroFeeEffectiveDate DateTime? @map("zero_fee_effective_date") @db.Date
   industryAttributes   Json?     @map("industry_attributes")
+  
+  monthlyServiceFee    Int       @default(1500) @map("monthly_service_fee") // [Added] Default Service Fee
+  
   remarks              String?   @db.Text // [Added] 附註 (CU43)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
@@ -1369,6 +1334,7 @@ model Deployment {
   healthChecks  HealthCheck[]
   permitDetails WorkerPermitDetail[]
   insurances    WorkerInsurance[]
+  billingPlan   BillingPlan?
 
   // Soft Delete
   isDeleted Boolean   @default(false) @map("is_deleted")
@@ -1983,6 +1949,11 @@ model Dormitory {
   address             String?   @db.Text
   landlordName        String?   @map("landlord_name") @db.VarChar(50)
   accommodationType   String?   @map("accommodation_type") @db.VarChar(50)
+  
+  // [New] Fee Standards
+  rentFee       Int @default(0) @map("rent_fee")
+  managementFee Int @default(0) @map("management_fee")
+
   totalArea           Decimal?  @map("total_area") @db.Decimal(10, 2)
   capacity            Int?      @default(0)
   bathroomCount       Int?      @default(0) @map("bathroom_count")
@@ -2149,151 +2120,74 @@ model OfficialDocument {
   @@map("official_documents")
 }
 
+
 // ==========================================
-// Payment Collection Plan Tables
+// Billing Plan Models (Concrete Instances)
 // ==========================================
 
-model CollectionPlan {
-  id   String @id @default(uuid()) @db.Uuid
-  code String @unique @db.VarChar(10) // 代號
+enum BillingPlanStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
 
-  // Basic Info
-  nationalityCode String                 @map("nationality_code") @db.VarChar(10) // 國籍代碼
-  category        CollectionPlanCategory @default(corporate)                      // 類別
+  @@map("billing_plan_status")
+}
 
-  // Salary Calculation Settings
-  salaryCalcMethod    SalaryCalculationMethod @default(monthly) @map("salary_calc_method")
-  payDay              Int                     @default(10) @map("pay_day")         // 發薪日
-  cutoffDay           Int                     @default(31) @map("cutoff_day")      // N日後入境算下下月帳
-  calculateByDays     Boolean                 @default(true) @map("calc_by_days")  // 以天數計服務費
-  preciseCalculation  Boolean                 @default(false) @map("precise_calc") // 精算否
-  monthlySalaryMethod SalaryCalculationMethod @default(entry_plus_one) @map("monthly_salary_method")
+enum BillingItemCategory {
+  SERVICE_FEE     // 服務費
+  ARC_FEE         // 居留證費
+  HEALTH_CHECK_FEE // 體檢費
+  DORMITORY_FEE   // 宿舍費
+  OTHER           // 其他
 
-  // Status
-  isActive  Boolean  @default(true) @map("is_active")
+  @@map("billing_item_category")
+}
+
+enum BillingItemStatus {
+  PENDING
+  GENERATED
+  BILLED
+  CANCELLED
+
+  @@map("billing_item_status")
+}
+
+model BillingPlan {
+  id           String @id @default(uuid()) @db.Uuid
+  deploymentId String @unique @map("deployment_id") @db.Uuid
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  totalAmount Int               @default(0) @map("total_amount")
+  status      BillingPlanStatus @default(PENDING)
+
+  notes String? @db.Text
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  // Relations
-  billingCycles    CollectionPlanBillingCycle[]
-  healthCheckFees  CollectionPlanHealthCheckFee[]
-  residencePermits CollectionPlanResidencePermit[]
-  insuranceFees    CollectionPlanInsuranceFee[]
-  brokerFees       CollectionPlanBrokerFee[]
-  employerFees     CollectionPlanEmployerFee[]
-  feeItems         CollectionPlanFeeItem[]
+  items BillingPlanItem[]
 
-  @@map("collection_plans")
+  @@map("billing_plans")
 }
 
-// 收款期間設定 (1-12期/月, 13-24期/月, 25-36期/月)
-model CollectionPlanBillingCycle {
-  id               String         @id @default(uuid()) @db.Uuid
-  collectionPlanId String         @map("collection_plan_id") @db.Uuid
-  collectionPlan   CollectionPlan @relation(fields: [collectionPlanId], references: [id], onDelete: Cascade)
+model BillingPlanItem {
+  id            String @id @default(uuid()) @db.Uuid
+  billingPlanId String @map("billing_plan_id") @db.Uuid
+  billingPlan   BillingPlan @relation(fields: [billingPlanId], references: [id], onDelete: Cascade)
 
-  periodStart   Int @map("period_start")            // 起始期數 (e.g., 1)
-  periodEnd     Int @map("period_end")              // 截止期數 (e.g., 12)
-  monthsPerBill Int @default(1) @map("months_per_bill") // n月
+  billingDate  DateTime            @map("billing_date") @db.Date // 預計收款日 (e.g. 2024-01-10)
+  amount       Int                 @default(0)
+  itemCategory BillingItemCategory @map("item_category")
+  status       BillingItemStatus   @default(GENERATED)
+  
+  isProrated   Boolean             @default(false) @map("is_prorated") // 是否為破月
+  description  String?             @db.VarChar(200)
 
-  @@index([collectionPlanId])
-  @@map("collection_plan_billing_cycles")
-}
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-// 體檢費設定
-model CollectionPlanHealthCheckFee {
-  id               String         @id @default(uuid()) @db.Uuid
-  collectionPlanId String         @map("collection_plan_id") @db.Uuid
-  collectionPlan   CollectionPlan @relation(fields: [collectionPlanId], references: [id], onDelete: Cascade)
-
-  checkType        String @map("check_type") @db.VarChar(20) // entry, 6mo, 12mo, 18mo, 24mo, 30mo
-  collectionPeriod Int    @default(0) @map("collection_period") // 收款期數 (0=不代收)
-  feeMale          Int    @default(0) @map("fee_male")          // 男-體檢費
-  feeFemale        Int    @default(0) @map("fee_female")        // 女-體檢費
-
-  @@unique([collectionPlanId, checkType])
-  @@index([collectionPlanId])
-  @@map("collection_plan_health_check_fees")
-}
-
-// 居留證費設定
-model CollectionPlanResidencePermit {
-  id               String         @id @default(uuid()) @db.Uuid
-  collectionPlanId String         @map("collection_plan_id") @db.Uuid
-  collectionPlan   CollectionPlan @relation(fields: [collectionPlanId], references: [id], onDelete: Cascade)
-
-  year             Int @map("year")                     // 1, 2, 3 (第幾年)
-  collectionPeriod Int @default(0) @map("collection_period") // 收款期數 (0=不代收)
-
-  @@unique([collectionPlanId, year])
-  @@index([collectionPlanId])
-  @@map("collection_plan_residence_permits")
-}
-
-// 意外險費設定
-model CollectionPlanInsuranceFee {
-  id               String         @id @default(uuid()) @db.Uuid
-  collectionPlanId String         @map("collection_plan_id") @db.Uuid
-  collectionPlan   CollectionPlan @relation(fields: [collectionPlanId], references: [id], onDelete: Cascade)
-
-  year             Int               @map("year") // 1, 2, 3 (第幾年)
-  collectionPeriod Int               @default(0) @map("collection_period")
-  amount           Int               @default(0) @map("amount")
-  target           CollectionTarget  @default(worker) @map("target")
-  sourceType       WorkerSourceType? @map("source_type")
-
-  @@unique([collectionPlanId, year])
-  @@index([collectionPlanId])
-  @@map("collection_plan_insurance_fees")
-}
-
-// 登記介紹費設定 (雇主/移工)
-model CollectionPlanBrokerFee {
-  id               String         @id @default(uuid()) @db.Uuid
-  collectionPlanId String         @map("collection_plan_id") @db.Uuid
-  collectionPlan   CollectionPlan @relation(fields: [collectionPlanId], references: [id], onDelete: Cascade)
-
-  feeType          String            @map("fee_type") @db.VarChar(20) // employer, worker
-  collectionPeriod Int               @default(0) @map("collection_period")
-  amount           Int               @default(0) @map("amount")         // 0 = 基本工資
-  amountMidSkill   Int               @default(0) @map("amount_mid_skill") // 中階收款金額
-  sourceType       WorkerSourceType? @map("source_type")
-
-  @@unique([collectionPlanId, feeType])
-  @@index([collectionPlanId])
-  @@map("collection_plan_broker_fees")
-}
-
-// 雇主服務費設定
-model CollectionPlanEmployerFee {
-  id               String         @id @default(uuid()) @db.Uuid
-  collectionPlanId String         @map("collection_plan_id") @db.Uuid
-  collectionPlan   CollectionPlan @relation(fields: [collectionPlanId], references: [id], onDelete: Cascade)
-
-  year             Int               @map("year") // 1, 2, 3
-  collectionPeriod Int               @default(0) @map("collection_period")
-  amount           Int               @default(0) @map("amount")
-  sourceType       WorkerSourceType? @map("source_type")
-
-  @@unique([collectionPlanId, year])
-  @@index([collectionPlanId])
-  @@map("collection_plan_employer_fees")
-}
-
-// 其他費用設定 (動態多筆)
-model CollectionPlanFeeItem {
-  id               String         @id @default(uuid()) @db.Uuid
-  collectionPlanId String         @map("collection_plan_id") @db.Uuid
-  collectionPlan   CollectionPlan @relation(fields: [collectionPlanId], references: [id], onDelete: Cascade)
-
-  feeItemId       String?          @map("fee_item_id") @db.Uuid // FK to ReceivableItem if exists
-  amountPerPeriod Int              @default(0) @map("amount_per_period")
-  periodStart     Int              @default(0) @map("period_start")
-  periodEnd       Int              @default(0) @map("period_end")
-  entryOnly       Boolean          @default(false) @map("entry_only") // 僅入境用
-  target          CollectionTarget @default(worker) @map("target")
-  sortOrder       Int              @default(0) @map("sort_order")
-
-  @@index([collectionPlanId])
-  @@map("collection_plan_fee_items")
+  @@index([billingPlanId])
+  @@index([billingDate])
+  @@map("billing_plan_items")
 }
