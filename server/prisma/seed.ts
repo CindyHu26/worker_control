@@ -1,6 +1,8 @@
 
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { seedIndustries } from './seed_industries';
 
 const prisma = new PrismaClient();
 
@@ -211,7 +213,12 @@ async function main() {
         console.log(`✅ Employer Category ${cat.code} seeded`);
     }
 
-    // 10. Reference Data: Application Types
+    // 10. Reference Data: Industries (ROC 行業標準分類)
+    console.log('Seeding industries from JSON...');
+    const industriesCount = await seedIndustries(prisma);
+    console.log(`✅ ${industriesCount} industries seeded`);
+
+    // 11. Reference Data: Application Types
     console.log('Seeding application types...');
     const appTypes = [
         { code: '1', nameZh: '製造業勞工', nameEn: 'Manufacturing Worker', sortOrder: 1 },

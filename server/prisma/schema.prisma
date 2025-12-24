@@ -255,6 +255,11 @@ model Industry {
   nameVn String? @map("name_vn") @db.VarChar(100)
   nameId String? @map("name_id") @db.VarChar(100)
 
+  // Source metadata (from ROC 行業標準分類)
+  issuingAgency String? @map("issuing_agency") @db.VarChar(100) // 發布機關
+  agencyCode    String? @map("agency_code") @db.VarChar(50)      // 機關代碼
+  version       String? @db.VarChar(10)                          // 版本
+
   // Status
   isOpen Boolean @default(true) @map("is_open") // "開放否" (LBQ08)
 
