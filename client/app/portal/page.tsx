@@ -75,7 +75,19 @@ const categories = [
         items: [
             { title: '批次轉移', desc: '大量移工轉換雇主', icon: ArrowRightLeft, href: '/system/batch-transfer' },
             { title: '服務團隊', desc: '業務與雙語人員指派', icon: Users2, href: '/system/teams' },
-            { title: '操作歷程', desc: '系統存取與修改紀錄', icon: History, href: '/system/audit-logs' }
+            { title: '操作歷程', desc: '系統存取與修改紀錄', icon: History, href: '/system/audit-logs' },
+            { title: '員工管理', desc: '管理公司內部員工資料', icon: Users2, href: '/employees' }
+        ]
+    },
+    {
+        title: '基本設定 (Basic Settings)',
+        bg: 'bg-gray-100',
+        text: 'text-gray-800',
+        items: [
+            { title: '雇主類別', desc: '維護雇主分類代碼與名稱', icon: Files, href: '/employer-categories' },
+            { title: '工種設定', desc: '維護工種資料與費用設定', icon: Briefcase, href: '/job-types' },
+            { title: '行業別設定', desc: '維護行業別代碼與多語言名稱', icon: Building2, href: '/industries' },
+            { title: '國內仲介公司', desc: '管理使用系統的仲介公司資料', icon: Building2, href: '/domestic-agencies' }
         ]
     }
 ];

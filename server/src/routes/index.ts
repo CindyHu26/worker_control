@@ -39,7 +39,11 @@ import workerEventRoutes from './workerEvents';
 import workerDocumentRoutes from './workerDocuments';
 import referenceDataRoutes from './referenceData';
 import relocationRoutes from './relocation';
-
+import employerCategoryRoutes from './employerCategories';
+import jobTypeRoutes from './jobTypes';
+import industryRoutes from './industries';
+import domesticAgencyRoutes from './domesticAgencies';
+import employeeRoutes from './employees';
 
 const router = Router();
 
@@ -95,6 +99,11 @@ router.use('/worker-events', workerEventRoutes);
 router.use('/worker-documents', workerDocumentRoutes);
 router.use('/reference', referenceDataRoutes);
 router.use('/relocation', relocationRoutes);
+router.use('/employer-categories', employerCategoryRoutes);
+router.use('/job-types', jobTypeRoutes);
+router.use('/industries', industryRoutes);
+router.use('/domestic-agencies', domesticAgencyRoutes);
+router.use('/employees', employeeRoutes);
 
 
 export default router;
