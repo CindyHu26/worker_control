@@ -29,6 +29,9 @@ server/logs/
 client/logs/
 logs/
 
+# Local storage
+minio_data/
+
 # Editor directories and files
 .idea
 .vscode

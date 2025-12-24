@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { apiGet, apiDelete } from '@/lib/api';
 import TableWrapper from '@/components/ui/TableWrapper';
+import PageContainer from '@/components/layout/PageContainer';
 
 interface Industry {
     id: string;
@@ -65,17 +66,22 @@ export default function IndustriesPage() {
     };
 
     return (
-        <div className="container mx-auto py-8 space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold tracking-tight">行業別管理</h1>
+        <PageContainer
+            title="行業別管理"
+            subtitle="管理行業別代碼與名稱"
+            breadcrumbs={[
+                { label: '首頁', href: '/' },
+                { label: '行業別管理', href: '/industries' },
+            ]}
+            actions={
                 <Link href="/industries/new">
                     <Button>
                         <Plus className="mr-2 h-4 w-4" /> 新增行業別
                     </Button>
                 </Link>
-            </div>
-
-            <div className="flex items-center space-x-2 max-w-sm">
+            }
+        >
+            <div className="flex items-center space-x-2 max-w-sm mb-6">
                 <Search className="h-4 w-4 text-gray-500" />
                 <Input
                     placeholder="搜尋行業別..."
@@ -142,6 +148,6 @@ export default function IndustriesPage() {
                     </TableBody>
                 </Table>
             </TableWrapper>
-        </div>
+        </PageContainer>
     );
 }

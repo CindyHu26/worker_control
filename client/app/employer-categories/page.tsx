@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { apiGet, apiDelete } from '@/lib/api';
 import TableWrapper from '@/components/ui/TableWrapper';
+import PageContainer from '@/components/layout/PageContainer';
 
 interface EmployerCategory {
     id: string;
@@ -65,17 +66,22 @@ export default function EmployerCategoriesPage() {
     };
 
     return (
-        <div className="container mx-auto py-8 space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold tracking-tight">雇主類別管理</h1>
+        <PageContainer
+            title="雇主類別管理"
+            subtitle="管理雇主分類代碼與名稱"
+            breadcrumbs={[
+                { label: '首頁', href: '/' },
+                { label: '雇主類別', href: '/employer-categories' },
+            ]}
+            actions={
                 <Link href="/employer-categories/new">
                     <Button>
                         <Plus className="mr-2 h-4 w-4" /> 新增類別
                     </Button>
                 </Link>
-            </div>
-
-            <div className="flex items-center space-x-2 max-w-sm">
+            }
+        >
+            <div className="flex items-center space-x-2 max-w-sm mb-6">
                 <Search className="h-4 w-4 text-gray-500" />
                 <Input
                     placeholder="搜尋類別..."
@@ -142,6 +148,6 @@ export default function EmployerCategoriesPage() {
                     </TableBody>
                 </Table>
             </TableWrapper>
-        </div>
+        </PageContainer>
     );
 }

@@ -87,6 +87,7 @@ const categories = [
             { title: '雇主類別', desc: '維護雇主分類代碼與名稱', icon: Files, href: '/employer-categories' },
             { title: '工種設定', desc: '維護工種資料與費用設定', icon: Briefcase, href: '/job-types' },
             { title: '行業別設定', desc: '維護行業別代碼與多語言名稱', icon: Building2, href: '/industries' },
+            { title: '行業職稱', desc: '維護各行業別下的標準職稱', icon: Users2, href: '/industry-job-titles' },
             { title: '國內仲介公司', desc: '管理使用系統的仲介公司資料', icon: Building2, href: '/domestic-agencies' }
         ]
     }

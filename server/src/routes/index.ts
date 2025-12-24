@@ -22,6 +22,7 @@ import dormitoryRoutes from './dormitories';
 import settingsRoutes from './settings';
 import notificationsRoutes from './notifications';
 import exportsRoutes from './exports';
+import industryJobTitlesRouter from './industryJobTitles';
 import kanbanRoutes from './kanban';
 import searchRoutes from './search';
 import quotaRoutes from './quota';
@@ -80,6 +81,7 @@ router.use('/settings', settingsRoutes);
 // router.use('/batch', batchRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/exports', exportsRoutes);
+router.use('/industry-job-titles', industryJobTitlesRouter);
 router.use('/kanban', kanbanRoutes);
 router.use('/documents', documentRoutes);
 router.use('/quota', quotaRoutes); // Assuming quota routes might be separate or handled in employers
