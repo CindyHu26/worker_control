@@ -1,6 +1,5 @@
-import { PrismaClient, Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../prisma';
+import { Prisma } from '../generated/client';
 
 interface PartnerAgencyFilter {
     page?: number;

@@ -1,10 +1,8 @@
-
 import { Client } from 'minio';
 import archiver from 'archiver';
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../prisma';
+import { Prisma } from '../generated/client';
 
 const minioClient = new Client({
     endPoint: 'localhost',
@@ -31,7 +29,7 @@ export const storageService = {
 
     async uploadFile(fileBuffer: Buffer, fileName: string, mimeType: string) {
         // Simple upload logic for future use
-        const objectName = `${Date.now()}-${fileName}`;
+        const objectName = `${Date.now()} -${fileName} `;
         await minioClient.putObject(BUCKET_NAME, objectName, fileBuffer, fileBuffer.length, {
             'Content-Type': mimeType
         });
@@ -58,9 +56,9 @@ export const storageService = {
         }
 
         // Set Headers for Download
-        const zipName = `documents-${Date.now()}.zip`;
+        const zipName = `documents - ${Date.now()}.zip`;
         res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename=${zipName}`);
+        res.setHeader('Content-Disposition', `attachment; filename = ${zipName} `);
 
         // Create Zip Archive
         const archive = archiver('zip', {
@@ -89,9 +87,9 @@ export const storageService = {
                 // Append stream to zip with original filename
                 archive.append(dataStream, { name: attachment.fileName });
             } catch (error) {
-                console.error(`Failed to stream file ${attachment.fileName}:`, error);
+                console.error(`Failed to stream file ${attachment.fileName}: `, error);
                 // Continue with other files if one fails, or could create an error log text file in zip
-                archive.append(Buffer.from(`Error downloading file: ${error}`), { name: `ERROR-${attachment.fileName}.txt` });
+                archive.append(Buffer.from(`Error downloading file: ${error} `), { name: `ERROR - ${attachment.fileName}.txt` });
             }
         }
 

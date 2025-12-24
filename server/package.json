@@ -11,7 +11,7 @@
     "db:reset": "ts-node prisma/reset-db.ts",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "run-update": "git pull && npm install && npm run db:migrate && pm2 restart tms-server"
+    "run-update": "git pull && pnpm install && pnpm run db:migrate && pm2 restart tms-server"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
