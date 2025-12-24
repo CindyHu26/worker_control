@@ -130,4 +130,7 @@ router.use('/candidates', candidateRoutes);
 router.use('/billing-plans', billingPlanRoutes);
 router.use('/api', interviewRoutes); // Mounted at /api for /api/job-orders and /api/interviews
 
+import overseasProgressRoutes from './overseas-progress';
+router.use('/overseas-progress', overseasProgressRoutes);
+
 export default router;

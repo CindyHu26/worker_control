@@ -24,7 +24,8 @@ const categories = [
             { title: '移工管理', desc: '基本資料、證件與合約', icon: Users, href: '/workers' },
             { title: '雇主管理', desc: '雇主資料與需求追蹤', icon: Briefcase, href: '/employers' },
             { title: '招募單管理', desc: '國外引進與履歷挑選', icon: FileText, href: '/recruitment' },
-            { title: '聘僱派工', desc: '指派服務團隊與任務', icon: UserPlus, href: '/deployments' }
+            { title: '聘僱派工', desc: '指派服務團隊與任務', icon: UserPlus, href: '/deployments' },
+            { title: '海外進度追蹤', desc: '媒合後至入境前各項檢核', icon: Plane, href: '/overseas-progress' }
         ]
     },
     {

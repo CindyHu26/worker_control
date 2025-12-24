@@ -2289,9 +2289,47 @@ model Candidate {
   
   // Relations
   interviewCandidates InterviewCandidate[]
+  overseasProgress    OverseasProgress?
 
   @@index([passportNo])
   @@index([status])
   @@index([nationality])
   @@map("candidates")
+}
+
+// 海外進度追蹤
+model OverseasProgress {
+  id              String   @id @default(uuid()) @db.Uuid
+  candidateId     String   @unique @map("candidate_id") @db.Uuid
+  
+  // 海外體檢
+  medicalExamDate     DateTime? @map("medical_exam_date") @db.Date
+  medicalExamResult   String?   @map("medical_exam_result") @db.VarChar(50) // PASS/FAIL/PENDING
+  medicalExamRemarks  String?   @map("medical_exam_remarks") @db.Text
+  
+  // 良民證
+  policeClrDate       DateTime? @map("police_clr_date") @db.Date
+  policeClrStatus     String?   @map("police_clr_status") @db.VarChar(50) // ISSUED/PENDING/REJECTED
+  policeClrRemarks    String?   @map("police_clr_remarks") @db.Text
+  
+  // 護照檢查
+  passportChecked     Boolean   @default(false) @map("passport_checked")
+  passportExpiryOk    Boolean   @default(false) @map("passport_expiry_ok")
+  passportRemarks     String?   @map("passport_remarks") @db.Text
+  
+  // 舊居留證檢查
+  arcChecked          Boolean   @default(false) @map("arc_checked")
+  arcHasIssues        Boolean   @default(false) @map("arc_has_issues")
+  arcRemarks          String?   @map("arc_remarks") @db.Text
+  
+  // Overall
+  overallStatus       String    @default("IN_PROGRESS") @map("overall_status") @db.VarChar(30)
+  
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  
+  candidate           Candidate @relation(fields: [candidateId], references: [id])
+  
+  @@index([overallStatus])
+  @@map("overseas_progress")
 }
