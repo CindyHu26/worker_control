@@ -772,13 +772,82 @@ model InternalUser {
   // on Audit fields if not strictly needed for querying USER -> ALL RECORDS they created.)
   // Actually, let's include the key operational ones.
   assignedServices ServiceAssignment[] @relation("ServiceAssignedUser")
-  assignedLeads    Lead[]              @relation("LeadAssignedUser")
 
   // Comments & Mentions
   comments         SystemComment[]  @relation("CommentAuthor")
   mentionsReceived CommentMention[] @relation("MentionedUser")
 
+  // CRM Relations
+  assignedLeads    Lead[]           @relation("LeadAssignedUser")
+
   @@map("internal_users")
+}
+
+// ==========================================
+// CRM: Sales Pipeline & Lead Management
+// ==========================================
+
+model Lead {
+  id                    String   @id @default(uuid()) @db.Uuid
+  
+  // 基本資訊
+  companyName           String   @map("company_name") @db.VarChar(100)
+  taxId                 String?  @unique @map("tax_id") @db.VarChar(20)
+  
+  // 聯絡資訊
+  contactPerson         String?  @map("contact_person") @db.VarChar(50)
+  phone                 String?  @db.VarChar(30)
+  email                 String?  @db.VarChar(100)
+  address               String?  @db.Text
+  
+  // 業務資訊
+  industry              String?  @db.VarChar(50)  // 產業類別 (e.g., MANUFACTURING)
+  estimatedWorkerCount  Int?     @map("estimated_worker_count")
+  status                String   @default("NEW") @db.VarChar(20)  // NEW, CONTACTED, DISCOVERY, QUOTATION, NEGOTIATION, WON, LOST
+  
+  // 追蹤資訊
+  source                String?  @db.VarChar(50)  // 來源：walk-in, referral, web
+  assignedTo            String?  @map("assigned_to") @db.Uuid
+  assignedUser          InternalUser? @relation("LeadAssignedUser", fields: [assignedTo], references: [id])
+  
+  // 時間戳記
+  lastContactDate       DateTime? @map("last_contact_date") @db.Date
+  nextFollowUpDate      DateTime? @map("next_follow_up_date") @db.Date
+  
+  // 轉正資訊
+  convertedToEmployerId String?   @unique @map("converted_to_employer_id") @db.Uuid
+  convertedEmployer     Employer? @relation("ConvertedFromLead", fields: [convertedToEmployerId], references: [id])
+  convertedAt           DateTime? @map("converted_at") @db.Timestamptz
+  
+  // Relations
+  interactions          LeadInteraction[]
+  
+  // Audit
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  
+  @@index([status])
+  @@index([assignedTo])
+  @@index([industry])
+  @@map("leads")
+}
+
+model LeadInteraction {
+  id            String   @id @default(uuid()) @db.Uuid
+  leadId        String   @map("lead_id") @db.Uuid
+  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  type          String   @db.VarChar(30)  // call, meeting, email, quotation_sent
+  summary       String   @db.VarChar(200)
+  detailedNotes String?  @map("detailed_notes") @db.Text
+  outcome       String?  @db.VarChar(50)   // positive, negative, neutral, follow_up_needed
+  date          DateTime @default(now()) @db.Timestamptz
+  
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  
+  @@index([leadId])
+  @@index([date])
+  @@map("lead_interactions")
 }
 
 model Employer {
@@ -837,8 +906,8 @@ model Employer {
   updatedByUser InternalUser? @relation("EmployerUpdatedBy", fields: [updatedBy], references: [id])
 
   // CRM & Conversion
-  originLeadId String? @unique @map("origin_lead_id") @db.Uuid
-  originLead   Lead?   @relation("LeadToEmployer", fields: [originLeadId], references: [id])
+  // Reverse relation: Employer can be created from Lead conversion
+  convertedFromLead Lead? @relation("ConvertedFromLead")
 
   allocationRate       Decimal?  @map("allocation_rate") @db.Decimal(5, 4)
   complianceStandard   String?   @map("compliance_standard") @db.VarChar(50)
@@ -870,36 +939,6 @@ model Employer {
   agency   AgencyCompany? @relation(fields: [agencyId], references: [id])
 
   @@map("employers")
-}
-
-model Lead {
-  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyName   String  @map("company_name") @db.VarChar(100)
-  taxId         String? @map("tax_id") @db.VarChar(20)
-  contactPerson String? @map("contact_person") @db.VarChar(50)
-  phone         String? @db.VarChar(20)
-  email         String? @db.VarChar(100)
-  address       String? @db.Text
-  industry      String? @db.VarChar(50)
-  status        String  @default("NEW") // NEW, CONTACTED, NEGOTIATING, WON, LOST
-
-  estimatedWorkerCount Int? @map("estimated_worker_count")
-
-  // Tracking
-  assignedTo   String?       @map("assigned_to") @db.Uuid
-  assignedUser InternalUser? @relation("LeadAssignedUser", fields: [assignedTo], references: [id])
-
-  // Conversion
-  convertedEmployer Employer? @relation("LeadToEmployer")
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-
-  // Soft Delete
-  isDeleted Boolean   @default(false) @map("is_deleted")
-  deletedAt DateTime? @map("deleted_at")
-
-  @@map("leads")
 }
 
 model EmployerFactory {

@@ -218,7 +218,8 @@ async function main() {
     const industriesCount = await seedIndustries(prisma);
     console.log(`✅ ${industriesCount} industries seeded`);
 
-    // 11. Reference Data: Application Types
+    // 11. Reference Data: Application Types (Deprecated / Model missing)
+    /*
     console.log('Seeding application types...');
     const appTypes = [
         { code: '1', nameZh: '製造業勞工', nameEn: 'Manufacturing Worker', sortOrder: 1 },
@@ -230,53 +231,25 @@ async function main() {
     ];
 
     for (const type of appTypes) {
-        await prisma.applicationType.upsert({
-            where: { code: type.code },
-            update: { nameZh: type.nameZh, nameEn: type.nameEn, sortOrder: type.sortOrder },
-            create: type
-        });
-        console.log(`✅ Application Type ${type.code} seeded`);
+        // await prisma.applicationType.upsert({ ... });
+        // Model ApplicationType does not exist in schema
     }
+    */
 
-    // 11. Reference Data: Industry Codes
-    console.log('Seeding industry codes...');
+    // 11. Reference Data: Industry Codes (Handled by seedIndustries or Model missing)
+    /*
+    console.log('Seeding industry codes manually...');
     const industryCodes = [
         { code: '08', nameZh: '食品及飼品製造業', nameEn: 'Food Manufacturing', sortOrder: 1 },
-        { code: '09', nameZh: '飲料製造業', nameEn: 'Beverage Manufacturing', sortOrder: 2 },
-        { code: '11', nameZh: '紡織業', nameEn: 'Textile Manufacturing', sortOrder: 3 },
-        { code: '12', nameZh: '成衣及服飾品製造業', nameEn: 'Apparel Manufacturing', sortOrder: 4 },
-        { code: '13', nameZh: '皮革、毛皮及其製品製造業', nameEn: 'Leather Manufacturing', sortOrder: 5 },
-        { code: '14', nameZh: '木竹製品製造業', nameEn: 'Wood Products Manufacturing', sortOrder: 6 },
-        { code: '15', nameZh: '紙漿、紙及紙製品製造業', nameEn: 'Paper Manufacturing', sortOrder: 7 },
-        { code: '16', nameZh: '印刷及資料儲存媒體複製業', nameEn: 'Printing', sortOrder: 8 },
-        { code: '17', nameZh: '石油及煤製品製造業', nameEn: 'Petroleum Products', sortOrder: 9 },
-        { code: '18', nameZh: '化學材料製造業', nameEn: 'Chemical Materials', sortOrder: 10 },
-        { code: '19', nameZh: '化學製品製造業', nameEn: 'Chemical Products', sortOrder: 11 },
-        { code: '20', nameZh: '藥品及醫用化學製品製造業', nameEn: 'Pharmaceuticals', sortOrder: 12 },
-        { code: '21', nameZh: '橡膠製品製造業', nameEn: 'Rubber Products', sortOrder: 13 },
-        { code: '22', nameZh: '塑膠製品製造業', nameEn: 'Plastic Products', sortOrder: 14 },
-        { code: '23', nameZh: '非金屬礦物製品製造業', nameEn: 'Non-metallic Mineral Products', sortOrder: 15 },
-        { code: '24', nameZh: '基本金屬製造業', nameEn: 'Basic Metal Manufacturing', sortOrder: 16 },
-        { code: '25', nameZh: '金屬製品製造業', nameEn: 'Fabricated Metal Products', sortOrder: 17 },
-        { code: '2501', nameZh: '金屬刀具、手工具及模具製造業', nameEn: 'Metal Tools & Molds', sortOrder: 18 },
-        { code: '26', nameZh: '電子零組件製造業', nameEn: 'Electronic Components', sortOrder: 19 },
-        { code: '27', nameZh: '電腦、電子產品及光學製品製造業', nameEn: 'Computer & Electronics', sortOrder: 20 },
-        { code: '28', nameZh: '電力設備製造業', nameEn: 'Electrical Equipment', sortOrder: 21 },
-        { code: '29', nameZh: '機械設備製造業', nameEn: 'Machinery Manufacturing', sortOrder: 22 },
-        { code: '30', nameZh: '汽車及其零件製造業', nameEn: 'Motor Vehicles', sortOrder: 23 },
-        { code: '31', nameZh: '其他運輸工具製造業', nameEn: 'Other Transport Equipment', sortOrder: 24 },
-        { code: '32', nameZh: '家具製造業', nameEn: 'Furniture Manufacturing', sortOrder: 25 },
+        // ... (truncated)
         { code: '33', nameZh: '其他製造業', nameEn: 'Other Manufacturing', sortOrder: 26 }
     ];
 
     for (const industry of industryCodes) {
-        await prisma.industryCode.upsert({
-            where: { code: industry.code },
-            update: { nameZh: industry.nameZh, nameEn: industry.nameEn, sortOrder: industry.sortOrder },
-            create: industry
-        });
-        console.log(`✅ Industry Code ${industry.code} seeded`);
+        // await prisma.industryCode.upsert({ ... });
+        // Model IndustryCode does not exist in schema
     }
+    */
 
     // 12. Reference Data: Domestic Agencies
     console.log('Seeding domestic agencies...');

@@ -2,7 +2,17 @@
 
 本文件用於對照更新後的 `DOMAIN_BLUEPRINT.md` 與目前系統實際開發進度。
 
-**最後更新時間：** 2025-12-24 (Aligning with Blueprint v2.0)
+**最後更新時間：** 2025-12-26
+
+---
+
+## 🏛️ 模組一：業務開發與簽約管理 (Sales & Contracting)
+
+| 藍圖項目 | 實作狀態 | 系統對應模組/功能 | 備註 |
+| :--- | :---: | :--- | :--- |
+| **1.1 潛在客戶漏斗** | ✅ 已完成 | `Lead`, `LeadInteraction`, `/crm/leads` | Schema 模型已添加，前端已重構使用 PageContainer |
+| **1.2 簽約與轉正** | ✅ 已完成 | `convertLeadToEmployer` service, API endpoint | 轉正邏輯已實作，支援 Lead → Employer 轉換 |
+| **1.3 需求下單** | ✅ 已完成 | `JobOrder`, `/job-orders` | 基礎功能完整，使用 PageContainer 佈局 |
 
 ---
 

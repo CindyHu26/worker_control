@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import PageContainer from '@/components/layout/PageContainer';
 import LeadForm, { LeadFormData } from '@/components/crm/LeadForm';
 import { LEAD_STATUSES, STATUS_COLORS, getIndustryLabel, getStatusLabel, LeadStatusKey } from '@/lib/leadConstants';
 import { Plus, Search, Filter } from 'lucide-react';
@@ -92,21 +93,18 @@ export default function LeadsPage() {
     });
 
     return (
-        <div className="container mx-auto p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">潛在客戶</h1>
-                    <p className="text-gray-500 mt-1">管理業務開發與客戶轉換</p>
-                </div>
+        <PageContainer
+            title="潛在客戶"
+            subtitle="管理業務開發與客戶轉換漏斗"
+            actions={
                 <Button onClick={() => setShowForm(true)} size="lg">
                     <Plus className="mr-2 h-5 w-5" />
                     新增潛在客戶
                 </Button>
-            </div>
-
+            }
+        >
             {/* Filters & Search */}
-            <Card>
+            <Card className="mb-6">
                 <CardContent className="pt-6">
                     <div className="flex gap-4">
                         <div className="flex-1 relative">
@@ -115,11 +113,11 @@ export default function LeadsPage() {
                                 placeholder="搜尋公司名稱、統編或聯絡人..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10"
+                                className="pl-10 bg-white"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[200px]">
+                            <SelectTrigger className="w-[200px] bg-white">
                                 <Filter className="mr-2 h-4 w-4" />
                                 <SelectValue placeholder="狀態篩選" />
                             </SelectTrigger>
@@ -149,7 +147,7 @@ export default function LeadsPage() {
                             {searchQuery || statusFilter !== 'ALL' ? '沒有符合條件的客戶' : '尚無潛在客戶，請點擊「新增潛在客戶」開始建檔'}
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="w-full overflow-x-auto rounded-md border bg-white">
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr className="text-left border-b">
@@ -208,6 +206,6 @@ export default function LeadsPage() {
                 onSubmit={handleCreateLead}
                 mode="create"
             />
-        </div>
+        </PageContainer>
     );
 }
