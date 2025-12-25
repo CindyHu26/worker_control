@@ -154,7 +154,7 @@ export const convertLeadToEmployer = async (
                 invoiceAddress: options.invoiceAddress || lead.address || '',
 
                 // Track Source
-                originLeadId: lead.id,
+                // originLeadId: lead.id, // Removed: Relation follows Lead.convertedToEmployerId
 
                 createdBy: operatorId,
                 allocationRate: options.allocationRate || null,
@@ -195,6 +195,7 @@ export const convertLeadToEmployer = async (
             where: { id: leadId },
             data: {
                 status: 'WON',
+                convertedToEmployerId: employer.id, // Link back to created employer
             }
         });
 

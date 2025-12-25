@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Home, Plus, MapPin, User, BedDouble, AlertCircle } from 'lucide-react';
+import PageContainer from '@/components/layout/PageContainer';
 import DormEvaluationCard from '@/components/dormitories/DormEvaluationCard';
 import BatchFixModal from '@/components/dormitories/BatchFixModal';
 
@@ -70,12 +71,10 @@ export default function DormitoryListPage() {
     };
 
     return (
-        <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900">宿舍管理 (Dormitories)</h1>
-                    <p className="text-slate-500 mt-2">管理宿舍據點、房間與床位分配</p>
-                </div>
+        <PageContainer
+            title="宿舍管理"
+            subtitle="管理宿舍據點、房間與床位分配"
+            actions={
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm hover:shadow"
@@ -83,7 +82,8 @@ export default function DormitoryListPage() {
                     <Plus size={20} />
                     <span>新增宿舍</span>
                 </button>
-            </div>
+            }
+        >
 
             {isLoading ? (
                 <div className="flex justify-center py-20">
@@ -182,6 +182,6 @@ export default function DormitoryListPage() {
                     }}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

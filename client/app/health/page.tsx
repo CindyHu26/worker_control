@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Printer, RefreshCcw, Bell, Calendar, CheckCircle2, AlertCircle, FileEdit } from 'lucide-react';
+import PageContainer from '@/components/layout/PageContainer';
 import ScheduleModal from '@/components/health/ScheduleModal';
 import ResultModal from '@/components/health/ResultModal';
 import HealthCheckDetailModal from '@/components/health/HealthCheckDetailModal';
@@ -141,12 +142,10 @@ export default function HealthCheckPage() {
     const handleSaveResult = async (data: any) => { /* logic */ };
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto">
-            <div className="flex justify-between items-end mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">近期需安排體檢名單 ({filterMode === 'upcoming' ? `${daysRange}日內` : filterMode})</h1>
-                    <p className="text-slate-500 mt-1">追蹤即將到期與異常需複檢的移工</p>
-                </div>
+        <PageContainer
+            title="體檢追蹤管理"
+            subtitle={`追蹤即將到期與異常需複檢的移工 (${filterMode === 'upcoming' ? `${daysRange}日內` : filterMode === 'overdue' ? '逾期未檢' : '全部'})`}
+            actions={
                 <div className="flex gap-2">
                     <button onClick={fetchChecks} className="p-2 text-slate-500 hover:bg-slate-100 rounded-full">
                         <RefreshCcw size={20} />
@@ -161,10 +160,10 @@ export default function HealthCheckPage() {
                         </button>
                     )}
                 </div>
-            </div>
-
+            }
+        >
             {/* Controls */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-wrap gap-6 items-center">
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6 flex flex-wrap gap-6 items-center">
 
                 {/* Period Mode */}
                 <div className="flex bg-slate-100 p-1 rounded-lg">
@@ -317,6 +316,6 @@ export default function HealthCheckPage() {
                 onClose={() => setDetailModalOpen(false)}
                 checkId={detailId}
             />
-        </div>
+        </PageContainer>
     );
 }

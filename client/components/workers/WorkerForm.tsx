@@ -10,9 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FormSection from '@/components/layout/FormSection';
-import { Save, User, FileText, Briefcase, FolderOpen, HeartPulse } from 'lucide-react';
+import { Save, User, FileText, Briefcase, FolderOpen, HeartPulse, Upload, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import EmployerSelector from '@/components/employers/EmployerSelector';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Validation Schema
 const workerSchema = z.object({
@@ -55,6 +56,7 @@ const workerSchema = z.object({
 
     // Additional
     notes: z.string().optional(),
+    photoUrl: z.string().optional(),
 });
 
 type WorkerFormData = z.infer<typeof workerSchema>;
@@ -63,7 +65,7 @@ interface WorkerFormProps {
     /**
      * Initial data for edit mode
      */
-    initialData?: Partial<WorkerFormData>;
+    initialData?: Partial<WorkerFormData> & { id?: string; photoUrl?: string };
 
     /**
      * Submit handler
@@ -109,6 +111,45 @@ export default function WorkerForm({
         }
     });
 
+    // Photo Upload State
+    const [isUploading, setIsUploading] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState(initialData?.photoUrl || '');
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Preview immediately
+        const objectUrl = URL.createObjectURL(file);
+        setPreviewUrl(objectUrl);
+
+        if (isEditMode && initialData?.id) {
+            setIsUploading(true);
+            const formData = new FormData();
+            formData.append('photo', file);
+
+            try {
+                const res = await fetch(`/api/workers/${initialData.id}/photo`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!res.ok) throw new Error('Upload failed');
+
+                const data = await res.json();
+                toast.success('照片上傳成功');
+                setPreviewUrl(data.photoUrl); // Update with server URL
+            } catch (error) {
+                console.error(error);
+                toast.error('照片上傳失敗');
+            } finally {
+                setIsUploading(false);
+            }
+        } else {
+            toast.info('請先儲存資料後再上傳照片 (目前僅支援編輯模式上傳)');
+        }
+    };
+
     const onSubmitForm = async (data: WorkerFormData) => {
         try {
             await onSubmit(data);
@@ -152,6 +193,45 @@ export default function WorkerForm({
                         description="外勞的基本身分資訊"
                         columns={3}
                     >
+                        {/* Avatar Section */}
+                        <div className="col-span-3 flex items-center gap-6 p-4 bg-slate-50 rounded-lg border border-slate-100 mb-4">
+                            <Avatar className="h-24 w-24 border-2 border-white shadow-md">
+                                <AvatarImage src={previewUrl} className="object-cover" />
+                                <AvatarFallback className="bg-slate-200 text-slate-400">
+                                    <User className="h-12 w-12" />
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-medium text-slate-900">大頭照</h3>
+                                    {isEditMode ? (
+                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">可上傳</span>
+                                    ) : (
+                                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">需先儲存</span>
+                                    )}
+                                </div>
+                                <p className="text-sm text-slate-500">
+                                    支援 JPG, PNG 格式，檔案大小不超過 5MB。
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        id="photo-upload"
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={handlePhotoUpload}
+                                        disabled={isUploading || !isEditMode}
+                                    />
+                                    <Label
+                                        htmlFor="photo-upload"
+                                        className={`cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 ${(!isEditMode || isUploading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <Camera className="mr-2 h-4 w-4" />
+                                        {isUploading ? '上傳中...' : '更換照片'}
+                                    </Label>
+                                </div>
+                            </div>
+                        </div>
                         <div>
                             <Label htmlFor="englishName" className="required">英文姓名</Label>
                             <Input

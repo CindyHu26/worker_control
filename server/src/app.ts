@@ -10,6 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/uploads', express.static('uploads')); // Serve uploaded files locally (legacy/backup)
 
 // HTTP Request Logging (before routes)
 app.use(requestLoggerMiddleware);

@@ -1051,6 +1051,7 @@ model Worker {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   englishName String   @map("english_name") @db.VarChar(100)
   chineseName String?  @map("chinese_name") @db.VarChar(50)
+  photoUrl    String?  @map("photo_url") @db.VarChar(255)
   dob         DateTime @db.Date
 
   // [Modified] Nationality (Dynamic)

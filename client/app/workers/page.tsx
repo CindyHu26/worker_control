@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, User, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import SearchToolbar from '@/components/SearchToolbar';
 import BatchActionsBar from '@/components/BatchActionsBar';
 import BatchDocumentModal from '@/components/BatchDocumentModal';
@@ -13,6 +14,7 @@ interface Worker {
     englishName: string;
     chineseName?: string;
     nationality: string;
+    photoUrl?: string; // Added photoUrl
     deployments: { status: string; employer: { companyName: string } }[];
     passports: { passportNumber: string }[];
 }
@@ -265,15 +267,23 @@ export default function WorkersPage() {
                                             />
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div>
-                                                <div className="font-bold text-slate-900">{worker.englishName}</div>
-                                                <div className="text-sm text-slate-500">{worker.chineseName || '-'}</div>
-                                                {worker.passports?.[0] && (
-                                                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                                                        <FileText size={10} />
-                                                        {worker.passports[0].passportNumber}
-                                                    </div>
-                                                )}
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-10 w-10 border border-slate-100">
+                                                    <AvatarImage src={worker.photoUrl} className="object-cover" />
+                                                    <AvatarFallback className="bg-slate-100 text-slate-400">
+                                                        <User className="h-5 w-5" />
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <div className="font-bold text-slate-900">{worker.englishName}</div>
+                                                    <div className="text-sm text-slate-500">{worker.chineseName || '-'}</div>
+                                                    {worker.passports?.[0] && (
+                                                        <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                                                            <FileText size={10} />
+                                                            {worker.passports[0].passportNumber}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">

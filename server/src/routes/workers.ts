@@ -1,6 +1,27 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { getWorkerDashboardData } from '../services/workerService';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+// Configure Multer for Worker Photos
+import { storageService } from '../services/storageService';
+
+// Configure Multer for MinIO Upload (Memory Storage)
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (extname && mimetype) {
+            return cb(null, true);
+        }
+        cb(new Error('Only images (jpeg, jpg, png, webp) are allowed!'));
+    }
+});
 
 const router = Router();
 
@@ -148,8 +169,27 @@ router.get('/', async (req, res) => {
             })
         ]);
 
+        // Transform photoUrl (key) to Presigned URL
+        const workersWithPhoto = await Promise.all(workers.map(async (worker) => {
+            if (worker.photoUrl) {
+                // Check if it's a MinIO Key (starts with unique ID pattern usually, or simple check)
+                // For backward compatibility with local files, we might need a check.
+                // Assuming all new uploads are MinIO. Local files start with /uploads/. MinIO keys don't.
+                if (!worker.photoUrl.startsWith('/uploads/')) {
+                    try {
+                        const presigned = await storageService.getPresignedUrl(worker.photoUrl);
+                        return { ...worker, photoUrl: presigned };
+                    } catch (e) {
+                        console.error('Failed to presign url for worker', worker.id, e);
+                        return worker;
+                    }
+                }
+            }
+            return worker;
+        }));
+
         res.json({
-            data: workers,
+            data: workersWithPhoto,
             meta: {
                 total,
                 page: pageNum,
@@ -267,20 +307,11 @@ router.get('/:id', async (req, res) => {
                 deployments: {
                     include: {
                         employer: true,
-                        // entryPermit: {
-                        //     include: {
-                        //         recruitmentLetter: true
-                        //     }
-                        // },
-                        // timelines: true, // WorkerTimeline removed
                         permitDetails: {
                             include: {
                                 permitDocument: true
                             }
                         },
-                        // feeSchedules: {
-                        //     orderBy: { installmentNo: 'asc' }
-                        // }
                     },
                     orderBy: { startDate: 'desc' }
                 },
@@ -304,6 +335,15 @@ router.get('/:id', async (req, res) => {
 
         if (!worker) {
             return res.status(404).json({ error: 'Worker not found' });
+        }
+
+        // Transform photoUrl if present
+        if (worker.photoUrl && !worker.photoUrl.startsWith('/uploads/')) {
+            try {
+                worker.photoUrl = await storageService.getPresignedUrl(worker.photoUrl);
+            } catch (e) {
+                console.error('Failed to presign worker photo', e);
+            }
         }
 
         res.json(worker);
@@ -637,6 +677,46 @@ router.post('/:id/transfer', async (req, res) => {
     } catch (error) {
         console.error('Transfer Error:', error);
         res.status(500).json({ error: 'Failed to process transfer' });
+    }
+});
+
+// POST /api/workers/:id/photo
+router.post('/:id/photo', upload.single('photo'), async (req, res) => {
+    const { id } = req.params;
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No photo uploaded' });
+        }
+
+        // Upload to MinIO
+        const fileExt = path.extname(req.file.originalname);
+        const fileName = `photo-${id}${fileExt}`; // Consistent naming or unique? 
+        // Let's use unique key to avoid cache issues if they re-upload often, or just overwrite.
+        // Returning key is important.
+
+        const { storageKey } = await storageService.uploadFile(
+            req.file.buffer,
+            `worker-photo-${id}-${Date.now()}${fileExt}`, // Unique key
+            req.file.mimetype
+        );
+
+        const updatedWorker = await prisma.worker.update({
+            where: { id },
+            data: { photoUrl: storageKey }
+        });
+
+        // Return Presigned URL for immediate display
+        const presignedUrl = await storageService.getPresignedUrl(storageKey);
+
+        res.json({
+            message: 'Photo uploaded successfully',
+            photoUrl: presignedUrl,
+            worker: { ...updatedWorker, photoUrl: presignedUrl }
+        });
+    } catch (error: any) {
+        console.error('Upload Photo Error:', error);
+        // Multer Memory Storage doesn't need cleanup of local files
+        res.status(500).json({ error: 'Failed to upload photo' });
     }
 });
 

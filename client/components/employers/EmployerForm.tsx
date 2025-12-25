@@ -647,7 +647,21 @@ export default function EmployerForm({
                                     </div>
                                     <div className="space-y-2">
                                         <Label>英文姓名 (English Name)</Label>
-                                        <Input {...register('englishName')} placeholder="同護照" />
+                                        <div className="flex gap-2">
+                                            <Input {...register('englishName')} placeholder="同護照" />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    const chinese = watch('responsiblePerson');
+                                                    if (chinese) {
+                                                        setValue('englishName', toPinyin(chinese));
+                                                    }
+                                                }}
+                                            >
+                                                <Languages className="h-4 w-4 mr-1" /> 翻譯
+                                            </Button>
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>外籍人士 (Foreigner)</Label>
@@ -674,7 +688,21 @@ export default function EmployerForm({
                                     </div>
                                     <div className="space-y-2">
                                         <Label>出生地英文</Label>
-                                        <Input {...register('birthPlaceEn')} />
+                                        <div className="flex gap-2">
+                                            <Input {...register('birthPlaceEn')} />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    const chinese = watch('birthPlace');
+                                                    if (chinese) {
+                                                        setValue('birthPlaceEn', toPinyin(chinese));
+                                                    }
+                                                }}
+                                            >
+                                                <Languages className="h-4 w-4 mr-1" /> 翻譯
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">
@@ -847,6 +875,25 @@ export default function EmployerForm({
                                                 <div className="md:col-span-2 space-y-2">
                                                     <Label>廠區地址</Label>
                                                     <Input {...register(`factories.${index}.address`)} />
+                                                </div>
+                                                <div className="md:col-span-2 space-y-2">
+                                                    <Label>廠區英文地址</Label>
+                                                    <div className="flex gap-2">
+                                                        <Input {...register(`factories.${index}.addressEn`)} />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                const address = watch(`factories.${index}.address`);
+                                                                if (address) {
+                                                                    const fullAddressEn = `${toPinyin(address)}, Taiwan (R.O.C.)`; // Simplified translation for factory
+                                                                    setValue(`factories.${index}.addressEn`, fullAddressEn);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Languages className="h-4 w-4 mr-1" /> 翻譯
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label>本勞人數</Label>
