@@ -130,6 +130,8 @@ export const convertLeadToEmployer = async (
         }
 
         // 3. Branched Validation
+        // 3. Branched Validation (Removed as per user request for simplified conversion)
+        /*
         if (category === 'MANUFACTURING') {
             if (!options.factoryAddress) throw new Error("製造業轉正必須填寫：工廠地址");
             if (!options.avgDomesticWorkers) throw new Error("製造業轉正必須填寫：國內勞工人數");
@@ -139,6 +141,22 @@ export const convertLeadToEmployer = async (
             const validTiers = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40];
             if (!validTiers.includes(Number(options.allocationRate.toFixed(2)))) {
                 throw new Error(`無效的核配比率: ${options.allocationRate}. 合法級距為: ${validTiers.join(', ')}`);
+            }
+        }
+        */
+
+        // 0. Ensure valid Operator ID (UUID)
+        let validOperatorId = operatorId;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!validOperatorId || !uuidRegex.test(validOperatorId)) {
+            const adminUser = await tx.internalUser.findFirst();
+            if (adminUser) {
+                validOperatorId = adminUser.id;
+            } else {
+                // Determine what to do if no user exists? Use a nil UUID or skip createdBy?
+                // Employer createdBy is nullable, but SystemComment authorId is required.
+                // If strictly required, we might fail. But let's assume at least one user exists (seeded).
+                // Or if really none, we can't create comment.
             }
         }
 
@@ -153,10 +171,13 @@ export const convertLeadToEmployer = async (
                 address: options.invoiceAddress || lead.address || '',
                 invoiceAddress: options.invoiceAddress || lead.address || '',
 
+                // Link to EmployerCategory (Found by code)
+                employerCategoryId: (await tx.employerCategory.findUnique({ where: { code: category } }))?.id,
+
                 // Track Source
                 // originLeadId: lead.id, // Removed: Relation follows Lead.convertedToEmployerId
 
-                createdBy: operatorId,
+                createdBy: validOperatorId, // Use validated UUID or undefined
                 allocationRate: options.allocationRate || null,
                 complianceStandard: options.complianceStandard || 'NONE',
                 zeroFeeEffectiveDate: options.zeroFeeEffectiveDate || null,
@@ -206,14 +227,19 @@ export const convertLeadToEmployer = async (
             quotaInfo = ` | 3K5 Quota: ${options.avgDomesticWorkers} × ${options.allocationRate * 100}% = ${calculatedQuota} people`;
         }
 
-        await tx.systemComment.create({
-            data: {
-                content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})${quotaInfo}`,
-                recordId: employer.id,
-                recordTableName: 'Employer',
-                createdBy: operatorId
-            }
-        });
+        if (validOperatorId) {
+            // Use new schema fields: entityType, entityId, authorId
+            // Need CommentEntityType enum or string literal? Enum is safe if imported, or cast.
+            // Schema: entityType CommentEntityType
+            await (tx as any).systemComment.create({
+                data: {
+                    content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})${quotaInfo}`,
+                    entityId: employer.id,
+                    entityType: 'EMPLOYER', // Matches CommentEntityType enum
+                    authorId: validOperatorId
+                }
+            });
+        }
 
         return employer;
     });

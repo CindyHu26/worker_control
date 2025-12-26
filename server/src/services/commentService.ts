@@ -5,7 +5,7 @@
 
 import prisma from '../prisma';
 
-// Define types locally until Prisma client is regenerated
+// Local type definition until Prisma client exports it
 export type CommentEntityType = 'WORKER' | 'EMPLOYER' | 'DEPLOYMENT' | 'JOB_ORDER' | 'LEAD';
 
 export interface CreateCommentInput {
@@ -79,7 +79,7 @@ export async function createComment(input: CreateCommentInput): Promise<CommentW
         },
     });
 
-    return comment;
+    return comment as any;
 }
 
 /**

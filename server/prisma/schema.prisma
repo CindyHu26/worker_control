@@ -856,6 +856,10 @@ model Lead {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   
+  // Soft Delete
+  isDeleted             Boolean   @default(false) @map("is_deleted")
+  deletedAt             DateTime? @map("deleted_at")
+
   @@index([status])
   @@index([assignedTo])
   @@index([industry])
@@ -1820,38 +1824,7 @@ model InterviewCandidate {
   @@map("interview_candidates")
 }
 
-model SystemComment {
-  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  recordId        String @map("record_id") @db.Uuid
-  recordTableName String @map("record_table_name") @db.VarChar(50)
-  content         String @db.Text
 
-  createdBy String       @map("created_by") @db.Uuid
-  author    InternalUser @relation("CommentAuthor", fields: [createdBy], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-
-  mentions CommentMention[]
-
-  @@index([recordTableName, recordId])
-  @@map("system_comments")
-}
-
-model CommentMention {
-  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  commentId       String  @map("comment_id") @db.Uuid
-  mentionedUserId String  @map("mentioned_user_id") @db.Uuid
-  isRead          Boolean @default(false) @map("is_read")
-
-  comment SystemComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    InternalUser  @relation("MentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  @@unique([commentId, mentionedUserId])
-  @@map("comment_mentions")
-}
 
 model Attachment {
   id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

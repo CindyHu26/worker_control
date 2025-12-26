@@ -23,6 +23,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Briefcase, User, Phone, Calendar, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 
 // --- Types ---
 type Lead = {
@@ -166,7 +167,11 @@ export default function CRMBoard() {
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiUrl}/leads`, { credentials: 'include' });
+            const token = Cookies.get('token');
+            const res = await fetch(`${apiUrl}/leads`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include'
+            });
             if (res.ok) {
                 const data: Lead[] = await res.json();
 
@@ -228,9 +233,13 @@ export default function CRMBoard() {
 
         // API Call
         try {
+            const token = Cookies.get('token');
             await fetch(`${apiUrl}/leads/${cardId}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 credentials: 'include',
                 body: JSON.stringify({ status: targetStage })
             });

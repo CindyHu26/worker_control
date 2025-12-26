@@ -15,7 +15,7 @@ const getRate = (leads: any[], totalLeads: number) => {
 router.get('/', async (req, res) => {
     try {
         const { status, assignedTo } = req.query;
-        const where: any = {};
+        const where: any = { isDeleted: false };
         if (status) where.status = String(status);
         if (assignedTo) where.assignedTo = String(assignedTo);
 
@@ -35,6 +35,44 @@ router.get('/', async (req, res) => {
         res.json(leads);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch leads' });
+    }
+});
+
+// GET /api/leads/check-tax-id - Check if tax ID already exists
+router.get('/check-tax-id', async (req, res) => {
+    try {
+        const { taxId } = req.query;
+
+        if (!taxId) {
+            return res.status(400).json({ error: '請提供統一編號' });
+        }
+
+        // Check in leads
+        const existingLead = await prisma.lead.findFirst({
+            where: { taxId: String(taxId) }
+        });
+
+        if (existingLead) {
+            return res.status(409).json({
+                error: `統編 (${taxId}) 已存在於系統中，由業務 ${existingLead.contactPerson || 'Unknown'} 跟進中。`
+            });
+        }
+
+        // Check in employers
+        const existingEmployer = await prisma.employer.findUnique({
+            where: { taxId: String(taxId) }
+        });
+
+        if (existingEmployer) {
+            return res.status(409).json({
+                error: `此統編 (${taxId}) 已是正式客戶 (${existingEmployer.companyName})，請直接至客戶管理新增需求。`
+            });
+        }
+
+        res.json({ available: true });
+    } catch (error) {
+        console.error('Tax ID check error:', error);
+        res.status(500).json({ error: '統編檢查失敗' });
     }
 });
 
@@ -64,6 +102,7 @@ router.post('/', async (req, res) => {
             companyName,
             industry,
             taxId,
+            mobile, // Destructure to exclude from rest as it's not in schema yet
             ...rest
         } = req.body;
 
@@ -108,7 +147,7 @@ router.post('/', async (req, res) => {
                 ...rest,
                 companyName,
                 industry,
-                taxId,
+                taxId: taxId || null, // Ensure empty string becomes null to avoid unique constraint violation
                 estimatedWorkerCount: estimatedWorkerCount ? parseInt(String(estimatedWorkerCount), 10) : null,
                 status: 'NEW'
             }
@@ -117,6 +156,23 @@ router.post('/', async (req, res) => {
     } catch (error: any) {
         console.error('Lead Create Error:', error);
         res.status(500).json({ error: '建立潛在客戶失敗，請檢查輸入資料' });
+    }
+});
+
+// DELETE /api/leads/:id (Soft Delete)
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.lead.update({
+            where: { id },
+            data: {
+                isDeleted: true,
+                deletedAt: new Date()
+            }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete lead' });
     }
 });
 

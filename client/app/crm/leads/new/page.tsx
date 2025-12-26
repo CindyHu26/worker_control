@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 import {
     Briefcase,
     User,
@@ -55,9 +56,13 @@ export default function CreateLeadPage() {
                 estimatedWorkerCount: Number(data.estimatedWorkerCount) || 0 // Keep this if estimatedWorkerCount is still part of the schema
             };
 
+            const token = Cookies.get('token');
             const res = await fetch(`${apiUrl}/leads`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 credentials: 'include', // Important for cookies/auth
                 body: JSON.stringify(payload)
             });

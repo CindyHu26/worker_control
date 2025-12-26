@@ -37,12 +37,7 @@ router.get('/', async (req, res) => {
 
     const records = await prisma.industryRecognition.findMany({
       where,
-      orderBy: { issueDate: 'desc' },
-      include: {
-        recruitmentLetters: {
-          select: { id: true, letterNumber: true }
-        }
-      }
+      orderBy: { issueDate: 'desc' }
     });
     res.json(records);
   } catch (error) {

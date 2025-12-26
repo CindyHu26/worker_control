@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +54,12 @@ export default function LeadsPage() {
                 params.append('status', statusFilter);
             }
 
-            const res = await fetch(`/api/leads?${params.toString()}`);
+            const token = Cookies.get('token');
+            const res = await fetch(`/api/leads?${params.toString()}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             if (!res.ok) throw new Error('Failed to fetch leads');
 
             const data = await res.json();
@@ -67,9 +73,13 @@ export default function LeadsPage() {
     };
 
     const handleCreateLead = async (formData: LeadFormData) => {
+        const token = Cookies.get('token');
         const res = await fetch('/api/leads', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify(formData)
         });
 

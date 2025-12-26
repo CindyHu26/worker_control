@@ -19,6 +19,7 @@ const categories = [
         bg: 'bg-blue-50',
         text: 'text-blue-800',
         items: [
+            { title: '業務開發', desc: '潛在客戶與商談追蹤 (CRM)', icon: Briefcase, href: '/crm/board' },
             { title: '候選人管理', desc: '履歷匯入與人才庫', icon: UserPlus, href: '/candidates' },
             { title: '招募訂單管理', desc: '職缺媒合與面試追蹤', icon: Briefcase, href: '/job-orders' },
             { title: '移工管理', desc: '基本資料、證件與合約', icon: Users, href: '/workers' },

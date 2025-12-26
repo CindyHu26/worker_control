@@ -14,11 +14,15 @@ import {
     Grid,
     Megaphone,
     Building2,
-    AlertTriangle
+    AlertTriangle,
+    LogOut,
+    LogIn
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Sidebar() {
+    const { user, logout } = useAuth();
     const [collapsed, setCollapsed] = useState(false);
     const [hoveredItem, setHoveredItem] = useState<{ label: string; top: number } | null>(null);
     const pathname = usePathname();
@@ -30,7 +34,6 @@ export default function Sidebar() {
 
     const navItems = [
         { href: '/', label: '儀表板', subLabel: 'Dashboard', icon: LayoutDashboard },
-        { href: '/crm/board', label: '業務開發', subLabel: 'CRM', icon: Briefcase },
         { href: '/portal', label: '功能導覽', subLabel: 'Portal', icon: Grid },
         { href: '/alerts', label: '異常監控', subLabel: 'Alerts', icon: AlertTriangle },
         { href: '/health', label: '體檢管理', subLabel: 'Health Checks', icon: FileText },
@@ -145,19 +148,43 @@ export default function Sidebar() {
             {/* User Profile / Footer */}
             <div className="p-4 border-t border-slate-800/50 bg-slate-950/30">
                 <div className={`flex items-center justify-between ${collapsed ? 'flex-col gap-4' : ''}`}>
-                    <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center ring-2 ring-slate-800">
-                            <span className="text-xs font-bold text-slate-300">AD</span>
+                    <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''} overflow-hidden`}>
+                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center ring-2 ring-slate-800 flex-shrink-0">
+                            <span className="text-xs font-bold text-slate-300">
+                                {user?.username?.substring(0, 2).toUpperCase() || 'GU'}
+                            </span>
                         </div>
                         {!collapsed && (
                             <div className="overflow-hidden">
-                                <p className="text-sm font-medium text-white truncate">Admin User</p>
-                                <p className="text-xs text-slate-500 truncate">admin@tms.com</p>
+                                <p className="text-sm font-medium text-white truncate">{user?.username || 'Guest'}</p>
+                                <p className="text-xs text-slate-500 truncate">{user?.role || 'Visitor'}</p>
                             </div>
                         )}
                     </div>
-                    {/* Notifications */}
-                    <NotificationBell />
+
+                    <div className={`flex items-center gap-1 ${collapsed ? 'flex-col' : ''}`}>
+                        {/* Notifications */}
+                        <NotificationBell />
+
+                        {/* Auth Action */}
+                        {user ? (
+                            <button
+                                onClick={logout}
+                                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
+                                title="登出"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        ) : (
+                            <Link
+                                href="/login"
+                                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
+                                title="登入"
+                            >
+                                <LogIn size={18} />
+                            </Link>
+                        )}
+                    </div>
                 </div>
             </div>
 

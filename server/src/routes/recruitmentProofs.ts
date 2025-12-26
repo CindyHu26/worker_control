@@ -34,15 +34,7 @@ router.get('/', async (req, res) => {
 
         const records = await prisma.recruitmentProof.findMany({
             where,
-            orderBy: { issueDate: 'desc' },
-            include: {
-                employer: {
-                    select: { companyName: true }
-                },
-                recruitmentLetters: {
-                    select: { id: true, letterNumber: true }
-                }
-            }
+            orderBy: { issueDate: 'desc' }
         });
         res.json(records);
     } catch (error) {

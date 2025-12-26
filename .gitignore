@@ -90,5 +90,6 @@ server/storage/*
 !server/storage/uploads/
 server/storage/uploads/*
 !server/storage/uploads/.gitkeep
-public_data/
+public/
 docs/
+storage/

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Cookies from 'js-cookie';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,9 +55,19 @@ export default function LeadForm({ open, onClose, onSubmit, initialData, mode = 
             return;
         }
 
+        // Skip check in edit mode if taxId hasn't changed (optional optimization, but simplified here)
+        if (mode === 'edit' && taxId === initialData?.taxId) {
+            return;
+        }
+
         setTaxIdChecking(true);
         try {
-            const res = await fetch(`/api/leads/check-tax-id?taxId=${taxId}`);
+            const token = Cookies.get('token');
+            const res = await fetch(`/api/leads/check-tax-id?taxId=${taxId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const data = await res.json();
 
             if (res.status === 409) {
@@ -77,9 +88,7 @@ export default function LeadForm({ open, onClose, onSubmit, initialData, mode = 
 
         // Debounce the check
         const timeoutId = setTimeout(() => {
-            if (mode === 'create') {
-                checkTaxId(value);
-            }
+            checkTaxId(value);
         }, 500);
 
         return () => clearTimeout(timeoutId);
@@ -104,9 +113,10 @@ export default function LeadForm({ open, onClose, onSubmit, initialData, mode = 
         try {
             await onSubmit(formData);
             onClose();
-            setFormData({ companyName: '' });
+            // Don't reset form data here for edit mode, but for create it's fine.
+            // setFormData({ companyName: '' }); 
         } catch (err: any) {
-            setError(err.message || '建立潛在客戶失敗');
+            setError(err.message || '操作失敗');
         } finally {
             setLoading(false);
         }

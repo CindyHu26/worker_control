@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Phone, Mail, MapPin, User, ArrowLeft, Send, CheckCircle, XCircle, Calculator, AlertTriangle, Building, FileText, BadgeInfo } from 'lucide-react';
+import Cookies from 'js-cookie';
+import { Phone, Mail, MapPin, User, ArrowLeft, Send, CheckCircle, XCircle, Calculator, AlertTriangle, Building, FileText, BadgeInfo, Pencil, Trash2 } from 'lucide-react';
+import LeadForm, { LeadFormData } from '@/components/crm/LeadForm';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -60,6 +62,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     const [nextFollowUp, setNextFollowUp] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Edit Modal State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
     // Conversion Modal State
     const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
     const [convertData, setConvertData] = useState({
@@ -103,7 +108,10 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
     const fetchLead = async () => {
         try {
-            const res = await fetch(`${apiUrl}/leads/${id}`);
+            const token = Cookies.get('token');
+            const res = await fetch(`${apiUrl}/leads/${id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 const data = await res.json();
                 setLead(data);
@@ -132,9 +140,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            const token = Cookies.get('token');
             const res = await fetch(`${apiUrl}/leads/${id}/interactions`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     type: newType,
                     summary: newSummary,
@@ -166,7 +178,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             return;
         }
 
-        // Manufacturing-specific validation
+        // Manufacturing-specific validation (Removed)
+        /*
         if (convertData.industryCode === '01') {
             if (!convertData.factoryAddress) {
                 alert("Factory address is required for manufacturing employers.");
@@ -177,11 +190,16 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 return;
             }
         }
+        */
 
         try {
+            const token = Cookies.get('token');
             const res = await fetch(`${apiUrl}/leads/${id}/convert`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     operatorId: 'CURRENT_USER_ID',
                     taxId: convertData.taxId,
@@ -213,14 +231,21 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         if (!reason) return;
 
         try {
+            const token = Cookies.get('token');
             await fetch(`${apiUrl}/leads/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ status: 'LOST' })
             });
             await fetch(`${apiUrl}/leads/${id}/interactions`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     type: 'System',
                     summary: 'Marked as Lost',
@@ -230,6 +255,66 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             fetchLead();
         } catch (error) {
             console.error(error);
+        }
+    };
+
+    const handleUpdateLead = async (formData: LeadFormData) => {
+        try {
+            const { mobile, ...rest } = formData as any; // sanitize mobile for now if backend crashes, but we fixed leads.ts to ignore it, so sending it is fine if backend handles it or ignores it.
+            // Actually, we fixed leads.ts CREATE, but for UPDATE (PATCH) we also need to be careful?
+            // PATCH /api/leads/:id uses req.body directly. leads.ts:166
+            // const lead = await prisma.lead.update({ where: { id }, data });
+            // This WILL crash if mobile is in data and not in schema.
+            // So we MUST sanitize here or in backend PATCH too.
+            // I'll sanitize here for safety.
+
+            const payload = { ...rest };
+            // If mobile is not in rest (it was extracted), we are good.
+            // But wait, if we want to SAVE mobile, and backend doesn't support it, we lose it.
+            // User knows this.
+
+            const token = Cookies.get('token');
+            const res = await fetch(`${apiUrl}/leads/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error('Update failed');
+
+            fetchLead();
+            setIsEditModalOpen(false);
+            // alert('更新成功');
+        } catch (error) {
+            console.error(error);
+            alert('更新失敗');
+        }
+    };
+
+    const handleDeleteLead = async () => {
+        if (!confirm('確定要刪除此潛在客戶嗎？(此操作將無法復原，但資料會保留在資料庫中)')) return;
+
+        try {
+            const token = Cookies.get('token');
+            const res = await fetch(`${apiUrl}/leads/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (res.ok) {
+                alert('刪除成功');
+                router.push('/crm/board');
+            } else {
+                alert('刪除失敗');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('刪除發生錯誤');
         }
     };
 
@@ -250,7 +335,15 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                         <ArrowLeft size={20} className="text-slate-600" />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">{lead.companyName || "Unnamed Lead"}</h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-bold text-slate-800">{lead.companyName || "Unnamed Lead"}</h1>
+                            <button onClick={() => setIsEditModalOpen(true)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-blue-600 transition-colors">
+                                <Pencil size={18} />
+                            </button>
+                            <button onClick={handleDeleteLead} className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-600 transition-colors">
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-slate-500 bg-slate-100 px-2 py-0.5 rounded uppercase font-bold">
                                 {lead.status}
@@ -434,10 +527,10 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                     {/* Timeline List */}
                     <div className="space-y-4">
                         <h3 className="font-bold text-slate-500 uppercase text-xs">過去活動紀錄</h3>
-                        {lead.interactions.length === 0 && (
+                        {(!lead.interactions || lead.interactions.length === 0) && (
                             <div className="text-center text-slate-400 py-10">尚無活動紀錄。</div>
                         )}
-                        {lead.interactions.map(interaction => (
+                        {lead.interactions?.map(interaction => (
                             <div key={interaction.id} className="bg-white p-4 rounded-xl border border-slate-200 flex gap-4">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${interaction.type === 'Call' ? 'bg-green-100 text-green-600' :
                                     interaction.type === 'Visit' ? 'bg-purple-100 text-purple-600' :
@@ -462,11 +555,10 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 </div>
             </div>
 
-            {/* Conversion Modal */}
             {isConvertModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
                             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                 <FileText className="text-blue-600" /> 轉為正式客戶
                             </h2>
@@ -474,143 +566,85 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                 <XCircle size={24} />
                             </button>
                         </div>
-                        <form onSubmit={handleConvertSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">公司名稱 (Company Name)</label>
-                                <input
-                                    type="text"
-                                    value={lead.companyName || ''}
-                                    disabled
-                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-slate-500"
-                                />
-                            </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1 required">統一編號 (Tax ID)</label>
-                                <input
-                                    type="text"
-                                    maxLength={8}
-                                    required
-                                    placeholder="例如：12345678"
-                                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={convertData.taxId}
-                                    onChange={e => setConvertData({ ...convertData, taxId: e.target.value.replace(/\D/g, '') })}
-                                />
-                                <p className="text-xs text-slate-500 mt-1">必須為8碼。</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry) *</label>
-                                <select
-                                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={convertData.industryCode}
-                                    onChange={e => setConvertData({ ...convertData, industryCode: e.target.value })}
-                                    required
-                                >
-                                    <option value="01">製造業</option>
-                                    <option value="02">營造業</option>
-                                    <option value="03">海洋漁撈</option>
-                                    <option value="04">農業</option>
-                                    <option value="05">屠宰業</option>
-                                    <option value="06">家庭看護</option>
-                                    <option value="07">家庭幫傭</option>
-                                    <option value="08">機構看護</option>
-                                    <option value="09">外展農務</option>
-                                    <option value="10">旅宿業</option>
-                                    <option value="99">其他</option>
-                                </select>
-                                <p className="text-xs text-slate-500 mt-1">選擇雇主所屬產業類別</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">公司登記地址 (Invoice Address) *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="輸入公司登記地址"
-                                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={convertData.invoiceAddress}
-                                    onChange={e => setConvertData({ ...convertData, invoiceAddress: e.target.value })}
-                                />
-                            </div>
-
-                            {convertData.industryCode === '01' && (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">工廠地址 (Factory Address) *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="輸入工廠登記地址"
-                                            className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={convertData.factoryAddress}
-                                            onChange={e => setConvertData({ ...convertData, factoryAddress: e.target.value })}
-                                        />
-                                        <p className="text-xs text-slate-500 mt-1">需用於申請宿舍</p>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">勞保平均人數 (Avg Labor Count) *</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="1"
-                                            placeholder="e.g. 125"
-                                            className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={convertData.avgDomesticWorkers || simDomesticWorkers}
-                                            onChange={e => setConvertData({ ...convertData, avgDomesticWorkers: Number(e.target.value) })}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">核配比率 (Allocation Rate) *</label>
-                                        <select
-                                            className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={convertData.allocationRate}
-                                            onChange={e => setConvertData({ ...convertData, allocationRate: Number(e.target.value) })}
-                                            required
-                                        >
-                                            <option value={0.10}>10% (C級)</option>
-                                            <option value={0.15}>15% (B級)</option>
-                                            <option value={0.20}>20% (A級)</option>
-                                            <option value={0.25}>25% (A+級)</option>
-                                            <option value={0.35}>35% (最高)</option>
-                                        </select>
-                                    </div>
-                                </>
-                            )}
-
-                            {convertData.industryCode === '01' && convertData.avgDomesticWorkers > 0 && convertData.allocationRate > 0 && (
-                                <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 flex items-start gap-2">
-                                    <Calculator size={16} className="mt-0.5" />
-                                    <div>
-                                        <strong>3K5 配額試算：</strong>
-                                        <div className="text-xs opacity-80">
-                                            {convertData.avgDomesticWorkers} × {convertData.allocationRate * 100}% = <b>{calculate3K5Quota(convertData.avgDomesticWorkers, convertData.allocationRate)}</b> 人
-                                        </div>
-                                    </div>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <form id="convert-form" onSubmit={handleConvertSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">公司名稱 (Company Name)</label>
+                                    <input
+                                        type="text"
+                                        value={lead.companyName || ''}
+                                        disabled
+                                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-slate-500"
+                                    />
                                 </div>
-                            )}
 
-                            <div className="pt-4 flex justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsConvertModalOpen(false)}
-                                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-                                >
-                                    取消 (Cancel)
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                                >
-                                    確認轉換 (Confirm)
-                                </button>
-                            </div>
-                        </form>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1 required">統一編號 (Tax ID)</label>
+                                    <input
+                                        type="text"
+                                        maxLength={8}
+                                        required
+                                        placeholder="例如：12345678"
+                                        className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={convertData.taxId}
+                                        onChange={e => setConvertData({ ...convertData, taxId: e.target.value.replace(/\D/g, '') })}
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">必須為8碼。</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry) *</label>
+                                    <select
+                                        className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={convertData.industryCode}
+                                        onChange={e => setConvertData({ ...convertData, industryCode: e.target.value })}
+                                        required
+                                    >
+                                        <option value="01">製造業</option>
+                                        <option value="02">營造業</option>
+                                        <option value="03">海洋漁撈</option>
+                                        <option value="04">農業</option>
+                                        <option value="05">屠宰業</option>
+                                        <option value="06">家庭看護</option>
+                                        <option value="07">家庭幫傭</option>
+                                        <option value="08">機構看護</option>
+                                        <option value="09">外展農務</option>
+                                        <option value="10">旅宿業</option>
+                                        <option value="99">其他</option>
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">選擇雇主所屬產業類別</p>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="p-4 border-t border-slate-100 flex justify-end gap-3 shrink-0 bg-slate-50 rounded-b-xl">
+                            <button
+                                type="button"
+                                onClick={() => setIsConvertModalOpen(false)}
+                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                            >
+                                取消 (Cancel)
+                            </button>
+                            <button
+                                type="submit"
+                                form="convert-form"
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                            >
+                                確認轉換 (Confirm)
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
+
+            <LeadForm
+                open={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onSubmit={handleUpdateLead}
+                initialData={lead as any || {}}
+                mode="edit"
+            />
         </div>
     );
 }

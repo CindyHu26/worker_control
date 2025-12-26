@@ -177,7 +177,7 @@ export default function PrePermitManager({ employerId }: PrePermitManagerProps) 
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {recognitions?.map((r: any) => (
+                            {Array.isArray(recognitions) && recognitions.map((r: any) => (
                                 <TableRow key={r.id}>
                                     <TableCell className="font-medium">{r.bureauRefNumber}</TableCell>
                                     <TableCell>{r.tier}</TableCell>
@@ -261,7 +261,7 @@ export default function PrePermitManager({ employerId }: PrePermitManagerProps) 
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {proofs?.map((p: any) => (
+                            {Array.isArray(proofs) && proofs.map((p: any) => (
                                 <TableRow key={p.id}>
                                     <TableCell className="font-medium">{p.receiptNumber}</TableCell>
                                     <TableCell>{p.jobCenter}</TableCell>
