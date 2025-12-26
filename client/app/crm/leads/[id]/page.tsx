@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
+import { apiRequest } from '@/lib/api';
 import { Phone, Mail, MapPin, User, ArrowLeft, Send, CheckCircle, XCircle, Calculator, AlertTriangle, Building, FileText, BadgeInfo, Pencil, Trash2 } from 'lucide-react';
 import LeadForm, { LeadFormData } from '@/components/crm/LeadForm';
 
@@ -108,27 +108,19 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
     const fetchLead = async () => {
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`${apiUrl}/leads/${id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setLead(data);
+            const data = await apiRequest(`${apiUrl}/leads/${id}`);
+            setLead(data);
 
-                // Pre-fill conversion data with lead information
-                setConvertData(prev => ({
-                    ...prev,
-                    taxId: data.taxId || '',
-                    industryCode: mapCategoryToIndustryCode(data.industry),
-                    invoiceAddress: data.address || '',
-                    factoryAddress: data.address || '',
-                    avgDomesticWorkers: simDomesticWorkers,
-                    allocationRate: simAllocationRate
-                }));
-            } else {
-                alert('Failed to load lead');
-            }
+            // Pre-fill conversion data with lead information
+            setConvertData(prev => ({
+                ...prev,
+                taxId: data.taxId || '',
+                industryCode: mapCategoryToIndustryCode(data.industry),
+                invoiceAddress: data.address || '',
+                factoryAddress: data.address || '',
+                avgDomesticWorkers: simDomesticWorkers,
+                allocationRate: simAllocationRate
+            }));
         } catch (error) {
             console.error(error);
         } finally {
@@ -140,13 +132,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`${apiUrl}/leads/${id}/interactions`, {
+            await apiRequest(`${apiUrl}/leads/${id}/interactions`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     type: newType,
                     summary: newSummary,
@@ -155,13 +142,11 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 })
             });
 
-            if (res.ok) {
-                // Refresh
-                setNewSummary('');
-                setNewNotes('');
-                setNextFollowUp('');
-                fetchLead();
-            }
+            // Refresh
+            setNewSummary('');
+            setNewNotes('');
+            setNextFollowUp('');
+            fetchLead();
         } catch (error) {
             alert('Error adding interaction');
         } finally {
@@ -193,13 +178,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         */
 
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`${apiUrl}/leads/${id}/convert`, {
+            const data = await apiRequest(`${apiUrl}/leads/${id}/convert`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     operatorId: 'CURRENT_USER_ID',
                     taxId: convertData.taxId,
@@ -211,18 +191,12 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 })
             });
 
-            if (res.ok) {
-                const data = await res.json();
-                // Redirect to edit page for data completion as suggested
-                router.push(`/employers/${data.employer.id}/edit`);
-                // Provide guidance (using alert for now since toast might not be imported, I will check imports next)
-                alert("轉正成功！目前資料僅包含基本資訊，請繼續完善雇主詳細資料（如：負責人、授權書、聯絡人等），以利後續公文作業。");
-            } else {
-                const err = await res.json();
-                alert('Conversion failed: ' + err.error);
-            }
-        } catch (error) {
-            alert('Conversion error');
+            // Redirect to edit page for data completion as suggested
+            router.push(`/employers/${data.employer.id}/edit`);
+            // Provide guidance
+            alert("轉正成功！目前資料僅包含基本資訊，請繼續完善雇主詳細資料（如：負責人、授權書、聯絡人等），以利後續公文作業。");
+        } catch (error: any) {
+            alert('Conversion failed: ' + (error.message || 'Error'));
         }
     };
 
@@ -231,21 +205,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         if (!reason) return;
 
         try {
-            const token = Cookies.get('token');
-            await fetch(`${apiUrl}/leads/${id}`, {
+            await apiRequest(`${apiUrl}/leads/${id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({ status: 'LOST' })
             });
-            await fetch(`${apiUrl}/leads/${id}/interactions`, {
+
+            await apiRequest(`${apiUrl}/leads/${id}/interactions`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     type: 'System',
                     summary: 'Marked as Lost',
@@ -273,17 +239,10 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             // But wait, if we want to SAVE mobile, and backend doesn't support it, we lose it.
             // User knows this.
 
-            const token = Cookies.get('token');
-            const res = await fetch(`${apiUrl}/leads/${id}`, {
+            await apiRequest(`${apiUrl}/leads/${id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify(payload)
             });
-
-            if (!res.ok) throw new Error('Update failed');
 
             fetchLead();
             setIsEditModalOpen(false);
@@ -298,20 +257,12 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         if (!confirm('確定要刪除此潛在客戶嗎？(此操作將無法復原，但資料會保留在資料庫中)')) return;
 
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`${apiUrl}/leads/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            await apiRequest(`${apiUrl}/leads/${id}`, {
+                method: 'DELETE'
             });
 
-            if (res.ok) {
-                alert('刪除成功');
-                router.push('/crm/board');
-            } else {
-                alert('刪除失敗');
-            }
+            alert('刪除成功');
+            router.push('/crm/board');
         } catch (error) {
             console.error(error);
             alert('刪除發生錯誤');

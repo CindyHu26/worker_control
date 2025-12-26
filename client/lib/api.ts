@@ -23,8 +23,8 @@ export async function apiFetch(url: string, options: FetchOptions = {}): Promise
     // Use relative path to leverage Next.js proxy (avoids CORS and port issues)
     const fullUrl = url;
 
-    // Get token from cookies
-    const token = Cookies.get('token');
+    // Get token from cookies or localStorage (fallback)
+    const token = Cookies.get('token') || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
 
     // Build headers - use Record type to allow string indexing
     const requestHeaders: Record<string, string> = {
@@ -54,6 +54,13 @@ export async function apiRequest<T = any>(url: string, options: FetchOptions = {
     const response = await apiFetch(url, options);
 
     if (!response.ok) {
+        if (response.status === 401) {
+            Cookies.remove('token');
+            Cookies.remove('user');
+            if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+            }
+        }
         // Try to parse error message from JSON
         let errorMessage = `Request failed with status ${response.status}`;
         try {

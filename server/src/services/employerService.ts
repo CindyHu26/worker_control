@@ -240,7 +240,7 @@ export async function searchEmployers(params: EmployerSearchParams): Promise<{
     const { q, page, limit, type, category } = validated;
 
     const skip = (page - 1) * limit;
-    const whereClause: any = {};
+    const whereClause: any = { isDeleted: false };
 
     // Category filter
     if (category && category !== 'ALL') {
@@ -361,9 +361,13 @@ export async function deleteEmployer(id: string): Promise<void> {
         );
     }
 
-    // Delete employer (cascade will handle related records)
-    await prisma.employer.delete({
-        where: { id }
+    // Soft Delete employer
+    await prisma.employer.update({
+        where: { id },
+        data: {
+            isDeleted: true,
+            deletedAt: new Date()
+        }
     });
 }
 
@@ -746,7 +750,7 @@ export const getEmployerSummary = async (id: string) => {
     }) as any;
 
 
-    if (!employer) return null;
+    if (!employer || employer.isDeleted) return null;
 
     // Derive Assignee (Sales Agent preferred)
     const assignments = employer.serviceAssignments || [];

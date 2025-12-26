@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiRequest } from '@/lib/api';
 import { EmployerCategoryForm } from "@/components/employer-categories/EmployerCategoryForm";
 import { useParams } from 'next/navigation';
 
@@ -12,13 +13,7 @@ export default function EditEmployerCategoryPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch(`/api/employer-categories/${id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    }
-                });
-                if (!res.ok) throw new Error('Failed to fetch');
-                const json = await res.json();
+                const json = await apiRequest(`/api/employer-categories/${id}`);
                 setData(json);
             } catch (error) {
                 console.error(error);

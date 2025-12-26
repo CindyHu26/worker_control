@@ -23,7 +23,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Briefcase, User, Phone, Calendar, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
+import { apiRequest } from '@/lib/api';
 
 // --- Types ---
 type Lead = {
@@ -167,36 +167,30 @@ export default function CRMBoard() {
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`${apiUrl}/leads`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                credentials: 'include'
+            const data: Lead[] = await apiRequest('/api/leads');
+
+            // Group by status
+            const newBoard: BoardData = {
+                NEW: [],
+                CONTACTED: [],
+                MEETING: [],
+                NEGOTIATING: [],
+                WON: [],
+                LOST: []
+            };
+
+            data.forEach(lead => {
+                if (newBoard[lead.status]) {
+                    newBoard[lead.status].push(lead);
+                } else {
+                    // Fallback/Unknown
+                    if (!newBoard['NEW']) newBoard['NEW'] = [];
+                    newBoard['NEW'].push(lead);
+                }
             });
-            if (res.ok) {
-                const data: Lead[] = await res.json();
 
-                // Group by status
-                const newBoard: BoardData = {
-                    NEW: [],
-                    CONTACTED: [],
-                    MEETING: [],
-                    NEGOTIATING: [],
-                    WON: [],
-                    LOST: []
-                };
+            setBoard(newBoard);
 
-                data.forEach(lead => {
-                    if (newBoard[lead.status]) {
-                        newBoard[lead.status].push(lead);
-                    } else {
-                        // Fallback/Unknown
-                        if (!newBoard['NEW']) newBoard['NEW'] = [];
-                        newBoard['NEW'].push(lead);
-                    }
-                });
-
-                setBoard(newBoard);
-            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -233,14 +227,8 @@ export default function CRMBoard() {
 
         // API Call
         try {
-            const token = Cookies.get('token');
-            await fetch(`${apiUrl}/leads/${cardId}`, {
+            await apiRequest(`/api/leads/${cardId}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                credentials: 'include',
                 body: JSON.stringify({ status: targetStage })
             });
         } catch (error) {

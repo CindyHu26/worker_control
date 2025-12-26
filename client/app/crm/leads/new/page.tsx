@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
+import { apiRequest } from '@/lib/api';
 import {
     Briefcase,
     User,
@@ -53,33 +53,20 @@ export default function CreateLeadPage() {
             // Ensure numbers are numbers
             const payload = {
                 ...data,
-                estimatedWorkerCount: Number(data.estimatedWorkerCount) || 0 // Keep this if estimatedWorkerCount is still part of the schema
+                estimatedWorkerCount: Number(data.estimatedWorkerCount) || 0
             };
 
-            const token = Cookies.get('token');
-            const res = await fetch(`${apiUrl}/leads`, {
+            await apiRequest('/api/leads', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                credentials: 'include', // Important for cookies/auth
                 body: JSON.stringify(payload)
             });
 
-            if (res.ok) {
-                // Success: Redirect to board
-                router.push('/crm/board');
-                router.refresh(); // [建議加入] 強制 Next.js 重新整理資料，避免因為快取導致看板沒更新
-            } else {
-                const err = await res.json();
-                console.error('Server Error Response:', err); // 開發者工具 Console 看詳細
-                alert(`建立失敗: ${err.error || '伺服器未回傳具體錯誤'}`);
-            }
-        } catch (error) {
-            console.error('Network/Client Error:', error);
-            // 如果是 CORS 問題，這裡會報錯
-            alert('網路連線錯誤 (請檢查後端是否啟動，或 CORS 設定)');
+            // Success: Redirect to board
+            router.push('/crm/board');
+            router.refresh();
+        } catch (error: any) {
+            console.error('Error:', error);
+            alert(`建立失敗: ${error.message || '伺服器未回傳具體錯誤'}`);
         } finally {
             setIsSubmitting(false);
         }

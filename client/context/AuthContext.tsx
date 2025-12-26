@@ -38,6 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userData = Cookies.get('user');
 
             if (token && userData) {
+                // Ensure localStorage is in sync with Cookie (primary source)
+                const localToken = localStorage.getItem('token');
+                if (token !== localToken) {
+                    localStorage.setItem('token', token);
+                }
                 setUser(JSON.parse(userData));
             } else {
                 // Redirect to login if not on public page
@@ -54,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const login = (token: string, user: User) => {
         Cookies.set('token', token, { expires: 1 }); // 1 day
         Cookies.set('user', JSON.stringify(user), { expires: 1 });
+        localStorage.setItem('token', token); // Sync to localStorage
         setUser(user);
         router.push('/');
     };
@@ -61,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = () => {
         Cookies.remove('token');
         Cookies.remove('user');
+        localStorage.removeItem('token'); // Sync to localStorage
         setUser(null);
         router.push('/login');
     };

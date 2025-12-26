@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import Cookies from 'js-cookie';
+import { apiRequest } from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -65,12 +65,7 @@ export default function RecruitmentLettersPage() {
 
     const fetchLetters = async () => {
         try {
-            const token = Cookies.get('token');
-            const res = await fetch('/api/recruitment/letters', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            }); // Fetches all
-            if (!res.ok) throw new Error('Failed to fetch');
-            const data = await res.json();
+            const data = await apiRequest('/api/recruitment/letters');
             setLetters(data);
         } catch (error) {
             console.error(error);
@@ -93,25 +88,14 @@ export default function RecruitmentLettersPage() {
         if (!selectedLetter) return;
 
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`/api/recruitment/letters/${selectedLetter.id}/permits`, {
+            await apiRequest(`/api/recruitment/letters/${selectedLetter.id}/permits`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     ...data,
                     workerCount: Number(data.workerCount), // Ensure number
                     feeAmount: data.feeAmount ? Number(data.feeAmount) : 0
                 })
             });
-
-            if (!res.ok) {
-                const err = await res.json();
-                alert(`Error: ${err.error}`);
-                return;
-            }
 
             // Success
             setIsModalOpen(false);

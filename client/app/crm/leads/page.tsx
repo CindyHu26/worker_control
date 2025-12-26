@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
+import { apiRequest } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,15 +54,7 @@ export default function LeadsPage() {
                 params.append('status', statusFilter);
             }
 
-            const token = Cookies.get('token');
-            const res = await fetch(`/api/leads?${params.toString()}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            if (!res.ok) throw new Error('Failed to fetch leads');
-
-            const data = await res.json();
+            const data = await apiRequest(`/api/leads?${params.toString()}`);
             setLeads(data);
         } catch (error) {
             console.error('Error fetching leads:', error);
@@ -73,20 +65,10 @@ export default function LeadsPage() {
     };
 
     const handleCreateLead = async (formData: LeadFormData) => {
-        const token = Cookies.get('token');
-        const res = await fetch('/api/leads', {
+        await apiRequest('/api/leads', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(formData)
         });
-
-        if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || '建立失敗');
-        }
 
         toast.success('潛在客戶建立成功');
         fetchLeads();

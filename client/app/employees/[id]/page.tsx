@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiRequest } from '@/lib/api';
 import { EmployeeForm } from "@/components/employees/EmployeeForm";
 import { useParams } from 'next/navigation';
 
@@ -12,13 +13,7 @@ export default function EditEmployeePage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch(`/api/employees/${id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    }
-                });
-                if (!res.ok) throw new Error('Failed to fetch');
-                const json = await res.json();
+                const json = await apiRequest(`/api/employees/${id}`);
                 setData(json);
             } catch (error) {
                 console.error(error);

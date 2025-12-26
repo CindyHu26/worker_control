@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiRequest } from '@/lib/api';
 import { IndustryForm } from "@/components/industries/IndustryForm";
 import { useParams } from 'next/navigation';
 
@@ -12,13 +13,7 @@ export default function EditIndustryPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch(`/api/industries/${id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    }
-                });
-                if (!res.ok) throw new Error('Failed to fetch');
-                const json = await res.json();
+                const json = await apiRequest(`/api/industries/${id}`);
                 setData(json);
             } catch (error) {
                 console.error(error);
