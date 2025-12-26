@@ -135,7 +135,10 @@ router.use('/overseas-progress', overseasProgressRoutes);
 
 import entryFilingRoutes from './entry-filings';
 import medicalExceptionRoutes from './medical-exceptions';
+import alertRoutes from './alerts';
+
 router.use('/entry-filings', entryFilingRoutes);
 router.use('/medical-exceptions', medicalExceptionRoutes);
+router.use('/alerts', alertRoutes);
 
 export default router;

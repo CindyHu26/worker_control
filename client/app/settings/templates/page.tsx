@@ -1,18 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
-    FileText, Upload, Trash2, Download,
-    Plus, Search, FolderOpen, AlertCircle, CheckCircle, Loader2
+    FileText, Upload, Trash2, Download, Settings2,
+    Plus, Search, FolderOpen, AlertCircle, CheckCircle, Loader2, FileSpreadsheet
 } from 'lucide-react';
 
 const CATEGORIES = [
-    { id: 'entry_packet', label: '新入境套組 (Entry)' },
+    { id: 'entry_notification', label: '入國通報 (Entry Notification)' },
+    { id: 'entry_packet', label: '新入境套組 (Entry Packet)' },
     { id: 'handover_packet', label: '交工本 (Handover)' },
     { id: 'medical_check', label: '定期體檢 (Medical)' },
     { id: 'transfer_exit', label: '轉出/離境 (Transfer)' },
-    { id: 'entry_report', label: '入國通報 (Report)' },
-    { id: 'permit_app', label: '函文申請 (Permit)' }
+    { id: 'permit_app', label: '函文申請 (Permit)' },
+    { id: 'general', label: '其他範本 (General)' }
 ];
 
 export default function TemplateSettingsPage() {
@@ -118,7 +120,7 @@ export default function TemplateSettingsPage() {
             <div className="flex justify-between items-center mb-8 shrink-0">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">文件範本管理 (Templates)</h1>
-                    <p className="text-slate-500 mt-2">管理系統自動生成文件所使用的 Word (.docx) 範本</p>
+                    <p className="text-slate-500 mt-2">管理系統自動生成文件所使用的 Word (.docx) 與 Excel (.xlsx) 範本</p>
                 </div>
                 <button
                     onClick={() => setIsUploadModalOpen(true)}
@@ -137,8 +139,8 @@ export default function TemplateSettingsPage() {
                             key={cat.id}
                             onClick={() => setSelectedCategory(cat.id)}
                             className={`text-left px-4 py-3 rounded-lg flex items-center gap-3 transition ${selectedCategory === cat.id
-                                    ? 'bg-blue-50 text-blue-700 font-bold border border-blue-100'
-                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
+                                ? 'bg-blue-50 text-blue-700 font-bold border border-blue-100'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
                                 }`}
                         >
                             <FolderOpen size={18} className={selectedCategory === cat.id ? 'text-blue-500' : 'text-slate-400'} />
@@ -174,34 +176,53 @@ export default function TemplateSettingsPage() {
                                 <thead className="bg-slate-50 sticky top-0 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     <tr>
                                         <th className="p-4">範本名稱 (Name)</th>
+                                        <th className="p-4 w-24">格式</th>
                                         <th className="p-4">描述 (Description)</th>
-                                        <th className="p-4 w-32">檔案大小</th>
-                                        <th className="p-4 w-24 text-center">Actions</th>
+                                        <th className="p-4 w-32 text-center">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {templates.map(tmpl => (
                                         <tr key={tmpl.id} className="hover:bg-slate-50 transition group">
                                             <td className="p-4">
-                                                <div className="font-bold text-slate-800">{tmpl.name}</div>
-                                                <div className="text-xs text-slate-400 font-mono mt-0.5">{tmpl.filename}</div>
+                                                <div className="flex items-center gap-2">
+                                                    {tmpl.fileFormat === 'xlsx' ? (
+                                                        <FileSpreadsheet size={18} className="text-green-600" />
+                                                    ) : (
+                                                        <FileText size={18} className="text-blue-600" />
+                                                    )}
+                                                    <div>
+                                                        <div className="font-bold text-slate-800">{tmpl.name}</div>
+                                                        <div className="text-xs text-slate-400 font-mono mt-0.5">{tmpl.originalName || tmpl.filename}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${tmpl.fileFormat === 'xlsx' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                    {tmpl.fileFormat || 'docx'}
+                                                </span>
                                             </td>
                                             <td className="p-4 text-sm text-slate-600">
                                                 {tmpl.description || '-'}
                                             </td>
-                                            <td className="p-4 text-sm text-slate-500 font-mono">
-                                                {/* Mock size if not in DB, roughly */}
-                                                KB
-                                            </td>
-                                            <td className="p-4 text-center flex justify-center gap-2 opacity-100">
-                                                {/* <button className="p-2 text-slate-400 hover:text-blue-600 transition"><Download size={18} /></button> */}
-                                                <button
-                                                    onClick={() => handleDelete(tmpl.id)}
-                                                    className="p-2 text-slate-400 hover:text-red-600 transition rounded hover:bg-red-50"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                            <td className="p-4 text-center">
+                                                <div className="flex justify-center gap-1">
+                                                    <button
+                                                        onClick={() => window.open(`/settings/templates/${tmpl.id}/placeholders`, '_blank')}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 transition rounded hover:bg-blue-50"
+                                                        title="編輯欄位對應"
+                                                    >
+                                                        <Settings2 size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(tmpl.id)}
+                                                        className="p-2 text-slate-400 hover:text-red-600 transition rounded hover:bg-red-50"
+                                                        title="刪除"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -222,11 +243,11 @@ export default function TemplateSettingsPage() {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">檔案 (Word .docx)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">檔案 (Word .docx 或 Excel .xlsx)</label>
                                 <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-blue-400 transition cursor-pointer bg-slate-50 relative">
                                     <input
                                         type="file"
-                                        accept=".docx"
+                                        accept=".docx,.xlsx"
                                         onChange={handleFileChange}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                     />

@@ -21,13 +21,20 @@ router.post('/', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-        const { name, category, code } = req.body;
-        const result = await templateService.uploadTemplate(req.file, { name, category, code });
+        const { name, category, description, nationalityId, language, version } = req.body;
+        const result = await templateService.uploadTemplate(req.file, {
+            name,
+            category,
+            description,
+            nationalityId,
+            language,
+            version
+        });
 
         res.status(201).json(result);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        res.status(500).json({ error: 'Upload failed' });
+        res.status(500).json({ error: error.message || 'Upload failed' });
     }
 });
 

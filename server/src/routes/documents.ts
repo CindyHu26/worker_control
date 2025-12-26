@@ -8,6 +8,7 @@ import Docxtemplater from 'docxtemplater';
 import multer from 'multer';
 import { buildWorkerDocumentContext, getTemplateKeys } from '../utils/documentContext';
 import { storageService } from '../services/storageService';
+import { templateService } from '../services/templateService';
 
 const router = Router();
 
@@ -36,19 +37,28 @@ const storage = multer.diskStorage({
     }
 });
 
+// 支援的檔案格式與 MIME Types
+const SUPPORTED_EXTENSIONS = ['.docx', '.xlsx', '.odt', '.pdf'];
+const SUPPORTED_MIMETYPES = [
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',      // xlsx
+    'application/vnd.oasis.opendocument.text',                                // odt
+    'application/pdf'                                                          // pdf
+];
+
 const upload = multer({
     storage,
     fileFilter: (req, file, cb) => {
-        // Only accept .docx files
-        if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-            file.originalname.endsWith('.docx')) {
+        // 接受多種格式
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (SUPPORTED_EXTENSIONS.includes(ext) || SUPPORTED_MIMETYPES.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Only .docx files are allowed'));
+            cb(new Error(`不支援的檔案格式。支援格式: ${SUPPORTED_EXTENSIONS.join(', ')}`));
         }
     },
     limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
+        fileSize: 20 * 1024 * 1024 // 20MB limit
     }
 });
 
@@ -523,4 +533,157 @@ router.post('/batch-download', async (req, res) => {
     }
 });
 
+// ==========================================
+// 新增: Placeholder 管理 API
+// ==========================================
+
+/**
+ * GET /api/documents/templates/:id/placeholders
+ * 取得範本的 Placeholder 資訊
+ */
+router.get('/templates/:id/placeholders', async (req, res) => {
+    try {
+        const placeholders = await templateService.getPlaceholderSchema(req.params.id);
+        res.json(placeholders);
+    } catch (error: any) {
+        console.error('Get Placeholders Error:', error);
+        res.status(500).json({ error: error.message || '取得 Placeholder 失敗' });
+    }
+});
+
+/**
+ * PUT /api/documents/templates/:id/placeholders
+ * 更新範本的 Placeholder 欄位對應
+ */
+router.put('/templates/:id/placeholders', async (req, res) => {
+    try {
+        const { placeholderSchema } = req.body;
+
+        if (!Array.isArray(placeholderSchema)) {
+            return res.status(400).json({ error: 'placeholderSchema 必須為陣列' });
+        }
+
+        const updated = await templateService.updatePlaceholderSchema(req.params.id, placeholderSchema);
+        res.json({
+            message: 'Placeholder 設定已更新',
+            template: { id: updated.id, name: updated.name }
+        });
+    } catch (error: any) {
+        console.error('Update Placeholders Error:', error);
+        res.status(500).json({ error: error.message || '更新 Placeholder 失敗' });
+    }
+});
+
+/**
+ * GET /api/documents/available-fields
+ * 取得系統可用的欄位列表 (供前端 Placeholder 編輯器使用)
+ */
+router.get('/available-fields', (req, res) => {
+    const fields = templateService.getAvailableFields();
+    res.json(fields);
+});
+
+// ==========================================
+// 新增: 入國通報文件包 API
+// ==========================================
+
+/**
+ * POST /api/documents/generate-entry-pack
+ * 一鍵產生入國通報文件包 (ZIP)
+ * Body: { workerId: string, templateIds?: string[] }
+ */
+router.post('/generate-entry-pack', async (req, res) => {
+    try {
+        const { workerId, templateIds } = req.body;
+
+        if (!workerId) {
+            return res.status(400).json({ error: 'workerId 為必填參數' });
+        }
+
+        const results = await templateService.generateEntryPackage(workerId, templateIds);
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: '無法產生任何文件，請確認範本設定' });
+        }
+
+        // 如果只有一個文件，直接回傳；否則打包成 ZIP
+        if (results.length === 1) {
+            const file = results[0];
+            const ext = path.extname(file.filename).toLowerCase();
+            let contentType = 'application/octet-stream';
+            if (ext === '.docx') {
+                contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            } else if (ext === '.xlsx') {
+                contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            }
+
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.filename)}"`);
+            res.setHeader('Content-Type', contentType);
+            return res.send(file.buffer);
+        }
+
+        // 多個文件打包成 ZIP
+        const PizZipLib = require('pizzip');
+        const zip = new PizZipLib();
+
+        for (const file of results) {
+            zip.file(file.filename, file.buffer);
+        }
+
+        const zipBuffer = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+
+        res.setHeader('Content-Disposition', `attachment; filename="Entry_Documents_${Date.now()}.zip"`);
+        res.setHeader('Content-Type', 'application/zip');
+        res.send(zipBuffer);
+
+    } catch (error: any) {
+        console.error('Generate Entry Pack Error:', error);
+        res.status(500).json({ error: error.message || '產生入國通報文件包失敗' });
+    }
+});
+
+/**
+ * GET /api/documents/templates/:id
+ * 取得單一範本詳細資訊
+ */
+router.get('/templates/:id', async (req, res) => {
+    try {
+        const template = await prisma.documentTemplate.findUnique({
+            where: { id: req.params.id },
+            include: {
+                nationality: true,
+                documentRequirement: true
+            }
+        });
+
+        if (!template) {
+            return res.status(404).json({ error: '找不到範本' });
+        }
+
+        res.json(template);
+    } catch (error) {
+        console.error('Get Template Error:', error);
+        res.status(500).json({ error: '取得範本失敗' });
+    }
+});
+
+/**
+ * DELETE /api/documents/templates/:id
+ * 刪除範本 (軟刪除，設為 isActive: false)
+ */
+router.delete('/templates/:id', async (req, res) => {
+    try {
+        const template = await prisma.documentTemplate.update({
+            where: { id: req.params.id },
+            data: { isActive: false }
+        });
+
+        res.json({ message: '範本已刪除', templateId: template.id });
+    } catch (error) {
+        console.error('Delete Template Error:', error);
+        res.status(500).json({ error: '刪除範本失敗' });
+    }
+});
+
 export default router;
+

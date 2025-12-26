@@ -9,7 +9,7 @@ import {
     DollarSign, Receipt, Calculator, ClipboardList,
     Home, Bed, Zap, Settings, Shield,
     ArrowRightLeft, Users2, History, Search, Landmark,
-    Globe2, Megaphone
+    Globe2, Megaphone, AlertTriangle
 } from 'lucide-react';
 
 // Data Definition
@@ -39,7 +39,7 @@ const categories = [
             { title: '簽證申請', desc: '駐台辦事處函文製作', icon: Stamp, href: '/govt/visa' },
             { title: '聘僱許可申請', desc: '勞動部許可函申請', icon: FileCheck, href: '/govt/permit' },
             { title: '離境報備', desc: '解約與離境搭機安排', icon: LogOut, href: '/govt/departure' },
-            { title: '函文範本管理', desc: '系統標準文件維護', icon: Files, href: '/documents/templates' }
+            { title: '函文範本管理', desc: '系統標準文件維護', icon: Files, href: '/settings/templates' }
         ]
     },
     {
@@ -79,6 +79,7 @@ const categories = [
         bg: 'bg-slate-100',
         text: 'text-slate-800',
         items: [
+            { title: '異常儀表板', desc: '跨部門異常監控與追蹤', icon: AlertTriangle, href: '/alerts' },
             { title: '批次轉移', desc: '大量移工轉換雇主', icon: ArrowRightLeft, href: '/system/batch-transfer' },
             { title: '服務團隊', desc: '業務與雙語人員指派', icon: Users2, href: '/system/teams' },
             { title: '操作歷程', desc: '系統存取與修改紀錄', icon: History, href: '/system/audit-logs' },

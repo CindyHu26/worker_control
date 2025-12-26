@@ -178,6 +178,36 @@ enum EmployerType {
   INSTITUTION // 機構 (需統編、機構代碼、床位數) -> 適用養護機構
 }
 
+// ==========================================
+// Phase 7: Collaboration & Alert System Enums
+// ==========================================
+
+enum CommentEntityType {
+  WORKER
+  EMPLOYER
+  DEPLOYMENT
+  JOB_ORDER
+  LEAD
+  
+  @@map("comment_entity_type")
+}
+
+enum AlertSeverity {
+  CRITICAL  // 🔴 3天內逾期
+  WARNING   // 🟡 1個月內到期
+  INFO      // 🔵 待補資料/進度追蹤
+  
+  @@map("alert_severity")
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  
+  @@map("alert_status")
+}
+
 
 // Models
 
@@ -2035,6 +2065,14 @@ model DocumentTemplate {
   name     String @db.VarChar(255) // Specific version name e.g. "Labor Contract (Thai)"
   filePath String @map("file_path") @db.Text
 
+  // 檔案格式資訊 (File Format Info)
+  fileFormat   String? @map("file_format") @db.VarChar(20)   // docx, xlsx, odt, pdf
+  mimeType     String? @map("mime_type") @db.VarChar(100)
+  originalName String? @map("original_name") @db.VarChar(255)
+
+  // Placeholder 設定 (JSON 格式儲存欄位對應)
+  placeholderSchema Json? @map("placeholder_schema")
+
   // Links
   documentRequirementId String?              @map("document_requirement_id") @db.Uuid
   documentRequirement   DocumentRequirement? @relation(fields: [documentRequirementId], references: [id])
@@ -2049,11 +2087,43 @@ model DocumentTemplate {
   description String? @db.Text
   category    String? @db.VarChar(50)
 
+  // Relations
+  generatedDocuments GeneratedDocument[]
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("document_templates")
 }
+
+// 已產生文件追蹤 (Generated Document Tracking)
+model GeneratedDocument {
+  id         String           @id @default(uuid()) @db.Uuid
+  templateId String           @map("template_id") @db.Uuid
+  template   DocumentTemplate @relation(fields: [templateId], references: [id])
+
+  // 關聯對象
+  workerId   String? @map("worker_id") @db.Uuid
+  employerId String? @map("employer_id") @db.Uuid
+
+  // 檔案資訊
+  fileName String  @map("file_name") @db.VarChar(255)
+  filePath String  @map("file_path") @db.Text
+  fileSize Int?    @map("file_size")
+
+  // 產生狀態
+  status       String  @default("SUCCESS") @db.VarChar(20) // SUCCESS, FAILED
+  errorMessage String? @map("error_message") @db.Text
+
+  generatedAt DateTime @default(now()) @map("generated_at") @db.Timestamptz
+  generatedBy String?  @map("generated_by") @db.Uuid
+
+  @@index([workerId])
+  @@index([employerId])
+  @@index([templateId])
+  @@map("generated_documents")
+}
+
 
 model AgencyCompany {
   id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -2481,4 +2551,91 @@ model OverseasProgress {
   
   @@index([overallStatus])
   @@map("overseas_progress")
+}
+
+// ==========================================
+// Phase 7: Collaboration & Alert System
+// ==========================================
+
+// 系統討論串 (7.1)
+model SystemComment {
+  id          String   @id @default(uuid()) @db.Uuid
+  
+  // 多型態關聯：可掛載於多種實體
+  entityType  CommentEntityType @map("entity_type")
+  entityId    String   @map("entity_id") @db.Uuid
+  
+  // 內容
+  content     String   @db.Text
+  
+  // 發布者
+  authorId    String   @map("author_id") @db.Uuid
+  author      InternalUser @relation("CommentAuthor", fields: [authorId], references: [id])
+  
+  // 時間戳記
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  // 軟刪除
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  
+  // Relations
+  mentions    CommentMention[]
+  
+  @@index([entityType, entityId])
+  @@index([authorId])
+  @@map("system_comments")
+}
+
+// @提及記錄 (7.1)
+model CommentMention {
+  id          String   @id @default(uuid()) @db.Uuid
+  commentId   String   @map("comment_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  
+  // 是否已讀
+  isRead      Boolean  @default(false) @map("is_read")
+  readAt      DateTime? @map("read_at") @db.Timestamptz
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  
+  comment     SystemComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user        InternalUser  @relation("MentionedUser", fields: [userId], references: [id])
+  
+  @@unique([commentId, userId])
+  @@index([userId, isRead])
+  @@map("comment_mentions")
+}
+
+// 智慧異常警示 (7.2)
+model SystemAlert {
+  id          String   @id @default(uuid()) @db.Uuid
+  
+  // 關聯實體
+  entityType  CommentEntityType @map("entity_type")
+  entityId    String   @map("entity_id") @db.Uuid
+  
+  // 警示內容
+  severity    AlertSeverity
+  title       String   @db.VarChar(100)
+  description String?  @db.Text
+  
+  // 到期/逾期資訊
+  dueDate     DateTime? @map("due_date") @db.Date
+  alertType   String   @map("alert_type") @db.VarChar(50) // e.g., "ARC_EXPIRY", "HEALTH_CHECK", "ENTRY_REPORT"
+  
+  // 狀態
+  status      AlertStatus @default(OPEN)
+  acknowledgedBy String? @map("acknowledged_by") @db.Uuid
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz
+  
+  // 時間戳記
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  
+  @@index([severity, status])
+  @@index([entityType, entityId])
+  @@index([dueDate])
+  @@map("system_alerts")
 }

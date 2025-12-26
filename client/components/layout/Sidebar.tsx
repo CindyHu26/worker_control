@@ -13,7 +13,8 @@ import {
     ChevronRight,
     Grid,
     Megaphone,
-    Building2 // Added
+    Building2,
+    AlertTriangle
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -29,13 +30,14 @@ export default function Sidebar() {
 
     const navItems = [
         { href: '/', label: '儀表板', subLabel: 'Dashboard', icon: LayoutDashboard },
-        { href: '/crm/board', label: '業務開發', subLabel: 'CRM', icon: Briefcase }, // Updated Icon
+        { href: '/crm/board', label: '業務開發', subLabel: 'CRM', icon: Briefcase },
         { href: '/portal', label: '功能導覽', subLabel: 'Portal', icon: Grid },
-        { href: '/health', label: '體檢管理', subLabel: 'Health Checks', icon: FileText }, // Added
+        { href: '/alerts', label: '異常監控', subLabel: 'Alerts', icon: AlertTriangle },
+        { href: '/health', label: '體檢管理', subLabel: 'Health Checks', icon: FileText },
 
         { href: '/workers', label: '移工管理', subLabel: 'Workers', icon: Users },
         { href: '/employers', label: '雇主管理', subLabel: 'Employers', icon: Building2 },
-        { href: '/recruitment-proofs', label: '國內求才', subLabel: 'Ind. Recruitment', icon: Megaphone }, // Updated Icon to Building2 to differentiate
+        { href: '/recruitment-proofs', label: '國內求才', subLabel: 'Ind. Recruitment', icon: Megaphone },
     ];
 
     const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>, label: string) => {
