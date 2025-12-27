@@ -5,6 +5,8 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import requestLoggerMiddleware from './middleware/requestLogger';
 import logger from './utils/logger';
 
+import cookieParser from 'cookie-parser';
+
 const app = express();
 
 app.use(cors({
@@ -14,6 +16,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads')); // Serve uploaded files locally (legacy/backup)
 

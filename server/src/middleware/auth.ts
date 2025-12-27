@@ -9,7 +9,7 @@ export interface AuthRequest extends Request {
 
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = (authHeader && authHeader.split(' ')[1]) || req.cookies?.token;
 
     // Debug: Check what token was received
     /*
