@@ -57,4 +57,67 @@ router.post('/:id/generate', async (req, res) => {
     }
 });
 
+// POST /api/templates/:id/test - 測試範本
+router.post('/:id/test', async (req, res) => {
+    try {
+        const { testWorkerId } = req.body;
+        if (!testWorkerId) {
+            return res.status(400).json({ error: '請提供測試用移工ID (testWorkerId)' });
+        }
+
+        const result = await templateService.testTemplate(req.params.id, testWorkerId);
+
+        if (result.success) {
+            // 下載測試產生的文件
+            const filename = result.filename || 'test_document.docx';
+            res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
+            res.setHeader('Content-Type', 'application/octet-stream');
+            res.send(result.buffer);
+        } else {
+            res.status(400).json(result);
+        }
+    } catch (error: any) {
+        console.error("Test Error:", error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// POST /api/templates/:id/activate - 啟用範本
+router.post('/:id/activate', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({ error: '請提供使用者ID (userId)' });
+        }
+
+        const result = await templateService.activateTemplate(req.params.id, userId);
+        res.json(result);
+    } catch (error: any) {
+        console.error("Activate Error:", error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// POST /api/templates/:id/deactivate - 停用範本
+router.post('/:id/deactivate', async (req, res) => {
+    try {
+        const result = await templateService.deactivateTemplate(req.params.id);
+        res.json(result);
+    } catch (error: any) {
+        console.error("Deactivate Error:", error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// DELETE /api/templates/:id - 刪除範本
+router.delete('/:id', async (req, res) => {
+    try {
+        const result = await templateService.deleteTemplate(req.params.id);
+        res.json({ success: true, message: '範本已刪除' });
+    } catch (error: any) {
+        console.error("Delete Error:", error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
 export default router;

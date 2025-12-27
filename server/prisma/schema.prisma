@@ -2069,6 +2069,13 @@ model DocumentTemplate {
   description String? @db.Text
   category    String? @db.VarChar(50)
 
+  // 測試與啟用狀態追蹤 (Template Testing & Activation Tracking)
+  isTested     Boolean   @default(false) @map("is_tested")
+  testedAt     DateTime? @map("tested_at") @db.Timestamptz
+  testedBy     String?   @map("tested_by") @db.Uuid
+  activatedAt  DateTime? @map("activated_at") @db.Timestamptz
+  activatedBy  String?   @map("activated_by") @db.Uuid
+
   // Relations
   generatedDocuments GeneratedDocument[]
 

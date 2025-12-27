@@ -141,4 +141,7 @@ router.use('/entry-filings', entryFilingRoutes);
 router.use('/medical-exceptions', medicalExceptionRoutes);
 router.use('/alerts', alertRoutes);
 
+import entryDocumentsRoutes from './entryDocuments';
+router.use('/entry-documents', entryDocumentsRoutes);
+
 export default router;

@@ -403,5 +403,185 @@ export const templateService = {
             temp = Math.floor(temp / 26);
         }
         return letter;
+    },
+
+    /**
+     * 10. 測試範本 (Test Template)
+     */
+    async testTemplate(templateId: string, testWorkerId: string) {
+        const template = await prisma.documentTemplate.findUnique({
+            where: { id: templateId }
+        });
+        if (!template) throw new Error('範本不存在');
+
+        const fullPath = path.join(TEMPLATE_DIR, template.filePath);
+        if (!fs.existsSync(fullPath)) throw new Error('範本檔案不存在');
+
+        // 取得測試用移工資料
+        const context = await buildWorkerDocumentContext(testWorkerId);
+        const format = (template as any).fileFormat || 'docx';
+
+        try {
+            let result: { filename: string; buffer: Buffer };
+
+            if (format === 'docx') {
+                result = await this.generateDocxDocument(fullPath, template.name, context);
+            } else if (format === 'xlsx') {
+                result = await this.generateXlsxDocument(fullPath, template.name, context);
+            } else {
+                throw new Error(`不支援測試 ${format} 格式`);
+            }
+
+            // 返回測試結果與預覽資料
+            return {
+                success: true,
+                filename: result.filename,
+                buffer: result.buffer,
+                placeholders: (template as any).placeholderSchema || [],
+                contextSample: Object.keys(context).slice(0, 10).reduce((acc, key) => {
+                    acc[key] = context[key];
+                    return acc;
+                }, {} as Record<string, any>)
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                error: error.message,
+                placeholders: (template as any).placeholderSchema || []
+            };
+        }
+    },
+
+    /**
+     * 11. 啟用範本 (Activate Template)
+     */
+    async activateTemplate(templateId: string, userId: string) {
+        return await prisma.documentTemplate.update({
+            where: { id: templateId },
+            data: {
+                isTested: true,
+                isActive: true,
+                activatedAt: new Date(),
+                activatedBy: userId
+            } as any
+        });
+    },
+
+    /**
+     * 12. 停用範本 (Deactivate Template)
+     */
+    async deactivateTemplate(templateId: string) {
+        return await prisma.documentTemplate.update({
+            where: { id: templateId },
+            data: {
+                isActive: false
+            } as any
+        });
+    },
+
+    /**
+     * 13. 刪除範本 (Delete Template)
+     */
+    async deleteTemplate(templateId: string) {
+        const template = await prisma.documentTemplate.findUnique({
+            where: { id: templateId }
+        });
+        if (!template) throw new Error('範本不存在');
+
+        // 刪除實體檔案
+        const fullPath = path.join(TEMPLATE_DIR, template.filePath);
+        if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+        }
+
+        // 刪除資料庫記錄
+        return await prisma.documentTemplate.delete({
+            where: { id: templateId }
+        });
+    },
+
+    /**
+     * 14. 產生移工入境文件包 (Generate Worker Entry Documents)
+     */
+    async generateWorkerEntryDocuments(workerId: string, deploymentId?: string) {
+        // 取得移工資料與受聘合約
+        const worker = await prisma.worker.findUnique({
+            where: { id: workerId },
+            include: {
+                deployments: {
+                    orderBy: { startDate: 'desc' },
+                    take: deploymentId ? undefined : 1,
+                    where: deploymentId ? { id: deploymentId } : undefined,
+                    include: {
+                        employer: true,
+                        contractType: true
+                    }
+                }
+            }
+        });
+
+        if (!worker) throw new Error('找不到移工資料');
+        if (!worker.deployments || worker.deployments.length === 0) {
+            throw new Error('找不到受聘合約');
+        }
+
+        const deployment = worker.deployments[0];
+
+        // 取得所有啟用的入境文件範本
+        const templates = await prisma.documentTemplate.findMany({
+            where: {
+                isActive: true,
+                category: 'entry_notification'
+            }
+        });
+
+        if (templates.length === 0) {
+            throw new Error('找不到可用的入境文件範本');
+        }
+
+        // 建立文件 context
+        const context = await buildWorkerDocumentContext(workerId);
+
+        // 批次產生文件
+        const results: { filename: string; buffer: Buffer }[] = [];
+
+        for (const template of templates) {
+            try {
+                const fullPath = path.join(TEMPLATE_DIR, template.filePath);
+                if (!fs.existsSync(fullPath)) continue;
+
+                let result;
+                if ((template as any).fileFormat === 'xlsx') {
+                    result = await this.generateXlsxDocument(fullPath, template.name, context);
+                } else {
+                    result = await this.generateDocxDocument(fullPath, template.name, context);
+                }
+                results.push(result);
+
+                // 記錄產生的文件
+                const generatedPath = path.join(GENERATED_DIR, `${Date.now()}_${result.filename}`);
+                fs.writeFileSync(generatedPath, result.buffer);
+
+                await (prisma as any).generatedDocument.create({
+                    data: {
+                        templateId: template.id,
+                        workerId: workerId,
+                        employerId: deployment.employerId,
+                        fileName: result.filename,
+                        filePath: generatedPath,
+                        fileSize: result.buffer.length,
+                        status: 'SUCCESS'
+                    }
+                });
+            } catch (err) {
+                console.error(`產生範本 ${template.name} 失敗:`, err);
+            }
+        }
+
+        return {
+            worker,
+            deployment,
+            documents: results
+        };
     }
 };

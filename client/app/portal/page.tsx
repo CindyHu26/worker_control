@@ -35,6 +35,7 @@ const categories = [
         text: 'text-indigo-800',
         items: [
             { title: '國內求才證明', desc: '國內招募與求才登記', icon: Megaphone, href: '/recruitment-proofs' },
+            { title: '入境文件準備', desc: '產生入國通報與證照申辦文件', icon: FileText, href: '/entry-documents' },
             { title: '入國通報', desc: '入境後3/15日法定申報', icon: Plane, href: '/entry-filings' },
             { title: '衛政通報', desc: '法定傳染病異常通報', icon: Stethoscope, href: '/medical-exceptions' },
             { title: '簽證申請', desc: '駐台辦事處函文製作', icon: Stamp, href: '/govt/visa' },
