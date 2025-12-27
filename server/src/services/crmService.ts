@@ -129,21 +129,9 @@ export const convertLeadToEmployer = async (
             industryCode = "01";
         }
 
-        // 3. Branched Validation
-        // 3. Branched Validation (Removed as per user request for simplified conversion)
-        /*
-        if (category === 'MANUFACTURING') {
-            if (!options.factoryAddress) throw new Error("製造業轉正必須填寫：工廠地址");
-            if (!options.avgDomesticWorkers) throw new Error("製造業轉正必須填寫：國內勞工人數");
-            if (!options.allocationRate) throw new Error("製造業轉正必須填寫：核配比率");
-
-            // Strict Tier Validation
-            const validTiers = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40];
-            if (!validTiers.includes(Number(options.allocationRate.toFixed(2)))) {
-                throw new Error(`無效的核配比率: ${options.allocationRate}. 合法級距為: ${validTiers.join(', ')}`);
-            }
-        }
-        */
+        // Helper boolean for logic
+        const isMsfg = ['MANUFACTURING', 'MID_MANUFACTURING', 'MANUFACTURING_OUTREACH'].includes(category);
+        const isInstitution = ['INSTITUTION', 'MID_INSTITUTION'].includes(category);
 
         // 0. Ensure valid Operator ID (UUID)
         let validOperatorId = operatorId;
@@ -160,6 +148,26 @@ export const convertLeadToEmployer = async (
             }
         }
 
+        // Resolve Category ID with Fallback
+        let employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: category } }))?.id;
+        if (!employerCategoryId) {
+            // Fallback for sub-categories to their parent category if exact match fails
+            if (isMsfg) {
+                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'MANUFACTURING' } }))?.id;
+            } else if (isInstitution) {
+                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'INSTITUTION' } }))?.id;
+            } else if (category.includes('AGRICULTURE')) {
+                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'AGRICULTURE' } }))?.id;
+            } else if (category.includes('CONSTRUCTION')) {
+                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'CONSTRUCTION' } }))?.id;
+            } else if (category.includes('FISHERY')) {
+                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'FISHERY' } }))?.id;
+            } else {
+                // Last resort fallback (Optional)
+                // employerCategoryId = ...
+            }
+        }
+
         // 4. Create Employer with Nested CorporateInfo
         const employer = await tx.employer.create({
             data: {
@@ -172,7 +180,7 @@ export const convertLeadToEmployer = async (
                 invoiceAddress: options.invoiceAddress || lead.address || '',
 
                 // Link to EmployerCategory (Found by code)
-                employerCategoryId: (await tx.employerCategory.findUnique({ where: { code: category } }))?.id,
+                employerCategoryId,
 
                 // Track Source
                 // originLeadId: lead.id, // Removed: Relation follows Lead.convertedToEmployerId
@@ -182,13 +190,14 @@ export const convertLeadToEmployer = async (
                 complianceStandard: options.complianceStandard || 'NONE',
                 zeroFeeEffectiveDate: options.zeroFeeEffectiveDate || null,
                 industryAttributes: {
-                    isExtra: options.isExtra || false
+                    isExtra: options.isExtra || false,
+                    originalCategory: category // Store original specific category in JSON check logic?
                 },
 
                 // Nested CorporateInfo Relation
-                corporateInfo: (category === 'MANUFACTURING' || category === 'INSTITUTION') ? {
+                corporateInfo: (isMsfg || isInstitution) ? {
                     create: {
-                        industryType: category,
+                        industryType: isMsfg ? 'MANUFACTURING' : 'INSTITUTION', // Standardize storage enum/string
                         industryCode: industryCode,
                         factoryAddress: options.factoryAddress,
                     }
@@ -199,7 +208,7 @@ export const convertLeadToEmployer = async (
         });
 
         // 5. Initialize Labor Count (Quota Basis) - Only for Manufacturing
-        if (category === 'MANUFACTURING' && options.avgDomesticWorkers && options.avgDomesticWorkers > 0) {
+        if (isMsfg && options.avgDomesticWorkers && options.avgDomesticWorkers > 0) {
             const now = new Date();
             await tx.employerLaborCount.create({
                 data: {
@@ -222,7 +231,7 @@ export const convertLeadToEmployer = async (
 
         // 7. System Comment
         let quotaInfo = '';
-        if (category === 'MANUFACTURING' && options.avgDomesticWorkers && options.allocationRate) {
+        if (isMsfg && options.avgDomesticWorkers && options.allocationRate) {
             const calculatedQuota = calculate3K5Quota(options.avgDomesticWorkers, options.allocationRate);
             quotaInfo = ` | 3K5 Quota: ${options.avgDomesticWorkers} × ${options.allocationRate * 100}% = ${calculatedQuota} people`;
         }
@@ -233,7 +242,7 @@ export const convertLeadToEmployer = async (
             // Schema: entityType CommentEntityType
             await (tx as any).systemComment.create({
                 data: {
-                    content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})${quotaInfo}`,
+                    content: `Created from Lead: ${lead.companyName} (Lead ID: ${leadId})${quotaInfo}. Category: ${category}`,
                     entityId: employer.id,
                     entityType: 'EMPLOYER', // Matches CommentEntityType enum
                     authorId: validOperatorId

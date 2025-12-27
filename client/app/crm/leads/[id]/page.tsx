@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '@/lib/api';
-import { Phone, Mail, MapPin, User, ArrowLeft, Send, CheckCircle, XCircle, Calculator, AlertTriangle, Building, FileText, BadgeInfo, Pencil, Trash2 } from 'lucide-react';
+import { Phone, Mail, MapPin, User, ArrowLeft, Send, CheckCircle, XCircle, Calculator, AlertTriangle, Building, FileText, BadgeInfo, Pencil, Trash2, Loader2 } from 'lucide-react';
 import LeadForm, { LeadFormData } from '@/components/crm/LeadForm';
+import { PROGRAM_TYPES, JOB_CATEGORIES, ProgramTypeKey, getProgramTypeFromCategory, ENTITY_TYPES, getIndustryLabel } from '@/lib/leadConstants';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -67,13 +68,17 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
     // Conversion Modal State
     const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+
+    // Conversion Form State
     const [convertData, setConvertData] = useState({
         taxId: '',
-        industryCode: '01',
+        industryKey: '', // Key from JOB_CATEGORIES
         invoiceAddress: '',
         factoryAddress: '',
         allocationRate: 0.15,
-        avgDomesticWorkers: 0
+        avgDomesticWorkers: 0,
+        programType: 'GENERAL' as ProgramTypeKey,
+        isJuridicalPerson: true // For hybrid types
     });
 
     useEffect(() => {
@@ -85,42 +90,30 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         setSimQuota(calculate3K5Quota(simDomesticWorkers, simAllocationRate));
     }, [simDomesticWorkers, simAllocationRate]);
 
-    // Helper: Map category enum to industry code (reverse mapping)
-    const mapCategoryToIndustryCode = (category: string | null): string => {
-        if (!category) return '01';
-
-        const reverseMapping: Record<string, string> = {
-            'MANUFACTURING': '01',
-            'CONSTRUCTION': '02',
-            'FISHERY': '03',
-            'AGRICULTURE': '04',
-            'SLAUGHTER': '05',
-            'HOME_CARE': '06',
-            'HOME_HELPER': '07',
-            'INSTITUTION': '08',
-            'OUTREACH_AGRICULTURE': '09',
-            'HOSPITALITY': '10',
-            'OTHER': '99'
-        };
-
-        return reverseMapping[category] || '01';
-    };
-
     const fetchLead = async () => {
         try {
             const data = await apiRequest(`${apiUrl}/leads/${id}`);
             setLead(data);
 
             // Pre-fill conversion data with lead information
+            const progType = getProgramTypeFromCategory(data.industry) || 'GENERAL';
+
             setConvertData(prev => ({
                 ...prev,
                 taxId: data.taxId || '',
-                industryCode: mapCategoryToIndustryCode(data.industry),
+                industryKey: data.industry || '',
+                programType: progType,
                 invoiceAddress: data.address || '',
                 factoryAddress: data.address || '',
-                avgDomesticWorkers: simDomesticWorkers,
+                avgDomesticWorkers: simDomesticWorkers, // Pre-fill from simulation if changed? Or 0
                 allocationRate: simAllocationRate
             }));
+
+            // If we have simulation values set by user, reflect them
+            if (simDomesticWorkers > 0) {
+                setConvertData(prev => ({ ...prev, avgDomesticWorkers: simDomesticWorkers }));
+            }
+
         } catch (error) {
             console.error(error);
         } finally {
@@ -154,36 +147,53 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         }
     };
 
+    // Determine Entity Requirement Logic (Same as LeadForm)
+    const getEntityRequirement = (industry?: string) => {
+        if (!industry) return 'BUSINESS';
+        if (ENTITY_TYPES.BUSINESS_REQUIRED.includes(industry as any)) return 'BUSINESS';
+        if (ENTITY_TYPES.INDIVIDUAL_REQUIRED.includes(industry as any)) return 'INDIVIDUAL';
+        if (ENTITY_TYPES.HYBRID.includes(industry as any)) return 'HYBRID';
+        return 'BUSINESS';
+    };
+
+    const entityReq = getEntityRequirement(convertData.industryKey);
+    const isBusiness = entityReq === 'BUSINESS' || (entityReq === 'HYBRID' && convertData.isJuridicalPerson);
+    const idMaxLength = isBusiness ? 8 : 10;
+    const idLabel = isBusiness ? '統一編號 (Tax ID)' : '的身分證字號 (ID Number)';
+
     const handleConvertSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation
-        if (convertData.taxId.length !== 8) {
-            alert("Tax ID must be exactly 8 digits.");
+        // Validation based on dynamic entity type
+        if (!convertData.taxId) {
+            alert(`${idLabel} 為必填`);
             return;
         }
 
-        // Manufacturing-specific validation (Removed)
-        /*
-        if (convertData.industryCode === '01') {
-            if (!convertData.factoryAddress) {
-                alert("Factory address is required for manufacturing employers.");
+        if (isBusiness) {
+            if (convertData.taxId.length !== 8) {
+                alert("統一編號必須為 8 碼");
                 return;
             }
-            if (!convertData.avgDomesticWorkers || convertData.avgDomesticWorkers <= 0) {
-                alert("Average domestic worker count is required for manufacturing employers.");
+        } else {
+            if (convertData.taxId.length !== 10) {
+                alert("身分證字號必須為 10 碼");
                 return;
             }
         }
-        */
+
+        if (!convertData.industryKey) {
+            alert("請選擇申請項目");
+            return;
+        }
 
         try {
             const data = await apiRequest(`${apiUrl}/leads/${id}/convert`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    operatorId: 'CURRENT_USER_ID',
+                    operatorId: 'CURRENT_USER_ID', // Revisit authentication later
                     taxId: convertData.taxId,
-                    industryCode: convertData.industryCode,
+                    industryType: convertData.industryKey, // Send KEY, backend services updated to handle it
                     invoiceAddress: convertData.invoiceAddress,
                     factoryAddress: convertData.factoryAddress,
                     avgDomesticWorkers: convertData.avgDomesticWorkers,
@@ -191,10 +201,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 })
             });
 
-            // Redirect to edit page for data completion as suggested
             router.push(`/employers/${data.employer.id}/edit`);
-            // Provide guidance
-            alert("轉正成功！目前資料僅包含基本資訊，請繼續完善雇主詳細資料（如：負責人、授權書、聯絡人等），以利後續公文作業。");
+            alert("轉正成功！請繼續完善雇主詳細資料。");
         } catch (error: any) {
             alert('Conversion failed: ' + (error.message || 'Error'));
         }
@@ -226,18 +234,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
     const handleUpdateLead = async (formData: LeadFormData) => {
         try {
-            const { mobile, ...rest } = formData as any; // sanitize mobile for now if backend crashes, but we fixed leads.ts to ignore it, so sending it is fine if backend handles it or ignores it.
-            // Actually, we fixed leads.ts CREATE, but for UPDATE (PATCH) we also need to be careful?
-            // PATCH /api/leads/:id uses req.body directly. leads.ts:166
-            // const lead = await prisma.lead.update({ where: { id }, data });
-            // This WILL crash if mobile is in data and not in schema.
-            // So we MUST sanitize here or in backend PATCH too.
-            // I'll sanitize here for safety.
-
+            const { mobile, ...rest } = formData as any;
             const payload = { ...rest };
-            // If mobile is not in rest (it was extracted), we are good.
-            // But wait, if we want to SAVE mobile, and backend doesn't support it, we lose it.
-            // User knows this.
 
             await apiRequest(`${apiUrl}/leads/${id}`, {
                 method: 'PATCH',
@@ -246,7 +244,6 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
             fetchLead();
             setIsEditModalOpen(false);
-            // alert('更新成功');
         } catch (error) {
             console.error(error);
             alert('更新失敗');
@@ -269,12 +266,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         }
     };
 
-    // Zero Fee Check (based on industry code)
+    // Zero Fee Check (based on industry key)
+    // Assuming MANUFACTURING or similar keys trigger this
     const showZeroFeeWarning = (newNotes.toLowerCase().includes('indonesia') || newNotes.toLowerCase().includes('印尼')) &&
-        (convertData.industryCode === '01');
+        (getProgramTypeFromCategory(lead?.industry) === 'GENERAL' && lead?.industry?.includes('MANUFACTURING'));
 
 
-    if (loading) return <div className="p-10">Loading...</div>;
+    if (loading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin" /></div>;
     if (!lead) return <div className="p-10">Lead not found</div>;
 
     return (
@@ -299,7 +297,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                             <span className="text-sm text-slate-500 bg-slate-100 px-2 py-0.5 rounded uppercase font-bold">
                                 {lead.status}
                             </span>
-                            {lead.industry && <span className="text-sm text-slate-500">• {lead.industry}</span>}
+                            {lead.industry && <span className="text-sm text-slate-500">• {getIndustryLabel(lead.industry)}</span>}
                         </div>
                     </div>
                 </div>
@@ -530,42 +528,88 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                                     />
                                 </div>
 
+                                {/* Dynamic ID Field */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1 required">統一編號 (Tax ID)</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1 required">{idLabel}</label>
                                     <input
                                         type="text"
-                                        maxLength={8}
+                                        maxLength={idMaxLength}
                                         required
-                                        placeholder="例如：12345678"
+                                        placeholder={`例如：${isBusiness ? '12345678' : 'A123456789'}`}
                                         className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                         value={convertData.taxId}
-                                        onChange={e => setConvertData({ ...convertData, taxId: e.target.value.replace(/\D/g, '') })}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            // Only allow alphanumeric
+                                            setConvertData({ ...convertData, taxId: val.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() })
+                                        }}
                                     />
-                                    <p className="text-xs text-slate-500 mt-1">必須為8碼。</p>
+                                    <p className="text-xs text-slate-500 mt-1">需為 {idMaxLength} 碼。</p>
                                 </div>
 
+                                {/* Program Type */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">產業別 (Industry) *</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">申請類別 (Program)</label>
                                     <select
                                         className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={convertData.industryCode}
-                                        onChange={e => setConvertData({ ...convertData, industryCode: e.target.value })}
+                                        value={convertData.programType}
+                                        onChange={e => setConvertData({
+                                            ...convertData,
+                                            programType: e.target.value as ProgramTypeKey,
+                                            industryKey: '' // Reset industry when program changes
+                                        })}
                                         required
                                     >
-                                        <option value="01">製造業</option>
-                                        <option value="02">營造業</option>
-                                        <option value="03">海洋漁撈</option>
-                                        <option value="04">農業</option>
-                                        <option value="05">屠宰業</option>
-                                        <option value="06">家庭看護</option>
-                                        <option value="07">家庭幫傭</option>
-                                        <option value="08">機構看護</option>
-                                        <option value="09">外展農務</option>
-                                        <option value="10">旅宿業</option>
-                                        <option value="99">其他</option>
+                                        {Object.entries(PROGRAM_TYPES).map(([key, label]) => (
+                                            <option key={key} value={key}>{label}</option>
+                                        ))}
                                     </select>
-                                    <p className="text-xs text-slate-500 mt-1">選擇雇主所屬產業類別</p>
                                 </div>
+
+                                {/* Job Category */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">工作項目 (Job Category) *</label>
+                                    <select
+                                        className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={convertData.industryKey}
+                                        onChange={e => setConvertData({ ...convertData, industryKey: e.target.value })}
+                                        required
+                                    >
+                                        <option value="" disabled>請選擇</option>
+                                        {Object.entries(JOB_CATEGORIES[convertData.programType]).map(([key, label]) => (
+                                            <option key={key} value={key}>{label}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">選擇雇主欲申請的移工職務項目</p>
+                                </div>
+
+                                {/* Hybrid Entity Toggle */}
+                                {entityReq === 'HYBRID' && (
+                                    <div className="flex items-center gap-2 bg-slate-50 p-2 rounded">
+                                        <span className="text-sm font-medium">雇主類型：</span>
+                                        <div className="flex gap-4">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    checked={convertData.isJuridicalPerson}
+                                                    onChange={() => setConvertData({ ...convertData, isJuridicalPerson: true })}
+                                                    className="w-4 h-4 text-blue-600"
+                                                />
+                                                <span className="text-xs">法人 (需統編)</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    checked={!convertData.isJuridicalPerson}
+                                                    onChange={() => setConvertData({ ...convertData, isJuridicalPerson: false })}
+                                                    className="w-4 h-4 text-blue-600"
+                                                />
+                                                <span className="text-xs">自然人 (需身分證)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+
                             </form>
                         </div>
 

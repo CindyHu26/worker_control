@@ -1,17 +1,75 @@
-// Industry Categories (產業別)
-export const INDUSTRIES = {
-    MANUFACTURING: '製造業',
-    CONSTRUCTION: '營造業',
-    FISHERY: '漁業',
-    HOME_CARE: '家庭看護',
-    HOME_HELPER: '家庭幫傭',
-    INSTITUTION: '養護機構',
-    AGRICULTURE: '農業',
-    SLAUGHTER: '屠宰業',
-    OUTREACH_AGRICULTURE: '外展農務',
-    HOSPITALITY: '餐旅業',
-    OTHER: '其他'
+// 1. 第一層：申請類別 (Program Type)
+export const PROGRAM_TYPES = {
+    GENERAL: '申請移工 (一般外國人)',
+    MID_LEVEL: '申請中階技術人員 (留才久用方案)',
+    DIRECT_HIRE: '直接聘僱 (直聘中心代辦/諮詢)'
 } as const;
+
+export type ProgramTypeKey = keyof typeof PROGRAM_TYPES;
+
+// 2. 第二層：詳細職務項目 (Job Categories)
+export const JOB_CATEGORIES = {
+    // === 一般移工清單 ===
+    GENERAL: {
+        HOME_CARE: '家庭看護工作',
+        HOME_HELPER: '家庭幫傭工作',
+        INSTITUTION: '機構看護工',
+        MANUFACTURING: '製造工作',
+        MANUFACTURING_OUTREACH: '外展製造工作',
+        CONSTRUCTION: '營造工作',
+        SLAUGHTER: '屠宰工作',
+        FISHERY: '海洋漁撈工作',
+        AGRICULTURE: '農業工作',
+        AGRICULTURE_OUTREACH: '外展農業工作',
+        DIVERSIFIED_CARE: '多元陪伴照顧服務工作',
+        WASTE_RECYCLING: '廢棄物及資源物回收處理工作',
+    },
+
+    // === 中階技術人員清單 ===
+    MID_LEVEL: {
+        MID_HOME_CARE: '中階技術家庭看護工作',
+        MID_INSTITUTION: '中階技術機構看護工作',
+        MID_MANUFACTURING: '中階技術製造工作',
+        MID_CONSTRUCTION: '中階技術營造工作',
+        MID_FISHERY: '中階技術海洋漁撈工作',
+        MID_AGRICULTURE: '中階技術農業工作',
+        MID_AGRICULTURE_OUTREACH: '中階技術外展農務工作',
+        MID_SLAUGHTER: '中階技術屠宰工作',
+    },
+
+    // === 直接聘僱 ===
+    DIRECT_HIRE: {
+        DH_SERVICE: '直接聘僱服務',
+    }
+} as const;
+
+export type JobCategoryKey = keyof typeof JOB_CATEGORIES.GENERAL | keyof typeof JOB_CATEGORIES.MID_LEVEL | keyof typeof JOB_CATEGORIES.DIRECT_HIRE;
+
+// 3. 系統輔助邏輯：定義哪些需要統編(法人)，哪些需要身分證(自然人)
+export const ENTITY_TYPES = {
+    BUSINESS_REQUIRED: [
+        'MANUFACTURING', 'MANUFACTURING_OUTREACH', 'CONSTRUCTION', 'WASTE_RECYCLING',
+        'INSTITUTION', 'SLAUGHTER', 'FISHERY', 'AGRICULTURE_OUTREACH', 'DIVERSIFIED_CARE',
+        'MID_MANUFACTURING', 'MID_CONSTRUCTION', 'MID_INSTITUTION', 'MID_SLAUGHTER',
+        'MID_FISHERY', 'MID_AGRICULTURE_OUTREACH'
+    ],
+    INDIVIDUAL_REQUIRED: [
+        'HOME_CARE', 'HOME_HELPER', 'MID_HOME_CARE'
+    ],
+    HYBRID: [
+        'AGRICULTURE', 'MID_AGRICULTURE' // 農業與中階農業較特殊，可能為農場(法人)或農民(個人)
+    ]
+} as const;
+
+// Legacy support for existing code that uses INDUSTRIES
+// We flatten all job categories into a single object
+export const INDUSTRIES = {
+    ...JOB_CATEGORIES.GENERAL,
+    ...JOB_CATEGORIES.MID_LEVEL,
+    ...JOB_CATEGORIES.DIRECT_HIRE
+} as const;
+
+export type IndustryKey = keyof typeof INDUSTRIES;
 
 export const BASE_RATES = [
     { label: '10% (級別 D)', value: '0.10' },
@@ -38,7 +96,7 @@ export const ALLOCATION_RATES = [
     { label: '40% (最高上限)', value: '0.40' }
 ] as const;
 
-export type IndustryKey = keyof typeof INDUSTRIES;
+// export type IndustryKey = keyof typeof INDUSTRIES; // Removed duplicate
 
 // Lead Status (潛在客戶狀態)
 export const LEAD_STATUSES = {
@@ -82,21 +140,6 @@ export const INTERACTION_OUTCOMES = {
     INTERESTED: '有興趣'
 } as const;
 
-// Industry Code to Category Mapping (for backend compatibility)
-export const INDUSTRY_CODE_MAP: Record<string, IndustryKey> = {
-    '01': 'MANUFACTURING',
-    '02': 'CONSTRUCTION',
-    '03': 'FISHERY',
-    '04': 'AGRICULTURE',
-    '05': 'SLAUGHTER',
-    '06': 'HOME_CARE',
-    '07': 'HOME_HELPER',
-    '08': 'INSTITUTION',
-    '09': 'OUTREACH_AGRICULTURE',
-    '10': 'HOSPITALITY',
-    '99': 'OTHER'
-};
-
 // Helper function to get Chinese label
 export function getIndustryLabel(key: string | null | undefined): string {
     if (!key) return '未指定';
@@ -115,9 +158,33 @@ export function getInteractionTypeLabel(key: string | null | undefined): string 
 
 // Validation helpers
 export function isManufacturingIndustry(industry: string | null | undefined): boolean {
-    return industry === 'MANUFACTURING';
+    return industry === 'MANUFACTURING' || industry === 'MID_MANUFACTURING';
 }
 
 export function requiresFactoryInfo(industry: string | null | undefined): boolean {
+    // 一般製造業與中階製造業需工廠登記，外展製造業可能不需要(是機構)
     return isManufacturingIndustry(industry);
+}
+
+// Industry Code to Category Mapping (Updated for new keys)
+export const INDUSTRY_CODE_MAP: Record<string, IndustryKey> = {
+    '01': 'MANUFACTURING',
+    '02': 'CONSTRUCTION',
+    '03': 'FISHERY',
+    '04': 'AGRICULTURE',
+    '05': 'SLAUGHTER',
+    '06': 'HOME_CARE',
+    '07': 'HOME_HELPER',
+    '08': 'INSTITUTION',
+    '09': 'AGRICULTURE_OUTREACH', // Updated from OUTREACH_AGRICULTURE
+    // '10': 'HOSPITALITY', // Removed as not in new list
+    // '99': 'OTHER' // Removed as not in new list
+};
+// Helper function to resolve program type from job category key
+export function getProgramTypeFromCategory(category: string | null | undefined): ProgramTypeKey | undefined {
+    if (!category) return undefined;
+    if (category in JOB_CATEGORIES.GENERAL) return 'GENERAL';
+    if (category in JOB_CATEGORIES.MID_LEVEL) return 'MID_LEVEL';
+    if (category in JOB_CATEGORIES.DIRECT_HIRE) return 'DIRECT_HIRE';
+    return undefined;
 }
