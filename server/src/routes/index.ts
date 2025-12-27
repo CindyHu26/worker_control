@@ -53,6 +53,8 @@ import employeeRoutes from './employees';
 import bankRoutes from './banks';
 
 import departmentRoutes from './departments';
+import applicationCategoryRoutes from './applicationCategories';
+import workTitleRoutes from './workTitles';
 
 const router = Router();
 
@@ -110,8 +112,10 @@ router.use('/worker-events', workerEventRoutes);
 router.use('/worker-documents', workerDocumentRoutes);
 router.use('/reference', referenceDataRoutes);
 router.use('/relocation', relocationRoutes);
-router.use('/employer-categories', employerCategoryRoutes);
-router.use('/job-types', jobTypeRoutes);
+router.use('/employer-categories', employerCategoryRoutes); // Legacy - keep for backward compatibility
+router.use('/application-categories', applicationCategoryRoutes); // New endpoint
+router.use('/job-types', jobTypeRoutes); // Legacy - keep for backward compatibility
+router.use('/work-titles', workTitleRoutes); // New endpoint
 router.use('/industries', industryRoutes);
 router.use('/domestic-agencies', domesticAgencyRoutes);
 router.use('/employees', employeeRoutes);

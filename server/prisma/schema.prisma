@@ -219,14 +219,18 @@ enum AlertStatus {
 // Reference Data Tables
 // ==========================================
 
-model EmployerCategory {
+model ApplicationCategory {
   id        String       @id @default(uuid()) @db.Uuid
-  code      String       @unique @db.VarChar(20) // e.g., "MANUFACTURING"
-  nameZh    String       @map("name_zh") @db.VarChar(50) // 製造業
-  nameEn    String?      @map("name_en") @db.VarChar(50)
+  code      String       @unique @db.VarChar(30) // e.g., "MID_MANUFACTURING"
+  nameZh    String       @map("name_zh") @db.VarChar(100) // 中階技術製造工作
+  nameEn    String?      @map("name_en") @db.VarChar(100)
   
   // [Added] Core Fields
   type      EmployerType @default(BUSINESS)
+
+  // [Added] Quota & Fee Config
+  quotaBaseRate       Decimal? @map("quota_base_rate") @db.Decimal(5,2) // 基礎核配率 (e.g., 0.20)
+  securityFeeStandard Int      @default(2000) @map("security_fee_standard") // 標準就安費
 
   // [Added] UI Config
   iconName    String? @map("icon_name") @db.VarChar(50) // e.g., "Building", "User"
@@ -238,14 +242,20 @@ model EmployerCategory {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   
   // Relations
-  employers Employer[]
+  employers   Employer[]
+  workTitles  WorkTitle[]
 
-  @@map("employer_categories")
+  @@map("application_categories")
 }
 
-model JobType {
+model WorkTitle {
   id   String @id @default(uuid()) @db.Uuid
-  code String @unique @db.VarChar(20) // LBJ01: 代碼 (e.g., "1")
+  
+  // [NEW] Link to ApplicationCategory (申請項目)
+  categoryId String?              @map("category_id") @db.Uuid
+  category   ApplicationCategory? @relation(fields: [categoryId], references: [id])
+  
+  code String @db.VarChar(20) // LBJ01: 代碼 (e.g., "01")
 
   // --- Names (Multi-language) ---
   titleZh String  @map("title_zh") @db.VarChar(100) // LBJ02: 工種名稱
@@ -254,9 +264,13 @@ model JobType {
   titleId String? @map("title_id") @db.VarChar(100) // LBJ05: 印文工種名稱
   titleVn String? @map("title_vn") @db.VarChar(100) // LBJ06: 越文工種名稱
 
+  // [NEW] Classification Fields
+  isIntermediate Boolean @default(false) @map("is_intermediate") // 是否為中階技術人力
+  isDefault      Boolean @default(false) @map("is_default")      // 是否為該類別預設工種
+
   // --- Fees ---
-  employmentSecurityFee Int @default(0) @map("employment_security_fee") // LBJ07: 一般就安費
-  reentrySecurityFee    Int @default(0) @map("reentry_security_fee") // LBJ08: 重投就安費
+  employmentSecurityFee Int @default(2000) @map("employment_security_fee") // LBJ07: 一般就安費
+  reentrySecurityFee    Int @default(2000) @map("reentry_security_fee") // LBJ08: 重投就安費
 
   // --- Insurance & Services ---
   agencyAccidentInsurance    Boolean @default(false) @map("agency_accident_insurance") // LBJ09: 代辦意外險加保
@@ -274,7 +288,8 @@ model JobType {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@map("job_types")
+  @@unique([categoryId, code])
+  @@map("work_titles")
 }
 
 model Industry {
@@ -925,9 +940,9 @@ model Employer {
   corporateInfo  CorporateInfo?
   individualInfo IndividualInfo?
 
-  // [Added] Relation to Category
-  employerCategoryId String?           @map("employer_category_id") @db.Uuid
-  category           EmployerCategory? @relation(fields: [employerCategoryId], references: [id])
+  // [Added] Relation to Category (申請項目)
+  applicationCategoryId String?              @map("application_category_id") @db.Uuid
+  category              ApplicationCategory? @relation(fields: [applicationCategoryId], references: [id])
 
   // Existing Relations
   recruitmentLetters EmployerRecruitmentLetter[]
