@@ -143,7 +143,10 @@ enum AddressType {
 }
 
 enum JobOrderStatus {
-  open
+  open         // 開缺中
+  sourcing     // 選工中
+  partial      // 部分錄取
+  filled       // 額滿
   processing
   completed
   cancelled
@@ -188,6 +191,7 @@ enum CommentEntityType {
   DEPLOYMENT
   JOB_ORDER
   LEAD
+  HEALTH_CHECK
   
   @@map("comment_entity_type")
 }
@@ -1741,6 +1745,11 @@ model JobOrder {
   localRecruitmentDeadline DateTime?      @map("local_recruitment_deadline") @db.Date
   status                   JobOrderStatus @default(open)
   jobCenter                String?        @map("job_center") @db.VarChar(100)
+
+  // 需求偏好 (Preference Fields)
+  nationalityPreference    String?        @map("nationality_preference") @db.VarChar(50) // 國籍偏好 (e.g., "VN,PH,ID")
+  genderPreference         GenderType?    @map("gender_preference") // 性別偏好
+  filledCount              Int            @default(0) @map("filled_count") // 已錄取人數
 
   employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
 

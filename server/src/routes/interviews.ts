@@ -73,6 +73,26 @@ router.put('/job-orders/:id', async (req, res) => {
     }
 });
 
+// DELETE /api/job-orders/:id
+router.delete('/job-orders/:id', async (req, res) => {
+    try {
+        await jobOrderService.deleteJobOrder(req.params.id);
+        res.json({ message: '訂單已刪除' });
+    } catch (error: any) {
+        res.status(400).json({ error: '刪除失敗', details: error.message });
+    }
+});
+
+// GET /api/job-orders/employer/:employerId/quota
+router.get('/job-orders/employer/:employerId/quota', async (req, res) => {
+    try {
+        const quotaInfo = await jobOrderService.checkEmployerQuota(req.params.employerId);
+        res.json(quotaInfo);
+    } catch (error: any) {
+        res.status(500).json({ error: '查詢失敗', details: error.message });
+    }
+});
+
 // ===== INTERVIEWS ===== //
 
 const InterviewSchema = z.object({

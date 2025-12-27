@@ -74,8 +74,8 @@ router.get('/:id', async (req, res) => {
         // Fetch related comments (Tracking History)
         const comments = await prisma.systemComment.findMany({
             where: {
-                recordId: id,
-                recordTableName: 'health_checks'
+                entityId: id,
+                entityType: 'HEALTH_CHECK'
             },
             include: { author: { select: { username: true, id: true } } },
             orderBy: { createdAt: 'desc' }
@@ -107,10 +107,10 @@ router.post('/:id/comments', async (req, res) => {
 
         const comment = await prisma.systemComment.create({
             data: {
-                recordId: id,
-                recordTableName: 'health_checks',
+                entityId: id,
+                entityType: 'HEALTH_CHECK',
                 content,
-                createdBy: authorId
+                authorId: authorId
             },
             include: { author: { select: { username: true } } }
         });

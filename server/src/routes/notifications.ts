@@ -31,7 +31,7 @@ router.get('/', async (req: AuthRequest, res) => {
 
         const mentions = await prisma.commentMention.findMany({
             where: {
-                mentionedUserId: userId,
+                userId: userId,
             },
             include: {
                 comment: {
@@ -59,8 +59,8 @@ router.get('/', async (req: AuthRequest, res) => {
                     createdAt: m.createdAt,
                     actorName: 'System',
                     content: `mentioned you`,
-                    referenceId: m.comment?.recordId,
-                    referenceType: m.comment?.recordTableName
+                    referenceId: m.comment?.entityId,
+                    referenceType: m.comment?.entityType
                 };
             }
             return {
@@ -70,8 +70,8 @@ router.get('/', async (req: AuthRequest, res) => {
                 createdAt: m.createdAt,
                 actorName: m.comment.author.username,
                 content: `mentioned you: "${m.comment.content.substring(0, 50)}${m.comment.content.length > 50 ? '...' : ''}"`,
-                referenceId: m.comment.recordId,
-                referenceType: m.comment.recordTableName
+                referenceId: m.comment.entityId,
+                referenceType: m.comment.entityType
             };
         });
 
@@ -104,7 +104,7 @@ router.post('/read-all', async (req: AuthRequest, res) => {
         if (!userId) return res.status(400).json({ error: 'No user' });
 
         await prisma.commentMention.updateMany({
-            where: { mentionedUserId: userId, isRead: false },
+            where: { userId: userId, isRead: false },
             data: { isRead: true }
         });
         res.json({ success: true });

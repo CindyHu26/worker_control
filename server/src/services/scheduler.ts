@@ -29,12 +29,20 @@ export async function createNotification(
     if (!systemUser) return;
 
     // 2. Create Comment (System Alert)
+    // Map refTable string to CommentEntityType if needed, assuming refTable matches enum key
+    // Here we cast or limit refTable to known types. For now, we assume caller passes valid type string.
+
+    // Convert generic table name to Enum if possible. 
+    // e.g. 'Worker' -> 'WORKER'
+    const entityType = refTable.toUpperCase() as any;
+
+    // Note: createdBy -> authorId
     const comment = await prisma.systemComment.create({
         data: {
             content: `[System Alert] ${content}`,
-            recordId: refId,
-            recordTableName: refTable,
-            createdBy: systemUser.id
+            entityId: refId,
+            entityType: entityType,
+            authorId: systemUser.id
         }
     });
 
@@ -42,7 +50,7 @@ export async function createNotification(
     await prisma.commentMention.create({
         data: {
             commentId: comment.id,
-            mentionedUserId: targetUserId
+            userId: targetUserId
         }
     });
 }
