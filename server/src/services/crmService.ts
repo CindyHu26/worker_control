@@ -149,22 +149,22 @@ export const convertLeadToEmployer = async (
         }
 
         // Resolve Category ID with Fallback
-        let employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: category } }))?.id;
-        if (!employerCategoryId) {
+        let applicationCategoryId = (await tx.applicationCategory.findUnique({ where: { code: category } }))?.id;
+        if (!applicationCategoryId) {
             // Fallback for sub-categories to their parent category if exact match fails
             if (isMsfg) {
-                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'MANUFACTURING' } }))?.id;
+                applicationCategoryId = (await tx.applicationCategory.findUnique({ where: { code: 'MANUFACTURING' } }))?.id;
             } else if (isInstitution) {
-                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'INSTITUTION' } }))?.id;
+                applicationCategoryId = (await tx.applicationCategory.findUnique({ where: { code: 'INSTITUTION' } }))?.id;
             } else if (category.includes('AGRICULTURE')) {
-                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'AGRICULTURE' } }))?.id;
+                applicationCategoryId = (await tx.applicationCategory.findUnique({ where: { code: 'AGRICULTURE' } }))?.id;
             } else if (category.includes('CONSTRUCTION')) {
-                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'CONSTRUCTION' } }))?.id;
+                applicationCategoryId = (await tx.applicationCategory.findUnique({ where: { code: 'CONSTRUCTION' } }))?.id;
             } else if (category.includes('FISHERY')) {
-                employerCategoryId = (await tx.employerCategory.findUnique({ where: { code: 'FISHERY' } }))?.id;
+                applicationCategoryId = (await tx.applicationCategory.findUnique({ where: { code: 'FISHERY' } }))?.id;
             } else {
                 // Last resort fallback (Optional)
-                // employerCategoryId = ...
+                // applicationCategoryId = ...
             }
         }
 
@@ -179,8 +179,8 @@ export const convertLeadToEmployer = async (
                 address: options.invoiceAddress || lead.address || '',
                 invoiceAddress: options.invoiceAddress || lead.address || '',
 
-                // Link to EmployerCategory (Found by code)
-                employerCategoryId,
+                // Link to ApplicationCategory (Found by code)
+                applicationCategoryId,
 
                 // Track Source
                 // originLeadId: lead.id, // Removed: Relation follows Lead.convertedToEmployerId

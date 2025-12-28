@@ -19,8 +19,8 @@ export const JOB_CATEGORIES = {
         CONSTRUCTION: '營造工作',
         SLAUGHTER: '屠宰工作',
         FISHERY: '海洋漁撈工作',
-        AGRICULTURE: '農業工作',
-        AGRICULTURE_OUTREACH: '外展農業工作',
+        AGRICULTURE_FARMING: '農業工作 (農糧/畜牧/養殖)',
+        AGRICULTURE_OUTREACH: '外展農務工作',
         DIVERSIFIED_CARE: '多元陪伴照顧服務工作',
         WASTE_RECYCLING: '廢棄物及資源物回收處理工作',
     },
@@ -57,7 +57,7 @@ export const ENTITY_TYPES = {
         'HOME_CARE', 'HOME_HELPER', 'MID_HOME_CARE'
     ],
     HYBRID: [
-        'AGRICULTURE', 'MID_AGRICULTURE' // 農業與中階農業較特殊，可能為農場(法人)或農民(個人)
+        'AGRICULTURE_FARMING', 'MID_AGRICULTURE' // 農業與中階農業較特殊，可能為農場(法人)或農民(個人)
     ]
 } as const;
 
@@ -171,7 +171,7 @@ export const INDUSTRY_CODE_MAP: Record<string, IndustryKey> = {
     '01': 'MANUFACTURING',
     '02': 'CONSTRUCTION',
     '03': 'FISHERY',
-    '04': 'AGRICULTURE',
+    '04': 'AGRICULTURE_FARMING',
     '05': 'SLAUGHTER',
     '06': 'HOME_CARE',
     '07': 'HOME_HELPER',

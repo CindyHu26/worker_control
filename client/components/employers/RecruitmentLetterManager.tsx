@@ -205,7 +205,10 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-indigo-600" />
-                    招募函管理 ({letters.length})
+                    {['HOME_CARE', 'HOME_HELPER', 'MID_HOME_CARE'].includes(employer?.category || '')
+                        ? '核准函管理 (Approval Letters)'
+                        : '招募許可函管理 (Recruitment Permits)'}
+                    ({letters.length})
                 </h3>
                 <div className="flex gap-2">
                     <button
@@ -251,7 +254,9 @@ export default function RecruitmentLetterManager({ employerId }: RecruitmentLett
                         className="flex items-center gap-1 text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-md hover:bg-indigo-700 transition-colors shadow-sm"
                     >
                         <Plus className="w-3 h-3" />
-                        新增招募函
+                        {['HOME_CARE', 'HOME_HELPER', 'MID_HOME_CARE'].includes(employer?.category || '')
+                            ? '新增核准函'
+                            : '新增許可函'}
                     </button>
                 </div>
             </div>

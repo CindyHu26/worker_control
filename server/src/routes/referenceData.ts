@@ -12,7 +12,7 @@ const router = Router();
  */
 router.get('/employer-categories', async (req, res) => {
     try {
-        const categories = await prisma.employerCategory.findMany({
+        const categories = await prisma.applicationCategory.findMany({
             where: { isActive: true },
             orderBy: { sortOrder: 'asc' }
         });

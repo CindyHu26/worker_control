@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import FormSection from '@/components/layout/FormSection';
 import ComplianceSelector from '@/components/employers/ComplianceSelector';
 import { isValidGUINumber, isValidNationalID } from '@/utils/validation';
-import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, AlertTriangle, AlertCircle, Phone, MapPin, Plus, Trash2, Briefcase, Languages } from 'lucide-react';
+import { Building, User, FileText, Settings, Building2, Globe, Copy, Save, AlertTriangle, AlertCircle, Phone, MapPin, Plus, Trash2, Briefcase, Languages, Info as InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmployerSidebar } from './EmployerSidebar';
 import { INDUSTRIES, ALLOCATION_RATES, BASE_RATES, EXTRA_RATES } from '@/lib/leadConstants';
@@ -128,6 +128,9 @@ const baseSchema = z.object({
         timingReference: z.string().optional(),
         legacyRef95: z.string().optional(),
         legacyRef96: z.string().optional(),
+        // [New] Agriculture Specifics
+        qualificationLetter: z.string().optional(), // 農業部核發之資格認定函 (Individual/Farmer)
+        outreachApproval: z.string().optional(),    // 外展計畫核定函 (Outreach)
     }).optional(),
 });
 
@@ -179,6 +182,26 @@ const employerSchema = baseSchema.superRefine((data, ctx) => {
                 code: z.ZodIssueCode.custom,
                 message: "事業類雇主必須填寫負責人姓名",
                 path: ["responsiblePerson"]
+            });
+        }
+    }
+
+    // [New] Agriculture Validation
+    if (data.category === 'AGRICULTURE_FARMING' && isIndividual) {
+        if (!data.industryAttributes?.qualificationLetter) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "個人農民申請必須填寫「農業部資格認定函文號」",
+                path: ["industryAttributes", "qualificationLetter"]
+            });
+        }
+    }
+    if (data.category === 'AGRICULTURE_OUTREACH') {
+        if (!data.industryAttributes?.outreachApproval) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "外展農務工作必須填寫「外展計畫核定函文號」",
+                path: ["industryAttributes", "outreachApproval"]
             });
         }
     }
@@ -285,10 +308,19 @@ export default function EmployerForm({
         if (selectedCategory && categories.length > 0) {
             const cat = categories.find(c => c.code === selectedCategory);
             if (cat) {
-                setValue('categoryType', cat.type || 'BUSINESS'); // Default to BUSINESS if type missing
+                // Special Rule for Agriculture Farming: Allow toggling
+                if (selectedCategory === 'AGRICULTURE_FARMING') {
+                    // Do not auto-reset if already set to a valid type for this category
+                    const currentType = watch('categoryType');
+                    if (currentType !== 'BUSINESS' && currentType !== 'INDIVIDUAL') {
+                        setValue('categoryType', 'INDIVIDUAL'); // Default to Individual (Farmer) or Business? Let's default to Individual as per user story "Farmer"
+                    }
+                } else {
+                    setValue('categoryType', cat.type || 'BUSINESS');
+                }
             }
         }
-    }, [selectedCategory, categories, setValue]);
+    }, [selectedCategory, categories, setValue, watch]);
 
     // City District State
     const [selectedCity, setSelectedCity] = useState('');
@@ -568,16 +600,89 @@ export default function EmployerForm({
                                         </Select>
                                     </div>
 
+                                    {/* Category Type Toggle for Agriculture Farming */}
+                                    {selectedCategory === 'AGRICULTURE_FARMING' && (
+                                        <div className="md:col-span-2 bg-yellow-50 p-4 rounded-md border border-yellow-200 mb-4">
+                                            <Label className="block mb-2 font-semibold text-yellow-800">申請身分 (Identity)</Label>
+                                            <div className="flex gap-4">
+                                                <div className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        id="type-individual"
+                                                        value="INDIVIDUAL"
+                                                        checked={selectedCategoryType === 'INDIVIDUAL'}
+                                                        onChange={() => setValue('categoryType', 'INDIVIDUAL')}
+                                                        className="h-4 w-4 text-blue-600"
+                                                    />
+                                                    <Label htmlFor="type-individual" className="cursor-pointer">個人 (自然人/農民)</Label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        id="type-business"
+                                                        value="BUSINESS"
+                                                        checked={selectedCategoryType === 'BUSINESS'}
+                                                        onChange={() => setValue('categoryType', 'BUSINESS')}
+                                                        className="h-4 w-4 text-blue-600"
+                                                    />
+                                                    <Label htmlFor="type-business" className="cursor-pointer">法人 (農企業/農場)</Label>
+                                                </div>
+                                            </div>
+                                            {selectedCategoryType === 'INDIVIDUAL' && (
+                                                <div className="mt-2 text-sm text-yellow-700">
+                                                    <InfoIcon className="inline h-4 w-4 mr-1" />
+                                                    由擁有農保/農民身分的自然人提出申請。
+                                                    <span className="block font-semibold mt-1">核配比率 (Quota): 1:1 (滿1人有農保可聘1移工，上限10人)</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Company Name & Tax ID */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="companyName" className="required">雇主/公司名稱</Label>
-                                        <Input {...register('companyName')} placeholder="公司全名" />
+                                        <Label htmlFor="companyName" className="required">
+                                            {isIndividual ? '申請人姓名/農場名稱' : '雇主/公司名稱'}
+                                        </Label>
+                                        <Input {...register('companyName')} placeholder={isIndividual ? "例: 陳小明 (自耕農)" : "公司全名"} />
                                         {errors.companyName && <p className="text-red-500 text-xs">{errors.companyName.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="shortName">雇主簡稱</Label>
+                                        <Label htmlFor="shortName">
+                                            {isIndividual ? '簡稱 (或農場名)' : '雇主簡稱'}
+                                        </Label>
                                         <Input {...register('shortName')} placeholder="用於列表顯示" />
                                     </div>
+
+                                    {/* Agriculture Qualification Fields */}
+                                    {(selectedCategory === 'AGRICULTURE_FARMING' && isIndividual) && (
+                                        <div className="md:col-span-2 space-y-2 bg-green-50 p-4 rounded border border-green-200">
+                                            <Label className="required font-semibold text-green-800">
+                                                農業部核發之資格認定函文號 (MOA Qualification Letter)
+                                            </Label>
+                                            <Input
+                                                {...register('industryAttributes.qualificationLetter')}
+                                                placeholder="請輸入函文號 (前置資格認定)"
+                                            />
+                                            <p className="text-xs text-green-700 mt-1">
+                                                * 需檢附農民健康保險證明或實際從農證明(年銷25萬以上)向農業部取得此函。
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {(selectedCategory === 'AGRICULTURE_OUTREACH') && (
+                                        <div className="md:col-span-2 space-y-2 bg-blue-50 p-4 rounded border border-blue-200">
+                                            <Label className="required font-semibold text-blue-800">
+                                                外展計畫核定函文號 (Outreach Plan Approval)
+                                            </Label>
+                                            <Input
+                                                {...register('industryAttributes.outreachApproval')}
+                                                placeholder="請輸入核定函號"
+                                            />
+                                            <p className="text-xs text-blue-700 mt-1">
+                                                * 外展農務工作需先取得外展計畫核定。
+                                            </p>
+                                        </div>
+                                    )}
 
 
                                     {!isIndividual && (

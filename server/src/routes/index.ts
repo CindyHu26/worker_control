@@ -46,7 +46,7 @@ import relocationRoutes from './relocation';
 import employerCategoryRoutes from './employerCategories';
 import contractTypeRoutes from './contractTypes';
 import countryRoutes from './countries';
-import jobTypeRoutes from './jobTypes';
+// import jobTypeRoutes from './jobTypes';
 import industryRoutes from './industries';
 import domesticAgencyRoutes from './domesticAgencies';
 import employeeRoutes from './employees';
@@ -114,7 +114,7 @@ router.use('/reference', referenceDataRoutes);
 router.use('/relocation', relocationRoutes);
 router.use('/employer-categories', employerCategoryRoutes); // Legacy - keep for backward compatibility
 router.use('/application-categories', applicationCategoryRoutes); // New endpoint
-router.use('/job-types', jobTypeRoutes); // Legacy - keep for backward compatibility
+// router.use('/job-types', jobTypeRoutes); // Legacy - REMOVED (Model Missing)
 router.use('/work-titles', workTitleRoutes); // New endpoint
 router.use('/industries', industryRoutes);
 router.use('/domestic-agencies', domesticAgencyRoutes);

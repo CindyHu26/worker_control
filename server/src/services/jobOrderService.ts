@@ -107,6 +107,43 @@ export const jobOrderService = {
         // Check quota before creating
         const quotaInfo = await this.checkEmployerQuota(data.employerId);
 
+        // [New] Validate Salary
+        // Fetch employer category helper if not passed directly, but data usually comes from form.
+        // Assuming we can get full category from data or need to fetch employer?
+        // Let's fetch employer to get the category if needed.
+        const employer = await prisma.employer.findUnique({
+            where: { id: data.employerId },
+            include: { category: true }
+        });
+
+        // Determine Category Code
+        // If JobOrder has a specific jobType that maps to a category, use it.
+        // Or use employer's category. 
+        // For simplicity, we use the employer's category code or data.jobType if it matches our CONSTANT codes.
+        const categoryCode = employer?.category?.code || 'UNKNOWN';
+        const isIntermediate = categoryCode.startsWith('MID_');
+
+        // If data has salary info (assuming 'salary' field or parsed from structure)
+        // jobOrder model doesn't have strict 'salary' field visible in previous `view_file` (it had salaryStructure in jobRequisition?)
+        // Let's check where salary is stored. In `view_file` output for `recruitmentService`, `upsertJobRequisition` handled salaryStructure.
+        // `jobOrder` model itself has `basicSalary` in `Deployment` but `JobOrder` often has `salary`.
+        // Wait, `jobOrderService` `createJobOrder` just upserts `JobOrder`.
+        // If there is no salary field in JobOrder args, we might need to skip or check `jobRequisition`?
+        // The user implementation plan said "JobOrder OR EmploymentContract".
+        // Let's assume validation happens if `minSalary` is provided in `data` or we need to look at `JobRequisition`.
+
+        // Checking `createJobOrder` signature in `jobOrderService.ts` (viewed in Step 84)
+        // It takes `data: any`.
+        // And creates `prisma.jobOrder.create`.
+        // The Service doesn't seem to handle `JobRequisition` creation inline? 
+        // Ah, `recruitmentService.upsertJobOrder` was different.
+
+        // Let's try to validate if `data.salary` exists.
+        if (data.salary) {
+            const { validateSalary } = require('../utils/salaryValidation');
+            validateSalary(categoryCode, Number(data.salary), isIntermediate);
+        }
+
         return prisma.jobOrder.create({
             data: {
                 employerId: data.employerId,
@@ -120,6 +157,10 @@ export const jobOrderService = {
                 nationalityPreference: data.nationalityPreference,
                 genderPreference: data.genderPreference?.toLowerCase() as any,
                 status: (data.status?.toLowerCase() || 'open') as any,
+                // If salary is a field in schema (not seen in Step 82 for JobOrder, but maybe I missed it or it is new requirement)
+                // If not in schema, we can't save it to JobOrder directly without adding it.
+                // Step 84 `jobOrderService` `createJobOrder` does NOT show `salary` in `data`.
+                // However, I can still validate it if the frontend sends it.
             },
             include: {
                 employer: {

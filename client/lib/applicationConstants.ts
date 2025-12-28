@@ -72,11 +72,17 @@ export const APPLICATION_CATEGORIES: Record<string, ApplicationCategoryDef> = {
         nameEn: 'Fishing Work',
         type: 'BUSINESS',
     },
-    AGRICULTURE: {
-        code: 'AGRICULTURE',
-        nameZh: '農業工作',
-        nameEn: 'Agricultural Work',
-        type: 'BUSINESS',
+    AGRICULTURE_FARMING: {
+        code: 'AGRICULTURE_FARMING',
+        nameZh: '農業工作 (農糧/畜牧/養殖)',
+        nameEn: 'Agriculture Farming',
+        type: 'BUSINESS', // Can be toggled to INDIVIDUAL in UI
+    },
+    AGRICULTURE_OUTREACH: {
+        code: 'AGRICULTURE_OUTREACH',
+        nameZh: '外展農務工作',
+        nameEn: 'Outreach Agriculture',
+        type: 'BUSINESS', // Must be BUSINESS
     },
 
     // ========== 中階技術人力 (Intermediate Skilled Workers) ==========
@@ -101,6 +107,13 @@ export const APPLICATION_CATEGORIES: Record<string, ApplicationCategoryDef> = {
         type: 'BUSINESS',
         isIntermediate: true,
     },
+    MID_AGRICULTURE_OUTREACH: {
+        code: 'MID_AGRICULTURE_OUTREACH',
+        nameZh: '中階技術外展農務工作',
+        nameEn: 'Intermediate Skilled Outreach Agriculture',
+        type: 'BUSINESS',
+        isIntermediate: true,
+    },
     MID_INSTITUTION: {
         code: 'MID_INSTITUTION',
         nameZh: '中階技術機構看護',
@@ -109,6 +122,14 @@ export const APPLICATION_CATEGORIES: Record<string, ApplicationCategoryDef> = {
         isIntermediate: true,
     },
 };
+
+// 定義哪些類別允許 "個人(自然人)" 申請
+export const INDIVIDUAL_ELIGIBLE_CATEGORIES = [
+    'HOME_CARE',
+    'HOME_HELPER',
+    'AGRICULTURE_FARMING', // [Modified] 農業工作加入個人許可清單
+    'MID_HOME_CARE' // Example if exists
+];
 
 // ===========================================
 // 工種預設對照表 (Work Title Mapping)
@@ -161,9 +182,14 @@ export const WORK_TITLE_MAPPING: Record<string, WorkTitleMapping> = {
         commonOptions: ['漁撈工'],
         requiresSelection: false,
     },
-    AGRICULTURE: {
+    AGRICULTURE_FARMING: {
         defaultTitle: '農務工',
-        commonOptions: ['農務工', '畜牧工'],
+        commonOptions: ['農務工', '畜牧工', '養殖工'],
+        requiresSelection: false,
+    },
+    AGRICULTURE_OUTREACH: {
+        defaultTitle: '外展農務工',
+        commonOptions: ['外展農務工'],
         requiresSelection: false,
     },
 

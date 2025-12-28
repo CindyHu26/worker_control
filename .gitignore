@@ -87,6 +87,7 @@ server/public/
 # Server Runtime Storage
 server/storage/*
 !server/storage/.gitkeep
+!server/storage/templates/
 !server/storage/uploads/
 server/storage/uploads/*
 !server/storage/uploads/.gitkeep

@@ -319,7 +319,10 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
             <Card className="border-2 border-blue-600 shadow-md">
                 <CardHeader className="bg-blue-50 pb-2 border-b">
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-blue-800">
-                        <Landmark size={20} /> 步驟四：勞動部招募許可函 (Recruitment Letter)
+                        <Landmark size={20} />
+                        {['HOME_CARE', 'HOME_HELPER', 'MID_HOME_CARE'].includes(employer?.category || '')
+                            ? '步驟四：勞動部核准函 (Approval Letter)'
+                            : '步驟四：勞動部招募許可函 (Recruitment Permit)'}
                     </CardTitle>
                 </CardHeader>
                 <div className="bg-yellow-50 border-1 border-yellow-200 p-2 text-sm text-yellow-800 flex items-center gap-2 mx-4 mt-4 rounded">
