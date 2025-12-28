@@ -149,4 +149,14 @@ router.use('/alerts', alertRoutes);
 import entryDocumentsRoutes from './entryDocuments';
 router.use('/entry-documents', entryDocumentsRoutes);
 
+// Phase 9: Enhanced Accounting Module
+import billingItemDefinitionRoutes from './billingItemDefinitions';
+import receivableRoutes from './receivables';
+
+router.use('/billing-item-definitions', billingItemDefinitionRoutes);
+router.use('/receivables', receivableRoutes);
+
+import invoiceRoutes from './invoices';
+router.use('/invoices', invoiceRoutes);
+
 export default router;

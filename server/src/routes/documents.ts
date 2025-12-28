@@ -13,7 +13,7 @@ import { templateService } from '../services/templateService';
 const router = Router();
 
 // Configure Multer for Template Uploads
-const templatesDir = path.join(__dirname, '../../templates');
+const templatesDir = path.join(__dirname, '../../storage/templates');
 if (!fs.existsSync(templatesDir)) {
     fs.mkdirSync(templatesDir, { recursive: true });
 }

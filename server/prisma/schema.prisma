@@ -1428,6 +1428,10 @@ model Employer {
 
   officialDocuments OfficialDocument[]
 
+  // Phase 9: Accounting Module Relations
+  billingAliases EmployerBillingAlias[]
+  receivables    Receivable[]
+
   // Soft Delete
 
   isDeleted Boolean @default(false) @map("is_deleted")
@@ -1712,6 +1716,9 @@ model Worker {
   interviewCandidates InterviewCandidate[]
 
   payrolls PayrollRecord[]
+
+  // Phase 9: Accounting Module Relations
+  receivables Receivable[]
 
   // Soft Delete
 
@@ -3691,4 +3698,171 @@ model BillingPlanItem {
   @@index([status])
   @@index([itemCategory])
   @@map("billing_plan_items")
+}
+
+// ==========================================
+// Phase 9: Enhanced Accounting Module
+// ==========================================
+
+// 1. 動態帳款科目定義 (Dynamic Billing Item Definition)
+model BillingItemDefinition {
+  id        String              @id @default(uuid()) @db.Uuid
+  code      String              @unique @db.VarChar(50) // 系統內部識別碼 (e.g., "UTILITY", "RENT")
+  name      String              @db.VarChar(100) // 預設顯示名稱 (e.g., "水電費")
+  nameEn    String?             @map("name_en") @db.VarChar(100)
+  category  BillingItemCategory // 關聯到現有 enum 分類
+  isSystem  Boolean             @default(false) @map("is_system") // 系統預設科目(不可刪除)
+  isActive  Boolean             @default(true) @map("is_active")
+  sortOrder Int                 @default(0) @map("sort_order")
+
+  // Relations
+  employerAliases EmployerBillingAlias[]
+  receivables     Receivable[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("billing_item_definitions")
+}
+
+// 2. 雇主專屬科目別名 (Employer-specific Billing Alias)
+model EmployerBillingAlias {
+  id           String @id @default(uuid()) @db.Uuid
+  employerId   String @map("employer_id") @db.Uuid
+  definitionId String @map("definition_id") @db.Uuid
+  customName   String @map("custom_name") @db.VarChar(100) // 該雇主看到的名稱
+
+  employer   Employer              @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  definition BillingItemDefinition @relation(fields: [definitionId], references: [id])
+
+  @@unique([employerId, definitionId])
+  @@index([employerId])
+  @@map("employer_billing_aliases")
+}
+
+// 3. 應收帳款 (Account Receivable)
+model Receivable {
+  id           String @id @default(uuid()) @db.Uuid
+  workerId     String @map("worker_id") @db.Uuid
+  employerId   String @map("employer_id") @db.Uuid
+  billingCycle String @map("billing_cycle") @db.VarChar(10) // 帳期 (e.g., "2024-01")
+
+  itemDefinitionId String @map("item_definition_id") @db.Uuid
+  itemName         String @map("item_name") @db.VarChar(100) // 冗餘存儲 (Snapshot)
+
+  amount  Decimal  @db.Decimal(10, 2) // 應收金額
+  dueDate DateTime @map("due_date") @db.Date // 應收帳款日
+
+  status String @default("PENDING") @db.VarChar(20) // PENDING, PARTIAL, PAID, CANCELLED
+  type   String @default("REGULAR") @db.VarChar(20) // REGULAR (一般), ADJUSTMENT (補收/調整)
+
+  // 調整單連結到原始帳款
+  originalReceivableId String? @map("original_receivable_id") @db.Uuid
+
+  // Relations
+  transactions       PaymentTransaction[]
+  auditLogs          AccountingAuditLog[]
+  invoiceItems       InvoiceItem[]
+  worker             Worker                @relation(fields: [workerId], references: [id])
+  employer           Employer              @relation(fields: [employerId], references: [id])
+  itemDefinition     BillingItemDefinition @relation(fields: [itemDefinitionId], references: [id])
+  originalReceivable Receivable?           @relation("AdjustmentFrom", fields: [originalReceivableId], references: [id])
+  adjustments        Receivable[]          @relation("AdjustmentFrom")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
+
+  @@index([workerId, billingCycle])
+  @@index([employerId, billingCycle])
+  @@index([status])
+  @@map("receivables")
+}
+
+// 4. 實收帳款 (Payment Transaction / 金流)
+model PaymentTransaction {
+  id           String @id @default(uuid()) @db.Uuid
+  receivableId String @map("receivable_id") @db.Uuid
+
+  amount        Decimal  @db.Decimal(10, 2) // 實收金額
+  paymentDate   DateTime @map("payment_date") @db.Date // 實收帳款日
+  paymentMethod String   @map("payment_method") @db.VarChar(30) // CASH, TRANSFER, SALARY_DEDUCTION
+
+  // 作廢機制
+  isVoided   Boolean   @default(false) @map("is_voided")
+  voidedAt   DateTime? @map("voided_at") @db.Timestamptz
+  voidedBy   String?   @map("voided_by") @db.Uuid
+  voidReason String?   @map("void_reason") @db.Text
+
+  note      String? @db.Text
+  createdBy String  @map("created_by") @db.Uuid
+
+  receivable Receivable @relation(fields: [receivableId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([receivableId])
+  @@index([paymentDate])
+  @@map("payment_transactions")
+}
+
+// 5. 帳務審計紀錄 (Accounting Audit Log)
+model AccountingAuditLog {
+  id           String @id @default(uuid()) @db.Uuid
+  receivableId String @map("receivable_id") @db.Uuid
+
+  action       String  @db.VarChar(30) // CREATE, UPDATE, VOID, ADJUSTMENT
+  fieldChanged String? @map("field_changed") @db.VarChar(50)
+  oldValue     String? @map("old_value") @db.Text
+  newValue     String? @map("new_value") @db.Text
+  reason       String? @db.Text
+
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  receivable Receivable @relation(fields: [receivableId], references: [id])
+
+  @@index([receivableId])
+  @@map("accounting_audit_logs")
+}
+
+// 6. 請款單 (Invoice)
+model Invoice {
+  id        String @id @default(uuid()) @db.Uuid
+  invoiceNo String @unique @map("invoice_no") @db.VarChar(30) // 系統生成的請款單號
+
+  payerType String @map("payer_type") @db.VarChar(20) // EMPLOYER, WORKER
+  payerId   String @map("payer_id") @db.Uuid // 關聯到 Employer 或 Worker
+
+  issueDate DateTime @default(now()) @map("issue_date") @db.Date
+  dueDate   DateTime @map("due_date") @db.Date
+
+  totalAmount Decimal @map("total_amount") @db.Decimal(12, 2)
+  status      String  @default("DRAFT") @db.VarChar(20) // DRAFT, ISSUED, PAID, CANCELLED
+
+  notes     String? @db.Text
+  createdBy String  @map("created_by") @db.Uuid
+
+  items InvoiceItem[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([payerType, payerId])
+  @@index([status])
+  @@map("invoices")
+}
+
+// 7. 請款單項目 (Invoice Item)
+model InvoiceItem {
+  id           String  @id @default(uuid()) @db.Uuid
+  invoiceId    String  @map("invoice_id") @db.Uuid
+  receivableId String  @map("receivable_id") @db.Uuid
+  amount       Decimal @db.Decimal(10, 2) // 本次請款金額 (可能只請部分)
+
+  invoice    Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  receivable Receivable @relation(fields: [receivableId], references: [id])
+
+  @@index([invoiceId])
+  @@map("invoice_items")
 }
