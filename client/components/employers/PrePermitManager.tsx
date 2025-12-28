@@ -16,9 +16,10 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 interface PrePermitManagerProps {
     employerId: string;
+    showIndustryRecognitions?: boolean;
 }
 
-export default function PrePermitManager({ employerId }: PrePermitManagerProps) {
+export default function PrePermitManager({ employerId, showIndustryRecognitions = true }: PrePermitManagerProps) {
     // const { toast } = useToast(); -> Removed
 
     // --- Industry Recognition State ---
@@ -117,88 +118,90 @@ export default function PrePermitManager({ employerId }: PrePermitManagerProps) 
     return (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* Industry Recognitions */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>工業局核定函 (Industry Recognitions)</CardTitle>
-                    <Dialog open={isIdbOpen} onOpenChange={setIsIdbOpen}>
-                        <DialogTrigger asChild>
-                            <Button size="sm"><Plus className="w-4 h-4 mr-2" />新增</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>新增工業局核定函</DialogTitle>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid gap-2">
-                                    <Label>工業局函號</Label>
-                                    <Input value={newIdb.bureauRefNumber} onChange={e => setNewIdb({ ...newIdb, bureauRefNumber: e.target.value })} />
+            {showIndustryRecognitions && (
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>工業局核定函 (Industry Recognitions)</CardTitle>
+                        <Dialog open={isIdbOpen} onOpenChange={setIsIdbOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm"><Plus className="w-4 h-4 mr-2" />新增</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>新增工業局核定函</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid gap-2">
+                                        <Label>工業局函號</Label>
+                                        <Input value={newIdb.bureauRefNumber} onChange={e => setNewIdb({ ...newIdb, bureauRefNumber: e.target.value })} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                            <Label>發文日期</Label>
+                                            <Input type="date" value={newIdb.issueDate} onChange={e => setNewIdb({ ...newIdb, issueDate: e.target.value })} />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>有效期限 (通常3年)</Label>
+                                            <Input type="date" value={newIdb.expiryDate} onChange={e => setNewIdb({ ...newIdb, expiryDate: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                            <Label>級別 ({newIdb.tier})</Label>
+                                            <Select onValueChange={v => setNewIdb({ ...newIdb, tier: v })}>
+                                                <SelectTrigger><SelectValue placeholder="選擇級別" /></SelectTrigger>
+                                                <SelectContent>
+                                                    {['A+', 'A', 'B', 'C', 'D'].map(t => (
+                                                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>核配比率 (e.g. 0.2)</Label>
+                                            <Input type="number" step="0.01" value={newIdb.allocationRate} onChange={e => setNewIdb({ ...newIdb, allocationRate: e.target.value })} placeholder="0.20" />
+                                        </div>
+                                    </div>
+                                    <Button onClick={handleAddIdb}>儲存</Button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2">
-                                        <Label>發文日期</Label>
-                                        <Input type="date" value={newIdb.issueDate} onChange={e => setNewIdb({ ...newIdb, issueDate: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label>有效期限 (通常3年)</Label>
-                                        <Input type="date" value={newIdb.expiryDate} onChange={e => setNewIdb({ ...newIdb, expiryDate: e.target.value })} />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2">
-                                        <Label>級別 (Tier)</Label>
-                                        <Select onValueChange={v => setNewIdb({ ...newIdb, tier: v })}>
-                                            <SelectTrigger><SelectValue placeholder="選擇級別" /></SelectTrigger>
-                                            <SelectContent>
-                                                {['A+', 'A', 'B', 'C', 'D'].map(t => (
-                                                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label>核配比率 (e.g. 0.2)</Label>
-                                        <Input type="number" step="0.01" value={newIdb.allocationRate} onChange={e => setNewIdb({ ...newIdb, allocationRate: e.target.value })} placeholder="0.20" />
-                                    </div>
-                                </div>
-                                <Button onClick={handleAddIdb}>儲存</Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>函號</TableHead>
-                                <TableHead>級別</TableHead>
-                                <TableHead>比率</TableHead>
-                                <TableHead>發文日</TableHead>
-                                <TableHead></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {Array.isArray(recognitions) && recognitions.map((r: any) => (
-                                <TableRow key={r.id}>
-                                    <TableCell className="font-medium">{r.bureauRefNumber}</TableCell>
-                                    <TableCell>{r.tier}</TableCell>
-                                    <TableCell>{r.allocationRate ? `${(r.allocationRate * 100).toFixed(0)}%` : '-'}</TableCell>
-                                    <TableCell>{new Date(r.issueDate).toLocaleDateString()}</TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteIdb(r.id)}>
-                                            <Trash2 className="w-4 h-4 text-red-500" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {(!recognitions || recognitions.length === 0) && (
+                            </DialogContent>
+                        </Dialog>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground">無資料</TableCell>
+                                    <TableHead>函號</TableHead>
+                                    <TableHead>級別</TableHead>
+                                    <TableHead>比率</TableHead>
+                                    <TableHead>發文日</TableHead>
+                                    <TableHead></TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                            </TableHeader>
+                            <TableBody>
+                                {Array.isArray(recognitions) && recognitions.map((r: any) => (
+                                    <TableRow key={r.id}>
+                                        <TableCell className="font-medium">{r.bureauRefNumber}</TableCell>
+                                        <TableCell>{r.tier}</TableCell>
+                                        <TableCell>{r.allocationRate ? `${(r.allocationRate * 100).toFixed(0)}%` : '-'}</TableCell>
+                                        <TableCell>{new Date(r.issueDate).toLocaleDateString()}</TableCell>
+                                        <TableCell>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteIdb(r.id)}>
+                                                <Trash2 className="w-4 h-4 text-red-500" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {(!recognitions || recognitions.length === 0) && (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center text-muted-foreground">無資料</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Recruitment Proofs */}
             <Card>

@@ -55,6 +55,7 @@ const prisma = prismaClient.$extends({
                 if (SOFT_DELETE_MODELS.includes(model)) {
                     // Transform findUnique into findFirst to allow filtering by non-unique isDeleted
                     return (prismaClient as any)[model].findFirst({
+                        ...args,
                         where: { ...args.where, isDeleted: false }
                     });
                 }

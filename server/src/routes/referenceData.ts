@@ -25,20 +25,20 @@ router.get('/employer-categories', async (req, res) => {
 
 /**
  * GET /api/reference/application-types
- * Returns all active application types
+ * Returns all active application categories (as application types for backward compatibility)
  */
-// router.get('/application-types', async (req, res) => {
-//     try {
-//         const types = await prisma.applicationType.findMany({
-//             where: { isActive: true },
-//             orderBy: { sortOrder: 'asc' }
-//         });
-//         res.json(types);
-//     } catch (error: any) {
-//         console.error('Error fetching application types:', error);
-//         res.status(500).json({ error: 'Failed to fetch application types' });
-//     }
-// });
+router.get('/application-types', async (req, res) => {
+    try {
+        const types = await prisma.applicationCategory.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' }
+        });
+        res.json(types);
+    } catch (error: any) {
+        console.error('Error fetching application types:', error);
+        res.status(500).json({ error: 'Failed to fetch application types' });
+    }
+});
 
 /**
  * GET /api/reference/industry-codes

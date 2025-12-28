@@ -75,8 +75,9 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/workers', workerRoutes);
 router.use('/recruitment', recruitmentRoutes);
 // Quota routes must come before general employer routes if they share the /employers prefix
-router.use('/employers', quotaRoutes); // Handles /:id/labor-counts etc.
+// handler order swap
 router.use('/employers', employerRoutes);
+router.use('/employers', quotaRoutes); // Handles /:id/labor-counts etc.
 router.use('/comments', commentRoutes);
 router.use('/documents', documentRoutes);
 router.use('/deployments', deploymentRoutes);

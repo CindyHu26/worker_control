@@ -30,7 +30,11 @@ interface Employer {
     responsiblePerson?: string;
     phoneNumber?: string;
     address?: string;
-    category?: string;
+    category?: {
+        type: string;
+        code: string;
+        nameZh: string;
+    };
     // Basic fields
     code?: string;
     totalQuota?: number;
@@ -39,7 +43,19 @@ interface Employer {
     _count?: {
         workers: number;
         deployments: number;
-    }
+    };
+    // [Added] Nested Relations
+    individualInfo?: {
+        patientName?: string;
+        patientIdNo?: string;
+        careAddress?: string;
+        relationship?: string;
+    };
+    corporateInfo?: {
+        industryType?: string;
+    };
+    factories?: any[];
+    recruitmentLetters?: any[];
 }
 
 export default function EmployerDetailPage() {
@@ -86,6 +102,10 @@ export default function EmployerDetailPage() {
 
     if (loading) return <div className="p-8 text-center text-gray-500">載入雇主資料中...</div>;
     if (!employer) return <div className="p-8 text-center text-red-500">找不到雇主資料</div>;
+
+    // Logic for Conditional Rendering
+    const isIndividual = employer.category?.type === 'INDIVIDUAL';
+    const isManufacturing = employer.category?.code === 'MANUFACTURING';
 
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
@@ -146,7 +166,7 @@ export default function EmployerDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2 text-gray-500">
-                                    <Hash className="h-4 w-4" /> 統一編號 (Tax ID)
+                                    <Hash className="h-4 w-4" /> {isIndividual ? '身分證字號 (ID Number)' : '統一編號 (Tax ID)'}
                                 </div>
                                 <div className="font-mono">{employer.taxId || '-'}</div>
                             </div>
@@ -168,7 +188,8 @@ export default function EmployerDetailPage() {
                                 </div>
                                 <div>{employer.address || '-'}</div>
                             </div>
-                            {/* [New] Total Quota Display */}
+                            {/* [New] Total Quota Display - Only for Business/Manufacturing usually, or keep valid */}
+                            {/* Showing for all as it might be relevant, but Tier is specific */}
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2 text-gray-500">
                                     <span className="font-bold border border-blue-400 bg-blue-50 text-blue-600 rounded px-1 text-xs">SUM</span> 目前可用名額 (Quota)
@@ -177,54 +198,93 @@ export default function EmployerDetailPage() {
                                     {employer.totalQuota ?? 0} <span className="text-sm font-normal text-gray-500">人</span>
                                 </div>
                             </div>
-                            {/* [Added] Dynamic Tier Display */}
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-gray-500">
-                                    <span className="font-bold border border-gray-400 rounded px-1 text-xs">3K</span> 核定級別 (Tier)
-                                </div>
-                                <div>
-                                    {(() => {
-                                        // Filter for valid recognitions
-                                        const recognitions = (employer as any).industryRecognitions || [];
-                                        const now = new Date();
-                                        const activeRec = recognitions.find((doc: any) => {
-                                            // Check if not expired (or no expiry date)
-                                            if (doc.expiryDate && new Date(doc.expiryDate) < now) return false;
-                                            return true;
-                                        });
 
-                                        if (activeRec) {
-                                            const rate = activeRec.allocationRate
-                                                ? (Number(activeRec.allocationRate) * 100).toFixed(0) + '%'
-                                                : '?%';
-                                            return (
-                                                <div>
-                                                    <span className="text-blue-600 font-bold text-lg">
-                                                        {activeRec.tier} 級 ({rate})
-                                                    </span>
-                                                    <div className="text-xs text-gray-400">
-                                                        {activeRec.bureauRefNumber}
+                            {/* [Added] Dynamic Tier Display - Only for Manufacturing */}
+                            {isManufacturing && (
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-gray-500">
+                                        <span className="font-bold border border-gray-400 rounded px-1 text-xs">3K</span> 核定級別 (Tier)
+                                    </div>
+                                    <div>
+                                        {(() => {
+                                            // Filter for valid recognitions
+                                            const recognitions = (employer as any).industryRecognitions || [];
+                                            const now = new Date();
+                                            const activeRec = recognitions.find((doc: any) => {
+                                                // Check if not expired (or no expiry date)
+                                                if (doc.expiryDate && new Date(doc.expiryDate) < now) return false;
+                                                return true;
+                                            });
+
+                                            if (activeRec) {
+                                                const rate = activeRec.allocationRate
+                                                    ? (Number(activeRec.allocationRate) * 100).toFixed(0) + '%'
+                                                    : '?%';
+                                                return (
+                                                    <div>
+                                                        <span className="text-blue-600 font-bold text-lg">
+                                                            {activeRec.tier} 級 ({rate})
+                                                        </span>
+                                                        <div className="text-xs text-gray-400">
+                                                            {activeRec.bureauRefNumber}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        } else {
-                                            return <span className="text-gray-400 text-sm">無有效核定 (No Valid Permit)</span>;
-                                        }
-                                    })()}
+                                                );
+                                            } else {
+                                                return <span className="text-gray-400 text-sm">無有效核定 (No Valid Permit)</span>;
+                                            }
+                                        })()}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
 
+                {/* [New] Patient Info Card (For Individual Employers) */}
+                {isIndividual && employer.individualInfo && (
+                    <Card className="bg-purple-50 border-purple-100">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg font-bold flex items-center gap-2 text-purple-900">
+                                <User className="h-5 w-5 text-purple-600" />
+                                被看護人資料 (Patient Info)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                <div className="space-y-1">
+                                    <div className="text-purple-600 font-medium">被看護人姓名 (Patient Name)</div>
+                                    <div className="font-medium text-gray-900">{employer.individualInfo.patientName || '-'}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="text-purple-600 font-medium">被看護人身分證字號 (Patient ID)</div>
+                                    <div className="font-mono text-gray-900">{employer.individualInfo.patientIdNo || '-'}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="text-purple-600 font-medium">與雇主關係 (Relationship)</div>
+                                    <div className="text-gray-900">{employer.individualInfo.relationship || '-'}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="text-purple-600 font-medium">照護地址 (Care Address)</div>
+                                    <div className="text-gray-900">{employer.individualInfo.careAddress || '-'}</div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Header Summary Board */}
                 <EmployerSummaryBoard data={employer.summary} />
 
-                {/* Labor Insurance Count Management */}
-                <LaborCountManager employerId={id} />
+                {/* Labor Insurance Count Management - Only for Manufacturing */}
+                {isManufacturing && <LaborCountManager employerId={id} />}
 
                 {/* Pre-Permit Management (Industry Recognitions & Recruitment Proofs) */}
-                <PrePermitManager employerId={id} />
+                {/* Industry Recognitions hidden for non-manufacturing */}
+                <PrePermitManager
+                    employerId={id}
+                    showIndustryRecognitions={isManufacturing}
+                />
 
                 {/* Recruitment Letter Management Section */}
                 <RecruitmentLetterManager employerId={id} />

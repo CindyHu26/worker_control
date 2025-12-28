@@ -128,34 +128,36 @@ async function main() {
         console.log(`✅ Compliance Rule ${r.code} seeded`);
     }
 
-    // 9. Reference Data: Employer Categories
-    console.log('Seeding employer categories...');
+    // 9. Reference Data: Application Categories (申請項目)
+    console.log('Seeding application categories...');
     const categories = [
         {
             code: 'MANUFACTURING',
-            nameZh: '製造業',
-            nameEn: 'Manufacturing',
-            type: 'BUSINESS',
+            nameZh: '製造工作',
+            nameEn: 'Manufacturing Work',
+            type: 'BUSINESS' as const,
             iconName: 'Factory',
             color: 'blue',
             description: '適用於一般製造業工廠，需具備工廠登記證',
+            quotaBaseRate: 0.20,
             sortOrder: 1
         },
         {
             code: 'CONSTRUCTION',
-            nameZh: '營造業',
-            nameEn: 'Construction',
-            type: 'BUSINESS',
+            nameZh: '營造工作',
+            nameEn: 'Construction Work',
+            type: 'BUSINESS' as const,
             iconName: 'HardHat',
             color: 'orange',
             description: '適用於重大公共工程或一般營造工程',
+            quotaBaseRate: 0.40,
             sortOrder: 2
         },
         {
             code: 'FISHERY',
-            nameZh: '海洋漁撈',
-            nameEn: 'Fishery',
-            type: 'BUSINESS',
+            nameZh: '海洋漁撈工作',
+            nameEn: 'Fishing Work',
+            type: 'BUSINESS' as const,
             iconName: 'Ship',
             color: 'cyan',
             description: '適用於海洋漁撈作業',
@@ -163,9 +165,9 @@ async function main() {
         },
         {
             code: 'HOME_CARE',
-            nameZh: '家庭看護',
-            nameEn: 'Home Care',
-            type: 'INDIVIDUAL',
+            nameZh: '家庭看護工作',
+            nameEn: 'Home Caregiver',
+            type: 'INDIVIDUAL' as const,
             iconName: 'UserHeart',
             color: 'pink',
             description: '照顧身心障礙者或重大傷病者',
@@ -173,9 +175,9 @@ async function main() {
         },
         {
             code: 'HOME_HELPER',
-            nameZh: '家庭幫傭',
+            nameZh: '家庭幫傭工作',
             nameEn: 'Home Helper',
-            type: 'INDIVIDUAL',
+            type: 'INDIVIDUAL' as const,
             iconName: 'Home',
             color: 'purple',
             description: '協助家庭處理家務與照顧幼童',
@@ -183,34 +185,86 @@ async function main() {
         },
         {
             code: 'INSTITUTION',
-            nameZh: '養護機構',
-            nameEn: 'Care Institution',
-            type: 'INSTITUTION',
+            nameZh: '機構看護工作',
+            nameEn: 'Institutional Caregiver',
+            type: 'INSTITUTION' as const,
             iconName: 'Building2',
             color: 'green',
             description: '適用於立案之養護機構',
             sortOrder: 6
+        },
+        {
+            code: 'AGRICULTURE_FARMING',
+            nameZh: '農業工作 (農糧/畜牧/養殖)',
+            nameEn: 'Agriculture Farming',
+            type: 'BUSINESS' as const,
+            iconName: 'Wheat',
+            color: 'lime',
+            description: '農糧、畜牧、養殖業工作',
+            sortOrder: 7
+        },
+        {
+            code: 'AGRICULTURE_OUTREACH',
+            nameZh: '外展農務工作',
+            nameEn: 'Outreach Agriculture',
+            type: 'BUSINESS' as const,
+            iconName: 'Tractor',
+            color: 'emerald',
+            description: '外展農務服務',
+            sortOrder: 8
+        },
+        // 中階技術人力
+        {
+            code: 'MID_MANUFACTURING',
+            nameZh: '中階技術製造工作',
+            nameEn: 'Intermediate Skilled Manufacturing',
+            type: 'BUSINESS' as const,
+            iconName: 'Cog',
+            color: 'indigo',
+            description: '中階技術製造人力',
+            sortOrder: 10
+        },
+        {
+            code: 'MID_CONSTRUCTION',
+            nameZh: '中階技術營造工作',
+            nameEn: 'Intermediate Skilled Construction',
+            type: 'BUSINESS' as const,
+            iconName: 'Wrench',
+            color: 'amber',
+            description: '中階技術營造人力',
+            sortOrder: 11
+        },
+        {
+            code: 'MID_INSTITUTION',
+            nameZh: '中階技術機構看護',
+            nameEn: 'Intermediate Skilled Institutional Care',
+            type: 'INSTITUTION' as const,
+            iconName: 'Heart',
+            color: 'rose',
+            description: '中階技術機構看護人力',
+            sortOrder: 12
         }
     ];
 
     for (const cat of categories) {
-        await prisma.employerCategory.upsert({
+        await prisma.applicationCategory.upsert({
             where: { code: cat.code },
             update: {
                 nameZh: cat.nameZh,
                 nameEn: cat.nameEn,
-                type: cat.type as any, // Cast to any or import Enum if avail in generated client but usually string works if correct
+                type: cat.type,
                 iconName: cat.iconName,
                 color: cat.color,
                 description: cat.description,
+                quotaBaseRate: cat.quotaBaseRate,
                 sortOrder: cat.sortOrder
             },
             create: {
                 ...cat,
-                type: cat.type as any
+                type: cat.type
             }
         });
-        console.log(`✅ Employer Category ${cat.code} seeded`);
+        console.log(`✅ Application Category ${cat.code} seeded`);
     }
 
     // 10. Reference Data: Industries (ROC 行業標準分類)

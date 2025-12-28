@@ -304,6 +304,7 @@ router.get('/:id', async (req, res) => {
                         deployments: true
                     }
                 },
+                category: true,
                 deployments: { where: { status: 'active' } },
                 industryRecognitions: {
                     orderBy: { issueDate: 'desc' },
@@ -321,7 +322,6 @@ router.get('/:id', async (req, res) => {
         }
 
         const summary = await getEmployerSummary(id);
-
         res.json({
             ...employer,
             summary

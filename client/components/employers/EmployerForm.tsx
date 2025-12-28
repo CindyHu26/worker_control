@@ -685,12 +685,61 @@ export default function EmployerForm({
                                     )}
 
 
-                                    {!isIndividual && (
+                                    {/* Tax ID for Business / ID Number for Individual */}
+                                    {!isIndividual ? (
                                         <div className="space-y-2">
                                             <Label htmlFor="taxId" className="required">統一編號 (TAX ID)</Label>
                                             <Input {...register('taxId')} placeholder="8碼統編" />
                                             {errors.taxId && <p className="text-red-500 text-xs">{errors.taxId.message}</p>}
                                             {taxIdStatus.error && <p className="text-amber-500 text-xs">{taxIdStatus.error}</p>}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="responsiblePersonIdNo" className="required">身分證字號 (ID Number)</Label>
+                                            <Input {...register('responsiblePersonIdNo')} className="font-mono" placeholder="A123456789" />
+                                            {errors.responsiblePersonIdNo && <p className="text-red-500 text-xs">{errors.responsiblePersonIdNo.message}</p>}
+                                        </div>
+                                    )}
+
+                                    {/* Patient Info Section for Home Care */}
+                                    {isIndividual && (selectedCategory === 'HOME_CARE' || selectedCategory === 'HOME_HELPER') && (
+                                        <div className="md:col-span-2 bg-purple-50 p-4 rounded-lg border border-purple-200 space-y-4">
+                                            <h4 className="font-semibold text-purple-800 flex items-center gap-2">
+                                                <User className="h-4 w-4" />
+                                                被看護人資料 (Patient Info)
+                                            </h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label className="required">被看護人姓名 (Patient Name)</Label>
+                                                    <Input {...register('patientName')} placeholder="被照顧者姓名" />
+                                                    {errors.patientName && <p className="text-red-500 text-xs">{errors.patientName.message}</p>}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="required">被看護人身分證字號 (Patient ID)</Label>
+                                                    <Input {...register('patientIdNo')} className="font-mono" placeholder="A123456789" />
+                                                    {errors.patientIdNo && <p className="text-red-500 text-xs">{errors.patientIdNo.message}</p>}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>與雇主關係 (Relationship)</Label>
+                                                    <Select value={formData.relationship || ''} onValueChange={(v) => setValue('relationship', v)}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="選擇關係" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="SELF">本人</SelectItem>
+                                                            <SelectItem value="PARENT">父母</SelectItem>
+                                                            <SelectItem value="SPOUSE">配偶</SelectItem>
+                                                            <SelectItem value="GRANDPARENT">祖父母</SelectItem>
+                                                            <SelectItem value="IN_LAW">岳父母/公婆</SelectItem>
+                                                            <SelectItem value="OTHER">其他</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>照護地址 (Care Address)</Label>
+                                                    <Input {...register('careAddress')} placeholder="被照顧者實際居住地址" />
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                     <div className="space-y-2">

@@ -64,6 +64,8 @@ export async function createEmployer(input: any) {
         avgDomesticWorkers,
         ...coreData
     } = input;
+    console.log('[DEBUG createEmployer] Input keys:', Object.keys(input));
+    console.log('[DEBUG createEmployer] Category:', input.category);
 
     // Validate core data if needed, but here we'll follow previous pattern with more flexibility
     // Determine basic fields
@@ -96,6 +98,7 @@ export async function createEmployer(input: any) {
             industryAttributes: industryAttributes || coreData.industryAttributes,
             agencyId: coreData.agencyId,
             remarks: coreData.remarks,
+            category: coreData.category ? { connect: { code: coreData.category } } : undefined,
         };
 
         // Add corporate info
@@ -410,6 +413,7 @@ export async function updateEmployer(id: string, data: any) {
         industryAttributes: industryAttributes || coreData.industryAttributes, // Handle both flat and nested if present
         agencyId: coreData.agencyId,
         remarks: coreData.remarks,
+        category: coreData.category ? { connect: { code: coreData.category } } : undefined,
     };
 
     // Update Factories
@@ -434,19 +438,20 @@ export async function updateEmployer(id: string, data: any) {
     }
 
     // Corporate Info
-    if (corporateInfo) {
+    const corpSource = corporateInfo || (coreData.factoryRegistrationNo ? coreData : null);
+    if (corpSource) {
         const corpUpdateData = {
-            factoryRegistrationNo: corporateInfo.factoryRegistrationNo,
-            industryType: corporateInfo.industryType,
-            industryCode: corporateInfo.industryCode,
-            capital: parseNumber(corporateInfo.capital),
-            laborInsuranceNo: corporateInfo.laborInsuranceNo,
-            laborInsuranceId: corporateInfo.laborInsuranceId,
-            healthInsuranceUnitNo: corporateInfo.healthInsuranceUnitNo,
-            healthInsuranceId: corporateInfo.healthInsuranceId,
-            faxNumber: corporateInfo.faxNumber,
-            institutionCode: corporateInfo.institutionCode,
-            bedCount: parseNumber(corporateInfo.bedCount),
+            factoryRegistrationNo: corpSource.factoryRegistrationNo,
+            industryType: corpSource.industryType,
+            industryCode: corpSource.industryCode,
+            capital: parseNumber(corpSource.capital),
+            laborInsuranceNo: corpSource.laborInsuranceNo,
+            laborInsuranceId: corpSource.laborInsuranceId,
+            healthInsuranceUnitNo: corpSource.healthInsuranceUnitNo,
+            healthInsuranceId: corpSource.healthInsuranceId,
+            faxNumber: corpSource.faxNumber,
+            institutionCode: corpSource.institutionCode,
+            bedCount: parseNumber(corpSource.bedCount),
         };
         updates.corporateInfo = {
             upsert: {
@@ -457,27 +462,28 @@ export async function updateEmployer(id: string, data: any) {
     }
 
     // Individual Info
-    if (individualInfo) {
+    const indSource = individualInfo || (coreData.responsiblePersonIdNo ? coreData : null);
+    if (indSource) {
         const indUpdateData = {
-            responsiblePersonDob: parseDate(individualInfo.responsiblePersonDob),
-            responsiblePersonIdNo: individualInfo.responsiblePersonIdNo,
-            responsiblePersonFather: individualInfo.responsiblePersonFather,
-            responsiblePersonMother: individualInfo.responsiblePersonMother,
-            responsiblePersonSpouse: individualInfo.responsiblePersonSpouse,
-            englishName: individualInfo.englishName,
-            birthPlace: individualInfo.birthPlace,
-            birthPlaceEn: individualInfo.birthPlaceEn,
-            residenceAddress: individualInfo.residenceAddress,
-            residenceZip: individualInfo.residenceZip,
-            residenceCityCode: individualInfo.residenceCityCode,
-            idIssueDate: parseDate(individualInfo.idIssueDate),
-            idIssuePlace: individualInfo.idIssuePlace,
-            militaryStatus: individualInfo.militaryStatus,
-            militaryStatusEn: individualInfo.militaryStatusEn,
-            patientName: individualInfo.patientName,
-            patientIdNo: individualInfo.patientIdNo,
-            careAddress: individualInfo.careAddress,
-            relationship: individualInfo.relationship,
+            responsiblePersonDob: parseDate(indSource.responsiblePersonDob),
+            responsiblePersonIdNo: indSource.responsiblePersonIdNo,
+            responsiblePersonFather: indSource.responsiblePersonFather,
+            responsiblePersonMother: indSource.responsiblePersonMother,
+            responsiblePersonSpouse: indSource.responsiblePersonSpouse,
+            englishName: indSource.englishName,
+            birthPlace: indSource.birthPlace,
+            birthPlaceEn: indSource.birthPlaceEn,
+            residenceAddress: indSource.residenceAddress,
+            residenceZip: indSource.residenceZip,
+            residenceCityCode: indSource.residenceCityCode,
+            idIssueDate: parseDate(indSource.idIssueDate),
+            idIssuePlace: indSource.idIssuePlace,
+            militaryStatus: indSource.militaryStatus,
+            militaryStatusEn: indSource.militaryStatusEn,
+            patientName: indSource.patientName,
+            patientIdNo: indSource.patientIdNo,
+            careAddress: indSource.careAddress,
+            relationship: indSource.relationship,
         };
         updates.individualInfo = {
             upsert: {
@@ -489,6 +495,17 @@ export async function updateEmployer(id: string, data: any) {
 
     // Use transaction to handle factory updates properly
     return prisma.$transaction(async (tx) => {
+        // [Cleanup] Enforce Exclusivity
+        // If we are setting corporate info, remove individual info
+        // If we are setting corporate info, remove individual info
+        if (corpSource) {
+            await tx.individualInfo.deleteMany({ where: { employerId: id } });
+        }
+        // If we are setting individual info, remove corporate info
+        if (indSource) {
+            await tx.corporateInfo.deleteMany({ where: { employerId: id } });
+        }
+
         const existingFactoriesUpdateList = updates._existingFactoriesToUpdate || [];
         const newFactoryCreateList = updates._newFactoryCreates || [];
         delete updates._existingFactoriesToUpdate;
