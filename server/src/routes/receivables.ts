@@ -77,7 +77,7 @@ router.get('/', async (req, res, next) => {
         res.json(receivables);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         next(error);
     }
@@ -120,7 +120,7 @@ router.post('/', async (req, res, next) => {
         res.status(201).json(receivable);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         next(error);
     }
@@ -146,7 +146,7 @@ router.post('/:id/payments', async (req, res, next) => {
         res.status(201).json(transaction);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         if (error instanceof Error) {
             if (error.message.includes('not found')) {
@@ -181,7 +181,7 @@ router.post('/:id/adjustments', async (req, res, next) => {
         res.status(201).json(adjustment);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         if (error instanceof Error && error.message.includes('not found')) {
             return res.status(404).json({ error: error.message });
@@ -205,7 +205,7 @@ router.post('/transactions/:id/void', async (req, res, next) => {
         res.json(result);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         if (error instanceof Error) {
             if (error.message.includes('not found')) {
@@ -262,7 +262,7 @@ router.get('/export/excel', async (req, res, next) => {
         res.send(buffer);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         next(error);
     }
@@ -309,7 +309,7 @@ router.get('/forecast', async (req, res, next) => {
         res.json({ rows, summary, monthly });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         next(error);
     }

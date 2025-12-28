@@ -91,7 +91,7 @@ router.post('/', async (req, res, next) => {
         res.status(201).json(item);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         next(error);
     }
@@ -110,7 +110,7 @@ router.put('/:id', async (req, res, next) => {
         res.json(item);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         if (error instanceof Error && error.message === 'Billing item definition not found') {
             return res.status(404).json({ error: error.message });
@@ -177,7 +177,7 @@ router.put('/:id/employers/:employerId/alias', async (req, res, next) => {
         res.json(alias);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         next(error);
     }

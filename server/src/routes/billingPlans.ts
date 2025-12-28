@@ -161,7 +161,7 @@ router.post('/:id/unlock', async (req, res, next) => {
         res.json({ success: true, message: 'Plan unlocked successfully' });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         next(error);
     }

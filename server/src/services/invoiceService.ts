@@ -345,7 +345,7 @@ class InvoiceService {
 
         // Generate buffer
         const buffer = await workbook.xlsx.writeBuffer();
-        return buffer as Buffer;
+        return buffer as unknown as Buffer;
     }
 
     /**
@@ -510,7 +510,7 @@ class InvoiceService {
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
-        return buffer as Buffer;
+        return buffer as unknown as Buffer;
     }
 
     private getStatusLabel(status: string): string {
