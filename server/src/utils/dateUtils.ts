@@ -125,3 +125,19 @@ export function addDays(date: Date, days: number): Date {
 export function getTaiwanNow(): Date {
     return toZonedTime(new Date(), TAIWAN_TZ);
 }
+
+/**
+ * Safely parse a date string or Date object into a Date object.
+ * Returns undefined if the input is null, undefined, empty string, or invalid date.
+ * 
+ * @param value - Check string or Date
+ * @returns Date object or undefined
+ */
+export function parseOptionalDate(value: string | Date | null | undefined): Date | undefined {
+    if (!value) return undefined;
+    if (typeof value === 'string' && value.trim() === '') return undefined;
+
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? undefined : date;
+}
+

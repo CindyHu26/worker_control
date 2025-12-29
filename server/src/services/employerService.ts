@@ -14,23 +14,9 @@ import {
     ValidationError
 } from '../types/errors';
 
-// Helper: Safe Date Parser
-// Returns Date object or undefined (if null/empty string)
-// Prevents "Invalid Date" crash on empty strings
-const parseDate = (value: string | null | undefined): Date | undefined => {
-    if (!value || value.trim() === '') return undefined;
-    const date = new Date(value);
-    // valid if not NaN
-    return isNaN(date.getTime()) ? undefined : date;
-};
+import { parseOptionalDate } from '../utils/dateUtils';
+import { parseNumber } from '../utils/numberUtils';
 
-// Helper: Safe Number Parser
-// Returns number or undefined
-const parseNumber = (value: string | number | null | undefined): number | undefined => {
-    if (value === null || value === undefined || value === '') return undefined;
-    const num = Number(value);
-    return isNaN(num) ? undefined : num;
-};
 
 // 定義結構，確保 JSON 裡面不會被亂存垃圾
 // Define schemas for industry-specific attributes
@@ -94,7 +80,7 @@ export async function createEmployer(input: any) {
             contactPhone: coreData.contactPhone,
             allocationRate: parseNumber(coreData.allocationRate),
             complianceStandard: coreData.complianceStandard || 'NONE',
-            zeroFeeEffectiveDate: parseDate(coreData.zeroFeeEffectiveDate),
+            zeroFeeEffectiveDate: parseOptionalDate(coreData.zeroFeeEffectiveDate),
             industryAttributes: industryAttributes || coreData.industryAttributes,
             agencyId: coreData.agencyId,
             remarks: coreData.remarks,
@@ -166,7 +152,7 @@ export async function createEmployer(input: any) {
                     responsiblePersonSpouse: indData.responsiblePersonSpouse,
                     responsiblePersonFather: indData.responsiblePersonFather,
                     responsiblePersonMother: indData.responsiblePersonMother,
-                    responsiblePersonDob: parseDate(indData.responsiblePersonDob),
+                    responsiblePersonDob: parseOptionalDate(indData.responsiblePersonDob),
                     englishName: indData.englishName,
                     birthPlace: indData.birthPlace,
                     birthPlaceEn: indData.birthPlaceEn,
@@ -175,7 +161,7 @@ export async function createEmployer(input: any) {
                     residenceCityCode: indData.residenceCityCode,
                     militaryStatus: indData.militaryStatus,
                     militaryStatusEn: indData.militaryStatusEn,
-                    idIssueDate: parseDate(indData.idIssueDate),
+                    idIssueDate: parseOptionalDate(indData.idIssueDate),
                     idIssuePlace: indData.idIssuePlace,
                     patientName: indData.patientName,
                     patientIdNo: indData.patientIdNo,
@@ -408,8 +394,8 @@ export async function updateEmployer(id: string, data: any) {
         contactPhone: coreData.contactPhone,
         allocationRate: parseNumber(coreData.allocationRate),
         complianceStandard: coreData.complianceStandard,
-        zeroFeeEffectiveDate: parseDate(coreData.zeroFeeEffectiveDate),
-        terminateDate: parseDate(coreData.terminateDate),
+        zeroFeeEffectiveDate: parseOptionalDate(coreData.zeroFeeEffectiveDate),
+        terminateDate: parseOptionalDate(coreData.terminateDate),
         industryAttributes: industryAttributes || coreData.industryAttributes, // Handle both flat and nested if present
         agencyId: coreData.agencyId,
         remarks: coreData.remarks,
@@ -465,7 +451,7 @@ export async function updateEmployer(id: string, data: any) {
     const indSource = individualInfo || (coreData.responsiblePersonIdNo ? coreData : null);
     if (indSource) {
         const indUpdateData = {
-            responsiblePersonDob: parseDate(indSource.responsiblePersonDob),
+            responsiblePersonDob: parseOptionalDate(indSource.responsiblePersonDob),
             responsiblePersonIdNo: indSource.responsiblePersonIdNo,
             responsiblePersonFather: indSource.responsiblePersonFather,
             responsiblePersonMother: indSource.responsiblePersonMother,
@@ -476,7 +462,7 @@ export async function updateEmployer(id: string, data: any) {
             residenceAddress: indSource.residenceAddress,
             residenceZip: indSource.residenceZip,
             residenceCityCode: indSource.residenceCityCode,
-            idIssueDate: parseDate(indSource.idIssueDate),
+            idIssueDate: parseOptionalDate(indSource.idIssueDate),
             idIssuePlace: indSource.idIssuePlace,
             militaryStatus: indSource.militaryStatus,
             militaryStatusEn: indSource.militaryStatusEn,

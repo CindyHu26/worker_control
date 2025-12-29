@@ -32,7 +32,7 @@ export class ValidationError extends AppError {
  */
 export class ResourceNotFoundError extends AppError {
   constructor(resource: string, identifier?: string) {
-    const message = identifier 
+    const message = identifier
       ? `${resource} with identifier '${identifier}' not found`
       : `${resource} not found`;
     super('NOT_FOUND', message, 404);
@@ -86,5 +86,25 @@ export class AuthorizationError extends AppError {
 export class AuthenticationError extends AppError {
   constructor(message: string = 'Authentication required') {
     super('UNAUTHORIZED', message, 401);
+  }
+}
+
+/**
+ * Conflict Error (409)
+ * Used for general conflict situations (e.g., can't delete due to foreign key)
+ */
+export class ConflictError extends AppError {
+  constructor(message: string, details?: any) {
+    super('CONFLICT', message, 409, details);
+  }
+}
+
+/**
+ * Bad Request Error (400)
+ * Used for malformed requests or invalid parameters
+ */
+export class BadRequestError extends AppError {
+  constructor(message: string, details?: any) {
+    super('BAD_REQUEST', message, 400, details);
   }
 }

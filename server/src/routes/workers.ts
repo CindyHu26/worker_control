@@ -6,7 +6,12 @@ import path from 'path';
 import fs from 'fs';
 
 // Configure Multer for Worker Photos
+// Configure Multer for Worker Photos
 import { storageService } from '../services/storageService';
+import { parseOptionalDate } from '../utils/dateUtils';
+import { parseNumber } from '../utils/numberUtils';
+import { searchWorkers, getWorkerById } from '../services/workerQueryService';
+import { renewDocument } from '../services/workerDocumentService';
 
 // Configure Multer for MinIO Upload (Memory Storage)
 const upload = multer({
@@ -26,181 +31,12 @@ const upload = multer({
 const router = Router();
 
 // GET /api/workers
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
-        const {
-            q,
-            status,
-            nationality,
-            page = '1',
-            limit = '10'
-        } = req.query;
-
-        const pageNum = parseInt(page as string);
-        const limitNum = parseInt(limit as string);
-        const skip = (pageNum - 1) * limitNum;
-
-        // Build Where Clause
-        const whereClause: any = {};
-        const andConditions = [];
-
-        // 1. Keyword Search (Name, Passport, ARC)
-        if (q) {
-            const keyword = q as string;
-            andConditions.push({
-                OR: [
-                    { englishName: { contains: keyword } },
-                    { chineseName: { contains: keyword } },
-                    {
-                        passports: {
-                            some: { passportNumber: { contains: keyword } } // Searches ALL passports history
-                        }
-                    },
-                    {
-                        arcs: {
-                            some: { arcNumber: { contains: keyword } } // Searches ALL ARCs history
-                        }
-                    },
-                    { oldPassportNumber: { contains: keyword } } // Legacy field
-                ]
-            });
-        }
-
-        // 2. Exact Filters
-        if (nationality) {
-            andConditions.push({ nationality });
-        }
-
-        // Status Logic: Check if they have an active deployment
-        if (status) {
-            if (status === 'active') {
-                andConditions.push({
-                    deployments: {
-                        some: { status: 'active' }
-                    }
-                });
-            } else if (status === 'inactive') {
-                andConditions.push({
-                    deployments: {
-                        none: { status: 'active' }
-                    }
-                });
-            }
-        }
-
-
-        // 3. Quick Filters
-        const { filter } = req.query;
-        if (filter) {
-            const now = new Date();
-            const in30Days = new Date(); in30Days.setDate(in30Days.getDate() + 30);
-            const nextWeek = new Date(); nextWeek.setDate(nextWeek.getDate() + 7);
-
-            if (filter === 'expiring_30') {
-                // Deployment ending soon
-                andConditions.push({
-                    deployments: {
-                        some: {
-                            status: 'active',
-                            endDate: {
-                                gte: now,
-                                lte: in30Days
-                            }
-                        }
-                    }
-                });
-            } else if (filter === 'arriving_week') {
-                // Flight arriving soon
-                andConditions.push({
-                    deployments: {
-                        some: {
-                            status: { in: ['active', 'pending'] },
-                            flightArrivalDate: {
-                                gte: now,
-                                lte: nextWeek
-                            }
-                        }
-                    }
-                });
-            } else if (filter === 'missing_docs') {
-                // Workers with NO current passport OR NO current ARC
-                andConditions.push({
-                    OR: [
-                        {
-                            passports: {
-                                none: { isCurrent: true }
-                            }
-                        },
-                        {
-                            arcs: {
-                                none: { isCurrent: true }
-                            }
-                        }
-                    ]
-                });
-            }
-        }
-
-        if (andConditions.length > 0) {
-            whereClause.AND = andConditions;
-        }
-        const [total, workers] = await Promise.all([
-            prisma.worker.count({ where: whereClause }),
-            prisma.worker.findMany({
-                where: whereClause,
-                include: {
-                    deployments: {
-                        where: { status: 'active' },
-                        take: 1,
-                        include: { employer: { select: { companyName: true } } }
-                    },
-                    passports: {
-                        orderBy: { issueDate: 'desc' }, // Get all for display? No, search list usually just needs match. 
-                        // But requirement says "Single Source of Truth... allowing lookup by old".
-                        // We filter for display in frontend usually.
-                        // Let's just return isCurrent: true for the main list view to show active one.
-                        where: { isCurrent: true },
-                        take: 1
-                    }
-                },
-                skip,
-                take: limitNum,
-                orderBy: { createdAt: 'desc' }
-            })
-        ]);
-
-        // Transform photoUrl (key) to Presigned URL
-        const workersWithPhoto = await Promise.all(workers.map(async (worker) => {
-            if (worker.photoUrl) {
-                // Check if it's a MinIO Key (starts with unique ID pattern usually, or simple check)
-                // For backward compatibility with local files, we might need a check.
-                // Assuming all new uploads are MinIO. Local files start with /uploads/. MinIO keys don't.
-                if (!worker.photoUrl.startsWith('/uploads/')) {
-                    try {
-                        const presigned = await storageService.getPresignedUrl(worker.photoUrl);
-                        return { ...worker, photoUrl: presigned };
-                    } catch (e) {
-                        console.error('Failed to presign url for worker', worker.id, e);
-                        return worker;
-                    }
-                }
-            }
-            return worker;
-        }));
-
-        res.json({
-            data: workersWithPhoto,
-            meta: {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum)
-            }
-        });
-
+        const result = await searchWorkers(req.query);
+        res.json(result);
     } catch (error) {
-        console.error('Search Workers Error:', error);
-        res.status(500).json({ error: 'Failed to search workers' });
+        next(error);
     }
 });
 
@@ -220,136 +56,31 @@ router.get('/:id/dashboard', async (req, res) => {
 });
 
 // POST /api/workers/:id/documents/renew
-router.post('/:id/documents/renew', async (req, res) => {
+router.post('/:id/documents/renew', async (req, res, next) => {
     const { id } = req.params;
-    const { type, newNumber, issueDate, expiryDate, oldNumber } = req.body;
-    // type: 'passport' | 'arc'
-
-    if (!type || !newNumber || !issueDate || !expiryDate) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
+    const { type, newNumber, issueDate, expiryDate } = req.body;
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
-            if (type === 'passport') {
-                // 1. Check Global Uniqueness
-                const conflict = await tx.workerPassport.findFirst({
-                    where: { passportNumber: newNumber }
-                });
-                if (conflict) throw new Error(`Passport number ${newNumber} already exists.`);
-
-                // 2. Archive Current
-                await tx.workerPassport.updateMany({
-                    where: { workerId: id, isCurrent: true },
-                    data: { isCurrent: false }
-                });
-
-                // 3. Create New
-                const newDoc = await tx.workerPassport.create({
-                    data: {
-                        workerId: id,
-                        passportNumber: newNumber,
-                        issueDate: new Date(issueDate),
-                        expiryDate: new Date(expiryDate),
-                        isCurrent: true
-                    }
-                });
-                return newDoc;
-
-            } else if (type === 'arc') {
-                // 1. Check Global Uniqueness
-                const conflict = await tx.workerArc.findFirst({
-                    where: { arcNumber: newNumber }
-                });
-                if (conflict) throw new Error(`ARC number ${newNumber} already exists.`);
-
-                // 2. Archive Current
-                await tx.workerArc.updateMany({
-                    where: { workerId: id, isCurrent: true },
-                    data: { isCurrent: false }
-                });
-
-                // 3. Create New
-                const newDoc = await tx.workerArc.create({
-                    data: {
-                        workerId: id,
-                        arcNumber: newNumber,
-                        issueDate: new Date(issueDate),
-                        expiryDate: new Date(expiryDate),
-                        isCurrent: true
-                    }
-                });
-                return newDoc;
-            } else {
-                throw new Error('Invalid document type');
-            }
-        });
-
+        const result = await renewDocument(id, { type, newNumber, issueDate, expiryDate });
         res.json(result);
-    } catch (error: any) {
-        console.error('Renew Document Error:', error);
-        res.status(400).json({ error: error.message });
+    } catch (error) {
+        next(error);
     }
 });
 
 // GET /api/workers/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
     const { id } = req.params;
     try {
-        const worker = await prisma.worker.findUnique({
-            where: { id },
-            include: {
-                // Documents
-                passports: { orderBy: { issueDate: 'desc' } },
-                arcs: { orderBy: { issueDate: 'desc' } },
-
-                // Deployment & Timeline
-                deployments: {
-                    include: {
-                        employer: true,
-                        permitDetails: {
-                            include: {
-                                permitDocument: true
-                            }
-                        },
-                    },
-                    orderBy: { startDate: 'desc' }
-                },
-
-                // Incidents
-                incidents: {
-                    orderBy: { incidentDate: 'desc' }
-                },
-
-                // Other
-                addressHistory: { orderBy: { startDate: 'desc' } },
-
-                insurances: { orderBy: { startDate: 'desc' } },
-                healthChecks: { orderBy: { checkDate: 'desc' } },
-                serviceAssignments: {
-                    where: { endDate: null }, // Active Only
-                    include: { internalUser: true }
-                }
-            }
-        });
+        const worker = await getWorkerById(id);
 
         if (!worker) {
             return res.status(404).json({ error: 'Worker not found' });
         }
 
-        // Transform photoUrl if present
-        if (worker.photoUrl && !worker.photoUrl.startsWith('/uploads/')) {
-            try {
-                worker.photoUrl = await storageService.getPresignedUrl(worker.photoUrl);
-            } catch (e) {
-                console.error('Failed to presign worker photo', e);
-            }
-        }
-
         res.json(worker);
     } catch (error) {
-        console.error('Worker Detail Error:', error);
-        res.status(500).json({ error: 'Failed to fetch worker details' });
+        next(error);
     }
 });
 
@@ -411,12 +142,12 @@ router.post('/full-entry', async (req, res) => {
                     englishName: body.englishName,
                     chineseName: body.chineseName,
                     nationality: body.nationality,
-                    dob: body.dob ? new Date(body.dob) : undefined,
+                    dob: parseOptionalDate(body.dob),
                     category: body.category || 'general', // care, manufacturing
                     gender: body.gender,
                     maritalStatus: body.maritalStatus,
-                    height: body.height ? Number(body.height) : undefined,
-                    weight: body.weight ? Number(body.weight) : undefined,
+                    height: parseNumber(body.height),
+                    weight: parseNumber(body.weight),
                     bloodType: body.bloodType,
                     religion: body.religion,
                     educationLevel: body.educationLevel,
@@ -438,8 +169,8 @@ router.post('/full-entry', async (req, res) => {
                     data: {
                         workerId: worker.id,
                         passportNumber: body.passportNumber,
-                        issueDate: body.passportIssueDate ? new Date(body.passportIssueDate) : new Date(),
-                        expiryDate: body.passportExpiryDate ? new Date(body.passportExpiryDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 5)),
+                        issueDate: parseOptionalDate(body.passportIssueDate) || new Date(),
+                        expiryDate: parseOptionalDate(body.passportExpiryDate) || new Date(new Date().setFullYear(new Date().getFullYear() + 5)),
                         isCurrent: true
                     }
                 });
@@ -453,8 +184,8 @@ router.post('/full-entry', async (req, res) => {
                         employerId: body.employerId,
                         jobType: body.jobType, // NEW field in schema? Wait, Deployment has `jobType`
                         status: 'pending', // Initial status
-                        startDate: body.contractStartDate ? new Date(body.contractStartDate) : new Date(),
-                        endDate: body.contractEndDate ? new Date(body.contractEndDate) : undefined,
+                        startDate: parseOptionalDate(body.contractStartDate) || new Date(),
+                        endDate: parseOptionalDate(body.contractEndDate),
                         sourceType: body.recruitmentSource || 'direct_hiring',
                         serviceStatus: body.serviceStatus || 'incoming',
                         // processStage: 'recruitment', // Removed as it is not in schema
