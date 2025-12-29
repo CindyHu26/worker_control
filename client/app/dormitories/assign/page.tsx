@@ -1,57 +1,325 @@
 'use client';
 
-import React from 'react';
-import { Bed, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bed, ArrowLeft, Search, User, UserPlus, X, Home } from 'lucide-react';
 import Link from 'next/link';
+import PageContainer from '@/components/layout/PageContainer';
+
+interface Worker {
+    id: string;
+    chineseName: string | null;
+    englishName: string;
+    gender: string | null;
+}
+
+interface DormitoryBed {
+    id: string;
+    bedCode: string;
+    isOccupied: boolean;
+    worker?: Worker;
+}
+
+interface DormitoryRoom {
+    id: string;
+    roomNumber: string;
+    capacity: number;
+    beds: DormitoryBed[];
+}
+
+interface Dormitory {
+    id: string;
+    name: string;
+    accommodationType: string;
+    rooms: DormitoryRoom[];
+}
+
+interface DormOption {
+    id: string;
+    name: string;
+}
 
 export default function DormAssignPage() {
+    const [dorms, setDorms] = useState<DormOption[]>([]);
+    const [selectedDormId, setSelectedDormId] = useState<string>('');
+    const [currentDorm, setCurrentDorm] = useState<Dormitory | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    // Modal State
+    const [selectedBed, setSelectedBed] = useState<DormitoryBed | null>(null);
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<Worker[]>([]);
+    const [searching, setSearching] = useState(false);
+
+    // Initial Load: List Dorms
+    useEffect(() => {
+        fetch('/api/dormitories')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    setDorms(data);
+                    setSelectedDormId(data[0].id); // Default select first
+                }
+            })
+            .catch(err => console.error(err));
+    }, []);
+
+    // Load Dorm Structure when ID changes
+    useEffect(() => {
+        if (!selectedDormId) return;
+        setLoading(true);
+        fetch(`/api/dormitories/${selectedDormId}/structure`)
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to load dorm');
+                return res.json();
+            })
+            .then(data => setCurrentDorm(data))
+            .catch(err => console.error(err))
+            .finally(() => setLoading(false));
+    }, [selectedDormId]);
+
+    // Search Workers
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            return;
+        }
+        const delayDebounceFn = setTimeout(() => {
+            setSearching(true);
+            fetch(`/api/workers?q=${searchQuery}&status=active`) // Filter active only?
+                .then(res => res.json())
+                .then(data => {
+                    setSearchResults(data.data || []);
+                })
+                .catch(err => console.error(err))
+                .finally(() => setSearching(false));
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
+
+    const handleBedClick = (bed: DormitoryBed) => {
+        setSelectedBed(bed);
+        setShowAssignModal(true);
+        setSearchQuery('');
+        setSearchResults([]);
+    };
+
+    const handleAssign = async (workerId: string) => {
+        if (!selectedBed) return;
+        try {
+            const res = await fetch(`/api/dormitories/beds/${selectedBed.id}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workerId })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                alert(err.error || 'Assignment failed');
+                return;
+            }
+
+            // Refresh Dorm Data
+            reloadDorm();
+            setShowAssignModal(false);
+        } catch (error) {
+            console.error(error);
+            alert('Failed to assign');
+        }
+    };
+
+    const handleUnassign = async () => {
+        if (!selectedBed) return;
+        if (!confirm('Are you sure you want to unassign this worker?')) return;
+
+        try {
+            const res = await fetch(`/api/dormitories/beds/${selectedBed.id}/unassign`, {
+                method: 'POST'
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                alert(err.error || 'Unassignment failed');
+                return;
+            }
+
+            reloadDorm();
+            setShowAssignModal(false);
+        } catch (error) {
+            console.error(error);
+            alert('Failed to unassign');
+        }
+    };
+
+    const reloadDorm = () => {
+        if (selectedDormId) {
+            fetch(`/api/dormitories/${selectedDormId}/structure`)
+                .then(res => res.json())
+                .then(data => setCurrentDorm(data));
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-slate-50">
-            <div className="bg-white border-b border-slate-200 px-6 py-4">
-                <div className="max-w-7xl mx-auto">
-                    <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
-                        <Link href="/portal" className="hover:text-blue-600 transition-colors">功能導覽</Link>
-                        <span>/</span>
-                        <span className="text-slate-900 font-medium">房間與床位</span>
+        <PageContainer title="床位分配管理 (Bed Assignment)" showBack onBack={() => window.location.href = '/portal'}>
+
+            {/* Control Bar */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-6 flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <Home className="text-slate-500" size={20} />
+                    <span className="font-medium text-slate-700">選擇宿舍:</span>
+                </div>
+                <select
+                    className="border rounded-md px-3 py-2 min-w-[200px]"
+                    value={selectedDormId}
+                    onChange={(e) => setSelectedDormId(e.target.value)}
+                >
+                    {dorms.map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                    {dorms.length === 0 && <option>無宿舍資料 (No Dorms)</option>}
+                </select>
+
+                {currentDorm && (
+                    <div className="text-sm text-slate-500 ml-auto">
+                        類型: {currentDorm.accommodationType || '一般宿舍'}
                     </div>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Link href="/portal" className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                                <ArrowLeft size={20} className="text-slate-600" />
-                            </Link>
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-orange-100 rounded-lg">
-                                    <Bed className="text-orange-600" size={24} />
-                                </div>
-                                <div>
-                                    <h1 className="text-2xl font-bold text-slate-900">床位分配管理</h1>
-                                    <p className="text-sm text-slate-500">Dormitory Bed Assignment</p>
-                                </div>
+                )}
+            </div>
+
+            {loading ? (
+                <div className="text-center py-12 text-slate-500">載入中...</div>
+            ) : !currentDorm ? (
+                <div className="text-center py-12 text-slate-400">請選擇宿舍以檢視床位</div>
+            ) : (
+                <div className="space-y-6">
+                    {currentDorm.rooms.map(room => (
+                        <div key={room.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                            <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
+                                <h3 className="font-semibold text-slate-700">房號: {room.roomNumber}</h3>
+                                <span className="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded">
+                                    {room.beds.filter(b => b.isOccupied).length} / {room.capacity} 人
+                                </span>
                             </div>
+                            <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {room.beds.map(bed => (
+                                    <div
+                                        key={bed.id}
+                                        onClick={() => handleBedClick(bed)}
+                                        className={`
+                                            relative border rounded-lg p-3 cursor-pointer transition-all hover:shadow-md
+                                            flex flex-col items-center justify-center gap-2 aspect-square
+                                            ${bed.isOccupied
+                                                ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                                                : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                                            }
+                                        `}
+                                    >
+                                        <div className={`
+                                            w-8 h-8 rounded-full flex items-center justify-center
+                                            ${bed.isOccupied ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'}
+                                        `}>
+                                            <Bed size={16} />
+                                        </div>
+                                        <span className="font-mono font-bold text-slate-700">{bed.bedCode}</span>
+                                        {bed.isOccupied && bed.worker ? (
+                                            <div className="text-xs text-center">
+                                                <div className="font-medium text-blue-900 truncate w-20">{bed.worker.englishName.split(' ')[0]}</div>
+                                                <div className="text-blue-700 truncate w-20">{bed.worker.chineseName}</div>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-400">主要空閒</span>
+                                        )}
+                                    </div>
+                                ))}
+                                {/* Fillers if beds < capacity? Usually pre-generated so no need */}
+                            </div>
+                        </div>
+                    ))}
+                    {currentDorm.rooms.length === 0 && (
+                        <div className="text-center py-12 text-slate-500">此宿舍尚無房間資料</div>
+                    )}
+                </div>
+            )}
+
+            {/* Assignment Modal */}
+            {showAssignModal && selectedBed && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-800">
+                                    床位: {selectedBed.bedCode}
+                                </h3>
+                                <p className="text-sm text-slate-500">
+                                    狀態: {selectedBed.isOccupied ? '已分配' : '空閒'}
+                                </p>
+                            </div>
+                            <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-6">
+                            {selectedBed.isOccupied && selectedBed.worker ? (
+                                <div className="text-center py-4">
+                                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <User size={32} />
+                                    </div>
+                                    <h4 className="font-bold text-lg">{selectedBed.worker.englishName}</h4>
+                                    <p className="text-slate-600 mb-6">{selectedBed.worker.chineseName}</p>
+
+                                    <button
+                                        onClick={handleUnassign}
+                                        className="w-full bg-red-50 text-red-600 border border-red-200 py-2 rounded-lg hover:bg-red-100 transition-colors"
+                                    >
+                                        取消分配 (Unassign)
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            placeholder="搜尋移工姓名..."
+                                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div className="max-h-60 overflow-y-auto border rounded-xl divide-y">
+                                        {searching ? (
+                                            <div className="p-4 text-center text-slate-500">搜尋中...</div>
+                                        ) : searchResults.length > 0 ? (
+                                            searchResults.map(worker => (
+                                                <button
+                                                    key={worker.id}
+                                                    onClick={() => handleAssign(worker.id)}
+                                                    className="w-full text-left p-3 hover:bg-slate-50 flex items-center justify-between group"
+                                                >
+                                                    <div>
+                                                        <div className="font-medium text-slate-900">{worker.englishName}</div>
+                                                        <div className="text-sm text-slate-500">{worker.chineseName}</div>
+                                                    </div>
+                                                    <UserPlus size={18} className="text-slate-300 group-hover:text-green-600" />
+                                                </button>
+                                            ))
+                                        ) : searchQuery ? (
+                                            <div className="p-4 text-center text-slate-500">無搜尋結果</div>
+                                        ) : (
+                                            <div className="p-4 text-center text-slate-400 text-sm">請輸入關鍵字搜尋</div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
-                    <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Bed className="text-orange-600" size={32} />
-                    </div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">住宿人員指派</h2>
-                    <p className="text-slate-600 mb-6">管理宿舍房間分配與人員進出紀錄</p>
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-2xl mx-auto">
-                        <p className="text-sm text-amber-800">
-                            <span className="font-bold">🚧 功能開發中</span><br />
-                            此頁面將提供以下功能：<br />
-                            • 空床位查詢與分配<br />
-                            • 入住與退宿登記<br />
-                            • 住宿人員名冊匯出<br />
-                            • 住宿證明單列印
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </PageContainer>
     );
 }

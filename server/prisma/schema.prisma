@@ -240,6 +240,14 @@ enum WorkerEventType {
   @@map("worker_event_type")
 }
 
+enum RunawayStatus {
+  reported_internally
+  notification_submitted
+  confirmed_runaway
+  found
+  @@map("runaway_status")
+}
+
 enum EmployerType {
   BUSINESS // äºæ¥­å®ä½ (éçµ±ç·¨ãå¬å¸åãåä¿è­è) -> é©ç¨è£½é æ¥­ãçé æ¥­ãæµ·æ´æ¼æ
 
@@ -2274,6 +2282,8 @@ model Deployment {
 
   insurances WorkerInsurance[]
 
+  runawayRecords RunawayRecord[]
+
   // Soft Delete
 
   isDeleted Boolean @default(false) @map("is_deleted")
@@ -2281,6 +2291,35 @@ model Deployment {
   deletedAt DateTime? @map("deleted_at")
 
   @@map("deployments")
+}
+
+model RunawayRecord {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deploymentId String @map("deployment_id") @db.Uuid
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  missingDate DateTime @map("missing_date") @db.Date // 失聯日期
+  reportDate DateTime @default(now()) @map("report_date") @db.Date // 系統記錄日期
+
+  // Government Notification
+  notificationDate DateTime? @map("notification_date") @db.Date // 通報主管機關日期
+  notificationNumber String? @map("notification_number") @db.VarChar(50) // 通報序號
+
+  status RunawayStatus @default(reported_internally)
+
+  // 3-day logic
+  threeDayCountdownStart DateTime? @map("three_day_countdown_start") @db.Date // Usually same as missingDate
+  
+  // Quota Impact
+  isQuotaFrozen Boolean @default(false) @map("is_quota_frozen")
+
+  notes String? @db.Text
+
+  createdBy String? @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("runaway_records")
 }
 
 // ==========================================

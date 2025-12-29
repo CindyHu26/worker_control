@@ -71,7 +71,7 @@ const maxWidthClasses = {
  */
 export function TableWrapper({ children, className = '' }: { children: ReactNode; className?: string }) {
     return (
-        <div className={`w-full max-w-full overflow-x-auto border rounded-md ${className}`}>
+        <div className={`w-full max-w-full overflow-x-auto border rounded-md bg-white ${className}`}>
             {children}
         </div>
     );
@@ -104,7 +104,7 @@ export default function PageContainer({
 
     return (
         <div className="min-h-screen bg-gray-50 pb-10">
-            <div className={`mx-auto px-4 md:pl-8 md:pr-12 py-8 ${maxWidthClasses[maxWidth]}`}>
+            <div className={`mx-auto px-8 py-8 ${maxWidthClasses[maxWidth]}`}>
 
                 {/* Breadcrumbs */}
                 {breadcrumbs && breadcrumbs.length > 0 && (

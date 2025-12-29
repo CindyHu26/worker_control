@@ -41,6 +41,7 @@ const categories = [
             { title: '簽證申請', desc: '駐台辦事處函文製作', icon: Stamp, href: '/govt/visa' },
             { title: '聘僱許可申請', desc: '勞動部許可函申請', icon: FileCheck, href: '/govt/permit' },
             { title: '離境報備', desc: '解約與離境搭機安排', icon: LogOut, href: '/govt/departure' },
+            { title: '失聯/逃跑', desc: '3日通報與名額凍結管理', icon: AlertTriangle, href: '/runaway' },
             { title: '函文範本管理', desc: '系統標準文件維護', icon: Files, href: '/settings/templates' }
         ]
     },
@@ -95,7 +96,7 @@ const categories = [
         items: [
             { title: '部門管理', desc: '維護公司內部部門組織', icon: Users, href: '/departments' },
             { title: '雇主類別', desc: '維護雇主分類代碼與名稱', icon: Files, href: '/employer-categories' },
-            { title: '工種設定', desc: '維護工種資料與費用設定', icon: Briefcase, href: '/job-types' },
+            { title: '工種設定', desc: '維護工種資料與費用設定', icon: Briefcase, href: '/work-titles' },
             { title: '行業別設定', desc: '維護行業別代碼與多語言名稱', icon: Building2, href: '/industries' },
             { title: '行業職稱', desc: '維護各行業別下的標準職稱', icon: Users2, href: '/industry-job-titles' },
             { title: '國內仲介公司', desc: '管理使用系統的仲介公司資料', icon: Building2, href: '/domestic-agencies' },
@@ -125,7 +126,7 @@ export default function PortalPage() {
     }, [searchTerm]);
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50">
+        <div className="p-8 w-full min-h-screen">
             {/* Header & Search */}
             <div className="mb-10 max-w-3xl">
                 <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-6">服務導覽 (Service Directory)</h1>

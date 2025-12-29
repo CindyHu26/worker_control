@@ -38,15 +38,16 @@ export const quotaService = {
 
         // If circular, we only count currently occupying slots (active/pending).
         // If not circular, we count ALL deployments ever made with this letter.
-        const statusFilter = isCircular
-            ? { in: ['active', 'pending'] }
-            : undefined; // undefined means all statuses
+        const baseWhere: any = { recruitmentLetterId: letterId };
+        if (isCircular) {
+            baseWhere.OR = [
+                { status: { in: ['active', 'pending'] } },
+                { runawayRecords: { some: { isQuotaFrozen: true } } }
+            ];
+        }
 
         const currentUsage = await tx.deployment.count({
-            where: {
-                recruitmentLetterId: letterId,
-                status: statusFilter
-            }
+            where: baseWhere
         });
 
         if (currentUsage >= letter.approvedQuota) {
@@ -68,8 +69,7 @@ export const quotaService = {
             if (workerGender === 'male' && letter.quotaMale > 0) {
                 const maleUsage = await tx.deployment.count({
                     where: {
-                        recruitmentLetterId: letterId,
-                        status: statusFilter,
+                        ...baseWhere,
                         worker: { gender: 'male' }
                     }
                 });
@@ -87,8 +87,7 @@ export const quotaService = {
             } else if (workerGender === 'female' && letter.quotaFemale > 0) {
                 const femaleUsage = await tx.deployment.count({
                     where: {
-                        recruitmentLetterId: letterId,
-                        status: statusFilter,
+                        ...baseWhere,
                         worker: { gender: 'female' }
                     }
                 });
@@ -122,15 +121,16 @@ export const quotaService = {
         if (!letter) return;
 
         const isCircular = letter.canCirculate;
-        const statusFilter = isCircular
-            ? { in: ['active', 'pending'] }
-            : undefined;
+        const baseWhere: any = { recruitmentLetterId: letterId };
+        if (isCircular) {
+            baseWhere.OR = [
+                { status: { in: ['active', 'pending'] } },
+                { runawayRecords: { some: { isQuotaFrozen: true } } }
+            ];
+        }
 
         const count = await db.deployment.count({
-            where: {
-                recruitmentLetterId: letterId,
-                status: statusFilter
-            }
+            where: baseWhere
         });
 
         await db.employerRecruitmentLetter.update({

@@ -29,7 +29,7 @@ export default function RecruitmentPage() {
 
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
                 <header className="mb-8 border-b border-gray-200 pb-4">
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">

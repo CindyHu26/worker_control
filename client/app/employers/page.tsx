@@ -187,7 +187,7 @@ export default function EmployersPage() {
     };
 
     return (
-        <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+        <div className="p-8 w-full animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">雇主資料管理 (Employers)</h1>

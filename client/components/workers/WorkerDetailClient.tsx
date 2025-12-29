@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 
-import { User, Briefcase, Calendar, FileText, Home, ArrowRightLeft, XCircle, Users, Edit, CheckCircle, ListChecks } from 'lucide-react';
+import { User, Briefcase, Calendar, FileText, Home, ArrowRightLeft, XCircle, Users, Edit, CheckCircle, ListChecks, UserX } from 'lucide-react';
 
 import IdentityTab from './IdentityTab';
 import JobTab from './JobTab';
@@ -235,6 +235,9 @@ export default function WorkerDetailClient({ worker: initialWorker }: { worker: 
                             </button>
                             <button onClick={() => setShowTermModal(true)} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow transition-colors text-sm">
                                 <XCircle size={16} /> 終止合約
+                            </button>
+                            <button onClick={() => window.location.href = '/runaway/new'} className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded shadow transition-colors text-sm">
+                                <UserX size={16} /> 通報失聯
                             </button>
                         </>
                     )}

@@ -83,7 +83,7 @@ router.post('/:id/rooms', async (req, res) => {
                     dormitoryId: id,
                     roomNumber,
                     capacity: Number(capacity),
-                    // gender, // Schema doesn't have gender on Room? Let's check schema. DormitoryRoom lines 1179-1191: id, dormitoryId, roomNumber, capacity. NO gender.
+                    // gender, // Schema doesn't have gender on Room
                     // floor // No floor either.
                 }
             });
@@ -120,51 +120,16 @@ router.post('/beds/:bedId/assign', async (req, res) => {
             if (bed.isOccupied) throw new Error("Bed is not vacant");
 
             // 2. Check Worker
+            // Check if worker is already assigned (optional, but good practice)
             const worker = await tx.worker.findUnique({ where: { id: workerId } });
             if (!worker) throw new Error("Worker not found");
-            // if (worker.dormitoryBedId) throw new Error("Worker already assigned to a bed"); // Schema might allow re-assign?
+            if (worker.bedId) throw new Error("Worker already assigned to a bed");
 
             // 3. Assign
-            // Note: Schema Worker definition wasn't fully shown but dormBed relation exists.
-            // Assuming worker.dormitoryBedId exists?
             await tx.worker.update({
                 where: { id: workerId },
                 data: {
-                    // dormitoryBedId: bedId, // Using relation update if possible or direct ID
-                    // But wait, schema DormitoryBed has `worker Worker?`
-                    // Does Worker have `dormitoryBedId`?
-                    // Usually yes.
-                    // Updating Bed is safer if relation is on Bed side?
-                    // Schema: DormitoryBed has `worker Worker?`. Use connect?
-                }
-            });
-            // Actually, DormitoryBed in schema (line 1201) has `worker Worker?`.
-            // This is a 1-1 or 1-many? `worker Worker?` implies 1-1 likely or 1-many from Worker side.
-            // Usually we update the side that holds the FK.
-            // If Worker has `dormitoryBedId`, we update Worker.
-
-            // Let's assume standard behavior: Update Worker to link to Bed.
-            await tx.worker.update({
-                where: { id: workerId },
-                data: {
-                    // dormitoryBedId: bedId // Assuming this field exists based on previous code.
-                }
-            });
-            // BUT, in schema snippet 1201: `worker Worker?`. No @relation fields shown here.
-            // If relation is defined on Worker, then Worker has the FK.
-
-            // Re-reading code:
-            /*
-            1200:   room      DormitoryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-            1201:   worker    Worker?
-            */
-            // This implies Worker has the FK `dormitoryBedId` @relation(...)
-
-            await tx.worker.update({
-                where: { id: workerId },
-                data: {
-                    dormitoryBedId: bedId
-                    // dormitoryId: ... // Schema doesn't show dormitoryId on Worker in the snippet, but code tried to update it.
+                    bedId: bedId
                 }
             });
 
@@ -172,15 +137,6 @@ router.post('/beds/:bedId/assign', async (req, res) => {
                 where: { id: bedId },
                 data: { isOccupied: true }
             });
-
-            // 4. Update Counters
-            await tx.dormitoryRoom.update({
-                where: { id: bed.roomId },
-                data: { currentHeadCount: { increment: 1 } } // Schema `capacity` exists, but `currentHeadCount` missing? 
-                // Schema line 1183: capacity Int @default(0). No currentHeadCount.
-                // We must remove these counter updates if fields don't exist.
-            });
-            // REMOVING counter updates as they are likely missing from schema.
         });
 
         res.json({ success: true });
@@ -196,30 +152,19 @@ router.post('/beds/:bedId/unassign', async (req, res) => {
         const { bedId } = req.params;
 
         await prisma.$transaction(async (tx: any) => {
-            const bed = await tx.dormBed.findUnique({ where: { id: bedId }, include: { worker: true, room: true } });
+            const bed = await tx.dormitoryBed.findUnique({ where: { id: bedId }, include: { worker: true, room: { include: { dormitory: true } } } });
             if (!bed) throw new Error("Bed not found");
 
             if (bed.worker) {
                 await tx.worker.update({
                     where: { id: bed.worker.id },
-                    data: { dormitoryBedId: null } // dormitoryId? Keep or clear? Maybe keep as history location? Or clear. I'll clear.
+                    data: { bedId: null }
                 });
             }
 
-            await tx.dormBed.update({
+            await tx.dormitoryBed.update({
                 where: { id: bedId },
-                data: { status: 'vacant' }
-            });
-
-            // Update Counters
-            await tx.dormRoom.update({
-                where: { id: bed.roomId },
-                data: { currentHeadCount: { decrement: 1 } }
-            });
-
-            await tx.dormitory.update({
-                where: { id: bed.room.dormitoryId },
-                data: { currentOccupancy: { decrement: 1 } }
+                data: { isOccupied: false }
             });
         });
 

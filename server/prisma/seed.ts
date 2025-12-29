@@ -128,7 +128,83 @@ async function main() {
         console.log(`✅ Compliance Rule ${r.code} seeded`);
     }
 
-    // 9. Reference Data: Application Categories (申請項目)
+    // 9. Billing Item Definitions (費用項目定義)
+    console.log('Seeding billing item definitions...');
+    const billingItems = [
+        {
+            code: 'SERVICE_FEE',
+            name: '服務費',
+            nameEn: 'Service Fee',
+            category: 'SERVICE_FEE' as const,
+            isSystem: true,
+            sortOrder: 1
+        },
+        {
+            code: 'ARC_FEE',
+            name: '居留證規費',
+            nameEn: 'ARC Fee',
+            category: 'ARC_FEE' as const,
+            isSystem: true,
+            sortOrder: 2
+        },
+        {
+            code: 'HEALTH_CHECK_FEE',
+            name: '體檢費',
+            nameEn: 'Medical Examination Fee',
+            category: 'HEALTH_CHECK_FEE' as const,
+            isSystem: true,
+            sortOrder: 3
+        },
+        {
+            code: 'STABILIZATION_FEE',
+            name: '就業安定費',
+            nameEn: 'Employment Stabilization Fee',
+            category: 'STABILIZATION_FEE' as const,
+            isSystem: true,
+            sortOrder: 4
+        },
+        {
+            code: 'DORMITORY_FEE',
+            name: '宿舍費',
+            nameEn: 'Dormitory Fee',
+            category: 'DORMITORY_FEE' as const,
+            isSystem: true,
+            sortOrder: 5
+        },
+        {
+            code: 'INSURANCE_FEE',
+            name: '保險費',
+            nameEn: 'Insurance Fee',
+            category: 'INSURANCE_FEE' as const,
+            isSystem: true,
+            sortOrder: 6
+        },
+        {
+            code: 'AIRPORT_PICKUP',
+            name: '接機費',
+            nameEn: 'Airport Pickup Fee',
+            category: 'AIRPORT_PICKUP' as const,
+            isSystem: true,
+            sortOrder: 7
+        }
+    ];
+
+    for (const item of billingItems) {
+        await prisma.billingItemDefinition.upsert({
+            where: { code: item.code },
+            update: {
+                name: item.name,
+                nameEn: item.nameEn,
+                category: item.category,
+                isSystem: item.isSystem,
+                sortOrder: item.sortOrder
+            },
+            create: item
+        });
+        console.log(`✅ Billing Item ${item.code} - ${item.name} seeded`);
+    }
+
+    // 10. Reference Data: Application Categories (申請項目)
     console.log('Seeding application categories...');
     const categories = [
         {

@@ -4,6 +4,65 @@ import prisma from '../prisma';
 
 const router = Router();
 
+// GET /api/health-checks/pending-entry
+// List active deployments that have entered but don't have an "entry" health check record
+router.get('/pending-entry', async (req, res) => {
+    try {
+        const deployments = await prisma.deployment.findMany({
+            where: {
+                status: 'active',
+                entryDate: { not: null },
+                healthChecks: {
+                    none: { checkType: 'entry' }
+                }
+            },
+            include: {
+                worker: {
+                    select: {
+                        id: true,
+                        chineseName: true,
+                        englishName: true,
+                        mobilePhone: true,
+                        // passportNumber removed as it doesn't exist on Worker
+                    }
+                },
+                employer: {
+                    select: { companyName: true }
+                }
+            },
+            orderBy: { entryDate: 'desc' }
+        });
+
+        res.json(deployments);
+    } catch (error) {
+        console.error('Fetch Pending Entry Checks Error:', error);
+        res.status(500).json({ error: 'Failed to fetch pending entry checks' });
+    }
+});
+
+// POST /api/health-checks
+router.post('/', async (req, res) => {
+    try {
+        const { workerId, deploymentId, checkType, checkDate, hospitalName } = req.body;
+
+        const healthCheck = await prisma.healthCheck.create({
+            data: {
+                workerId,
+                deploymentId,
+                checkType,
+                checkDate: new Date(checkDate),
+                hospitalName,
+                result: 'pending'
+            }
+        });
+
+        res.status(201).json(healthCheck);
+    } catch (error) {
+        console.error('Create Health Check Error:', error);
+        res.status(500).json({ error: 'Failed to create health check' });
+    }
+});
+
 // GET /api/health-checks
 router.get('/', async (req, res) => {
     try {

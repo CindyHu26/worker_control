@@ -16,7 +16,8 @@ import {
     Building2,
     AlertTriangle,
     LogOut,
-    LogIn
+    LogIn,
+    UserX
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import { useAuth } from '@/context/AuthContext';
@@ -40,6 +41,7 @@ export default function Sidebar() {
 
         { href: '/workers', label: '移工管理', subLabel: 'Workers', icon: Users },
         { href: '/employers', label: '雇主管理', subLabel: 'Employers', icon: Building2 },
+        { href: '/runaway', label: '失聯管理', subLabel: 'Runaway', icon: UserX },
         { href: '/recruitment-proofs', label: '國內求才', subLabel: 'Ind. Recruitment', icon: Megaphone },
     ];
 

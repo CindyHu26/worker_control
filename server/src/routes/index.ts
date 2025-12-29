@@ -159,4 +159,7 @@ router.use('/receivables', receivableRoutes);
 import invoiceRoutes from './invoices';
 router.use('/invoices', invoiceRoutes);
 
+import runawayRoutes from './runaway';
+router.use('/runaways', runawayRoutes);
+
 export default router;
