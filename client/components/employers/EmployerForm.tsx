@@ -1,22 +1,20 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card } from '@/components/ui/card';
 import { AlertCircle, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { employerSchema, type EmployerFormData } from './EmployerFormSchema';
 import BasicInfoSection from './sections/BasicInfoSection';
-import ResponsiblePersonSection from './sections/ResponsiblePersonSection';
+import ContactSection from './sections/ContactSection';
 import FactoriesSection from './sections/FactoriesSection';
 import LicenseSection from './sections/LicenseSection';
 import InternalManagementSection from './sections/InternalManagementSection';
-
-import { useSystemConfig } from '@/hooks/useSystemConfig';
+import { TAIWAN_CITIES } from '@/data/taiwan-cities';
 
 interface EmployerFormProps {
     initialData?: any;
@@ -26,6 +24,29 @@ interface EmployerFormProps {
     isEdit?: boolean;
 }
 
+// Helper to parse address string into components
+function parseAddressStr(fullAddr: string | undefined | null) {
+    if (!fullAddr) return {};
+    for (const city of Object.keys(TAIWAN_CITIES)) {
+        if (fullAddr.startsWith(city)) {
+            const rest = fullAddr.slice(city.length);
+            const districts = TAIWAN_CITIES[city];
+            for (const dist of districts) {
+                if (rest.startsWith(dist)) {
+                    return { city, district: dist, detail: rest.slice(dist.length) };
+                }
+            }
+            return { city, detail: rest };
+        }
+    }
+    return { detail: fullAddr };
+}
+
+/**
+ * EmployerForm - 雇主資料表單
+ * 
+ * 根據參考 HTML (雇主基本資料檔.html) 重新設計
+ */
 export default function EmployerForm({
     initialData,
     onSubmit,
@@ -34,116 +55,147 @@ export default function EmployerForm({
     isEdit = false
 }: EmployerFormProps) {
     const router = useRouter();
-    const { getCategories, getApplicationTypes } = useSystemConfig();
-
-    // Config Data Loading
-    const [categories, setCategories] = useState<any[]>([]);
-    const [catLoading, setCatLoading] = useState(true);
-    const [appTypes, setAppTypes] = useState<any[]>([]);
-    const [appTypesLoading, setAppTypesLoading] = useState(true);
-
-    useEffect(() => {
-        getCategories().then(data => { setCategories(data); setCatLoading(false); });
-        getApplicationTypes().then(data => { setAppTypes(data); setAppTypesLoading(false); });
-    }, []);
 
     // Form Setup
     const methods = useForm<EmployerFormData>({
         resolver: zodResolver(employerSchema),
         defaultValues: {
-            category: 'MANUFACTURING',
-            categoryType: 'BUSINESS',
-            industryAttributes: {
-                isForeigner: 'N',
-            },
             factories: []
         }
     });
 
-    const { reset, handleSubmit, setValue, formState: { errors, isSubmitting } } = methods;
+    const { reset, handleSubmit, formState: { errors, isSubmitting } } = methods;
 
     // Reset with Initial Data
     useEffect(() => {
         if (initialData) {
             console.log('Resetting form with initialData', initialData);
 
+            // Parse Addresses
+            const residenceAddr = initialData.residenceAddress || initialData.individualInfo?.residenceAddress;
+            const residenceParsed = parseAddressStr(residenceAddr);
+
+            const companyAddr = initialData.address;
+            const companyParsed = parseAddressStr(companyAddr);
+
             // Map API data to Form Schema
             const formData: Partial<EmployerFormData> = {
-                ...initialData,
-                // Basic
-                category: initialData.category?.code || initialData.categoryCode || 'MANUFACTURING', // Fallback? 
-                // Determine Category Type if missing
-                categoryType: initialData.individualInfo ? 'INDIVIDUAL' : 'BUSINESS', // Heuristic
+                // 區塊一：雇主識別
+                code: initialData.code,
+                taxId: initialData.taxId,
+                shortName: initialData.shortName,
 
-                // Dates -> String (YYYY-MM-DD)
-                zeroFeeEffectiveDate: initialData.zeroFeeEffectiveDate ? new Date(initialData.zeroFeeEffectiveDate).toISOString().split('T')[0] : undefined,
-                terminateDate: initialData.terminateDate ? new Date(initialData.terminateDate).toISOString().split('T')[0] : undefined,
+                // 區塊二：公司資訊
+                companyName: initialData.companyName,
+                companyNameEn: initialData.companyNameEn,
+                isForeignOwner: initialData.isForeignOwner || false,
 
-                // Corporate Info
-                factoryRegistrationNo: initialData.corporateInfo?.factoryRegistrationNo,
-                industryType: initialData.corporateInfo?.industryType,
-                industryCode: initialData.corporateInfo?.industryCode,
-                capital: String(initialData.corporateInfo?.capital || ''),
-                laborInsuranceNo: initialData.corporateInfo?.laborInsuranceNo,
-                laborInsuranceId: initialData.corporateInfo?.laborInsuranceId,
-                healthInsuranceUnitNo: initialData.corporateInfo?.healthInsuranceUnitNo,
-                healthInsuranceId: initialData.corporateInfo?.healthInsuranceId,
-                institutionCode: initialData.corporateInfo?.institutionCode,
-                bedCount: initialData.corporateInfo?.bedCount,
-                faxNumber: initialData.corporateInfo?.faxNumber,
+                // 區塊三：負責人資訊
+                responsiblePerson: initialData.responsiblePerson,
+                englishName: initialData.englishName || initialData.individualInfo?.englishName,
+                responsiblePersonIdNo: initialData.responsiblePersonIdNo || initialData.individualInfo?.responsiblePersonIdNo,
+                responsiblePersonDob: initialData.responsiblePersonDob
+                    ? new Date(initialData.responsiblePersonDob).toISOString().split('T')[0]
+                    : (initialData.individualInfo?.responsiblePersonDob
+                        ? new Date(initialData.individualInfo.responsiblePersonDob).toISOString().split('T')[0]
+                        : undefined),
 
-                // Individual Info
-                responsiblePersonIdNo: initialData.individualInfo?.responsiblePersonIdNo ||
-                    (initialData.taxId && initialData.taxId.length === 10 ? initialData.taxId : ''),
-                responsiblePersonDob: initialData.individualInfo?.responsiblePersonDob ? new Date(initialData.individualInfo.responsiblePersonDob).toISOString().split('T')[0] : undefined,
-                englishName: initialData.individualInfo?.englishName,
-                birthPlace: initialData.individualInfo?.birthPlace,
-                birthPlaceEn: initialData.individualInfo?.birthPlaceEn,
-                residenceAddress: initialData.individualInfo?.residenceAddress,
-                residenceZip: initialData.individualInfo?.residenceZip,
-                residenceCityCode: initialData.individualInfo?.residenceCityCode,
+                // Residence Address
+                residenceZip: initialData.residenceZip || initialData.individualInfo?.residenceZip,
+                residenceCityCode: initialData.residenceCityCode || initialData.individualInfo?.residenceCityCode,
+                residenceCity: residenceParsed.city,
+                residenceDistrict: residenceParsed.district,
+                residenceDetailAddress: residenceParsed.detail,
+                residenceAddress: residenceAddr, // Full string
+                residenceAddressEn: initialData.residenceAddressEn || initialData.individualInfo?.residenceAddressEn,
+
+                birthPlace: initialData.birthPlace || initialData.individualInfo?.birthPlace,
+                birthPlaceEn: initialData.birthPlaceEn || initialData.individualInfo?.birthPlaceEn,
                 responsiblePersonFather: initialData.individualInfo?.responsiblePersonFather,
                 responsiblePersonMother: initialData.individualInfo?.responsiblePersonMother,
                 responsiblePersonSpouse: initialData.individualInfo?.responsiblePersonSpouse,
-                idIssueDate: initialData.individualInfo?.idIssueDate ? new Date(initialData.individualInfo.idIssueDate).toISOString().split('T')[0] : undefined,
+                idIssueDate: initialData.individualInfo?.idIssueDate
+                    ? new Date(initialData.individualInfo.idIssueDate).toISOString().split('T')[0]
+                    : undefined,
                 idIssuePlace: initialData.individualInfo?.idIssuePlace,
                 militaryStatus: initialData.individualInfo?.militaryStatus,
+                militaryStatusEn: initialData.individualInfo?.militaryStatusEn,
 
-                patientName: initialData.individualInfo?.patientName,
-                patientIdNo: initialData.individualInfo?.patientIdNo,
-                careAddress: initialData.individualInfo?.careAddress,
-                relationship: initialData.individualInfo?.relationship,
+                // 區塊四：公司地址
+                companyZip: initialData.companyZip,
+                companyCityCode: initialData.companyCityCode,
+                companyCity: companyParsed.city,
+                companyDistrict: companyParsed.district,
+                companyDetailAddress: companyParsed.detail,
+                address: companyAddr, // Full string
+                addressEn: initialData.addressEn,
 
-                // Factories
-                factories: initialData.factories?.map((f: any) => ({
-                    id: f.id,
-                    name: f.name,
-                    factoryRegNo: f.factoryRegNo,
-                    address: f.address,
-                    addressEn: f.addressEn,
-                    zipCode: f.zipCode,
-                    cityCode: f.cityCode,
-                    laborCount: String(f.laborCount || 0),
-                    foreignCount: String(f.foreignCount || 0)
-                })) || [],
+                // 區塊五：聯絡資訊
+                contactPerson: initialData.contactPerson,
+                phoneNumber: initialData.phoneNumber,
+                faxNumber: initialData.faxNumber || initialData.corporateInfo?.faxNumber,
+                mobilePhone: initialData.mobilePhone,
+                email: initialData.email,
+                contactPerson2: initialData.contactPerson2,
+                contactPhone2: initialData.contactPhone2,
+                contactFax2: initialData.contactFax2,
+                contactMobile2: initialData.contactMobile2,
+                contactEmail2: initialData.contactEmail2,
+                contactBirthday: initialData.contactBirthday
+                    ? new Date(initialData.contactBirthday).toISOString().split('T')[0]
+                    : undefined,
 
-                // Industry Attributes (JSON)
-                industryAttributes: typeof initialData.industryAttributes === 'string'
-                    ? JSON.parse(initialData.industryAttributes)
-                    : (initialData.industryAttributes || {}),
+                // 區塊六：保險/證照
+                laborInsuranceNo: initialData.laborInsuranceNo || initialData.corporateInfo?.laborInsuranceNo,
+                healthInsuranceUnitNo: initialData.healthInsuranceUnitNo || initialData.corporateInfo?.healthInsuranceUnitNo,
+                businessRegistrationNo: initialData.businessRegistrationNo,
+                factoryRegistrationNo: initialData.factoryRegistrationNo || initialData.corporateInfo?.factoryRegistrationNo,
+                licenseExpiryDate: initialData.licenseExpiryDate
+                    ? new Date(initialData.licenseExpiryDate).toISOString().split('T')[0]
+                    : undefined,
 
-                // Labor Count (Most recent year/month logic? Original code used `avgDomesticWorkers` as plain field if stored or calculated)
-                // Assuming API returns it as top level or we need to extract from `laborCounts` relation if present.
-                // Original code had: avgDomesticWorkers: initialData.avgDomesticWorkers || (initialData.laborCounts?.[0]?.count ? String(initialData.laborCounts[0].count) : '')
-                avgDomesticWorkers: initialData.avgDomesticWorkers ? String(initialData.avgDomesticWorkers) :
-                    (initialData.laborCounts && initialData.laborCounts.length > 0 ? String(initialData.laborCounts[0].count) : '')
+                // 區塊七：內部管理
+                salesAgentId: initialData.salesAgentId,
+                professionalStaffId: initialData.professionalStaffId,
+                customerServiceId: initialData.customerServiceId,
+                adminStaffId: initialData.adminStaffId,
+                accountantId: initialData.accountantId,
+                remarks: initialData.remarks,
+                referrer: initialData.referrer,
+                managementSource: initialData.managementSource,
+                developmentDate: initialData.developmentDate
+                    ? new Date(initialData.developmentDate).toISOString().split('T')[0]
+                    : undefined,
+                agencyId: initialData.agencyId,
+                terminateDate: initialData.terminateDate
+                    ? new Date(initialData.terminateDate).toISOString().split('T')[0]
+                    : undefined,
+
+                // 區塊八：工廠
+                factories: initialData.factories?.map((f: any) => {
+                    const fParsed = parseAddressStr(f.address);
+                    return {
+                        id: f.id,
+                        name: f.name,
+                        factoryRegNo: f.factoryRegNo,
+                        address: f.address,
+                        detailAddress: fParsed.detail,
+                        city: fParsed.city,
+                        district: fParsed.district,
+                        addressEn: f.addressEn,
+                        zipCode: f.zipCode,
+                        cityCode: f.cityCode,
+                        laborCount: String(f.laborCount || ''),
+                        foreignCount: String(f.foreignCount || '')
+                    };
+                }) || [],
+
+                // 其他地址
+                invoiceAddress: initialData.invoiceAddress,
+                taxAddress: initialData.taxAddress,
+                healthBillAddress: initialData.healthBillAddress,
+                healthBillZip: initialData.healthBillZip,
             };
-
-            // If category is Farming, explicit categoryType might need to be set if not inferred correctly
-            if (formData.category === 'AGRICULTURE_FARMING' && !formData.categoryType) {
-                // Check if individual info exists
-                formData.categoryType = initialData.individualInfo ? 'INDIVIDUAL' : 'BUSINESS';
-            }
 
             reset(formData);
         }
@@ -151,7 +203,7 @@ export default function EmployerForm({
 
     const onSubmitForm = async (data: EmployerFormData) => {
         try {
-            await onSubmit(data); // employerService will parse numbers/dates
+            await onSubmit(data);
         } catch (error) {
             console.error(error);
             toast.error('儲存失敗，請檢查表單內容');
@@ -188,7 +240,6 @@ export default function EmployerForm({
                         <ul className="list-disc list-inside text-sm pl-5">
                             {Object.entries(errors).map(([key, error]) => (
                                 <li key={key}>
-                                    {/* Try to map field key to a readable name if possible, else key */}
                                     <span className="font-medium capitalize">{key}:</span> {String(error?.message || '格式錯誤')}
                                 </li>
                             ))}
@@ -197,21 +248,21 @@ export default function EmployerForm({
                 )}
 
                 <Tabs defaultValue="basic" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 lg:w-[600px] mb-6">
-                        <TabsTrigger value="basic">基本資料</TabsTrigger>
-                        <TabsTrigger value="factories">工廠與地址</TabsTrigger>
-                        <TabsTrigger value="management">內部管理</TabsTrigger>
+                    <TabsList className="w-full max-w-full overflow-x-auto justify-start md:justify-center mb-6 inline-flex h-auto p-1 text-muted-foreground">
+                        {/* Modified layout to be flex and scrollable on small screens, ensuring it doesn't break out */}
+                        <TabsTrigger value="basic" className="flex-1 min-w-[100px]">基本資料</TabsTrigger>
+                        <TabsTrigger value="contact" className="flex-1 min-w-[100px]">聯絡資訊</TabsTrigger>
+                        <TabsTrigger value="factories" className="flex-1 min-w-[100px]">工廠資訊</TabsTrigger>
+                        <TabsTrigger value="management" className="flex-1 min-w-[100px]">內部管理</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="basic" className="space-y-6">
-                        <BasicInfoSection
-                            categories={categories}
-                            categoriesLoading={catLoading}
-                            applicationTypes={appTypes}
-                            appTypesLoading={appTypesLoading}
-                        />
-                        <ResponsiblePersonSection />
+                        <BasicInfoSection />
                         <LicenseSection />
+                    </TabsContent>
+
+                    <TabsContent value="contact" className="space-y-6">
+                        <ContactSection />
                     </TabsContent>
 
                     <TabsContent value="factories" className="space-y-6">

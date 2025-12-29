@@ -33,18 +33,15 @@ export const translateCityDistrict = (city: string, district: string): { cityEn:
     };
 
     const cityEn = cityMap[city] || pinyin(city, { mode: 'surname', toneType: 'none', type: 'array' }).map(capitalize).join(' ');
+    // Districts will largely be handled by the Address API now, but keeping this as fallback
     const districtEn = pinyin(district, { mode: 'surname', toneType: 'none', type: 'array' }).map(capitalize).join(' ');
 
     return { cityEn, districtEn };
 };
 
 export const translateAddress = (address: string): string => {
-    // Naive address translation:
-    // 1. Numbers might be full-width, simplistic conversion
-    // 2. Sections and Lanes
-    // Ideally, use a library or API. Here we use pinyin for the text parts.
-
-    // Replace common terms first
+    // This function is less critical if we use the component-based translation logic
+    // but useful for generic text.
     let result = address
         .replace(/號/g, 'No. ')
         .replace(/樓/g, 'F')
@@ -52,27 +49,10 @@ export const translateAddress = (address: string): string => {
         .replace(/巷/g, 'Ln. ')
         .replace(/弄/g, 'Aly. ')
         .replace(/路/g, 'Rd. ')
-        .replace(/街/g, 'St. ');
+        .replace(/街/g, 'St. ')
+        .replace(/大道/g, 'Blvd. ');
 
-    // Convert Chinese characters left to Pinyin
-    // This is a rough approximation. 
-    // Ideally, address translation APIs (Google Maps) are used.
-    // User requested "translation button", implies functionality.
-    // Using pinyin for the remaining chinese chars.
-
-    // Note: This needs to be careful not to double-convert latins or break format.
-    // A better approach for address: Just pinyin everything that is Chinese?
-
-    return result;
-    // Actually, pinyin-pro is good for names. For addresses, structure matters.
-    // Let's simplified: 
-    // 1. User inputs: City, District, Detail.
-    // 2. We translate City, District.
-    // 3. We translate Detail: 
-    //    - Extract numbers
-    //    - Pinyin the names (Road names etc)
-    // This is complex to do perfectly with just pinyin. 
-    // I will provide a helper that Pinyins the whole string but keeping numbers/english intact?
+    return toPinyin(result);
 };
 
 export const toPinyin = (text: string): string => {
@@ -83,5 +63,44 @@ export const toPinyin = (text: string): string => {
         type: 'array'
     }).map(capitalize).join(' ');
 };
+
+export const toCompanyEnglish = (text: string): string => {
+    if (!text) return '';
+
+    // Extract suffix
+    let suffix = '';
+    let mainName = text;
+
+    if (text.includes('股份有限公司')) {
+        suffix = ' Co., Ltd.';
+        mainName = text.replace('股份有限公司', '');
+    } else if (text.includes('有限公司')) {
+        suffix = ' Ltd.';
+        mainName = text.replace('有限公司', '');
+    } else if (text.includes('企業社')) {
+        suffix = ' Enterprise';
+        mainName = text.replace('企業社', '');
+    } else if (text.includes('企業')) {
+        suffix = ' Enterprise';
+        mainName = text.replace('企業', '');
+    } else if (text.includes('實業')) {
+        suffix = ' Industrial';
+        mainName = text.replace('實業', '');
+    } else if (text.includes('工業')) {
+        suffix = ' Industrial';
+        mainName = text.replace('工業', '');
+    } else if (text.includes('科技')) {
+        suffix = ' Technology';
+        mainName = text.replace('科技', '');
+    }
+
+    const pinyinName = pinyin(mainName, {
+        mode: 'surname',
+        toneType: 'none',
+        type: 'array'
+    }).map(capitalize).join(' ');
+
+    return pinyinName + suffix;
+}
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

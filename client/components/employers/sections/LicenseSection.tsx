@@ -1,73 +1,52 @@
-
 import { useFormContext } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Building } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import type { EmployerFormData } from '../EmployerFormSchema';
 
+/**
+ * LicenseSection - 保險/證照資訊區塊
+ * 
+ * 包含：勞保證號、健保單位代號、營利事業證號、工廠登記證號、執照效期
+ * 
+ * 注意：行業別代碼和名稱已移至工業局認定函管理
+ */
 export default function LicenseSection() {
-    const { register, watch, setValue } = useFormContext<EmployerFormData>();
-    const selectedCategoryType = watch('categoryType');
-    const selectedCategory = watch('category');
-
-    // Show only for Business/Institution
-    if (selectedCategoryType === 'INDIVIDUAL') return null;
+    const { register } = useFormContext<EmployerFormData>();
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
-            <h3 className="font-semibold text-lg flex items-center gap-2">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="font-semibold text-lg flex items-center gap-2 mb-4 border-b pb-2">
                 <FileText className="h-5 w-5 text-blue-600" />
-                公司證照與保險 (Corporate Licenses)
+                保險與證照資訊
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Manufacturing / Business */}
                 <div className="space-y-2">
-                    <Label>工廠登記證號</Label>
+                    <Label htmlFor="laborInsuranceNo">公司勞保證號</Label>
+                    <Input {...register('laborInsuranceNo')} placeholder="例: 01234567" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="healthInsuranceUnitNo">健保單位代號</Label>
+                    <Input {...register('healthInsuranceUnitNo')} placeholder="例: 123456789" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="businessRegistrationNo">營利事業證號</Label>
+                    <Input {...register('businessRegistrationNo')} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="factoryRegistrationNo">工廠登記證號</Label>
                     <Input {...register('factoryRegistrationNo')} />
                 </div>
                 <div className="space-y-2">
-                    <Label>行業別代碼 (Industry Code)</Label>
-                    <Input {...register('industryCode')} />
+                    <Label htmlFor="licenseExpiryDate">執照效期</Label>
+                    <Input {...register('licenseExpiryDate')} type="date" />
                 </div>
-                <div className="space-y-2">
-                    <Label>行業別名稱</Label>
-                    <Input {...register('industryType')} />
-                </div>
-
-                <div className="space-y-2">
-                    <Label>勞保證號 (Labor Ins. No)</Label>
-                    <Input {...register('laborInsuranceNo')} />
-                </div>
-                <div className="space-y-2">
-                    <Label>勞保單位名稱</Label>
-                    <Input {...register('laborInsuranceId')} />
-                </div>
-
-                <div className="space-y-2">
-                    <Label>健保投保單位代號</Label>
-                    <Input {...register('healthInsuranceUnitNo')} />
-                </div>
-                <div className="space-y-2">
-                    <Label>健保單位名稱</Label>
-                    <Input {...register('healthInsuranceId')} />
-                </div>
-
-                {/* Institution Specific */}
-                {(selectedCategory === 'INSTITUTION' || selectedCategory === 'NURSING_HOME') && (
-                    <>
-                        <div className="space-y-2">
-                            <Label className="required">機構代碼</Label>
-                            <Input {...register('institutionCode')} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="required">許可床位數</Label>
-                            <Input type="number" {...register('bedCount')} />
-                        </div>
-                    </>
-                )}
             </div>
+
+            <p className="mt-4 text-xs text-gray-500">
+                ※ 行業別認定請至「工業局認定函」管理頁面設定
+            </p>
         </div>
     );
 }

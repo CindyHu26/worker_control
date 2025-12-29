@@ -56,8 +56,11 @@ import departmentRoutes from './departments';
 import applicationCategoryRoutes from './applicationCategories';
 import workTitleRoutes from './workTitles';
 
+import addressRouter from './address';
+
 const router = Router();
 
+router.use('/address', addressRouter);
 router.use('/partner-agency-contracts', partnerAgencyContractRoutes);
 router.use('/departments', departmentRoutes);
 
