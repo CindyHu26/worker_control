@@ -1,0 +1,371 @@
+// ==========================================
+// Finance, Billing & Accounting
+// ==========================================
+
+model BillingTemplate {
+  id                      String                @id @default(uuid()) @db.Uuid
+  name                    String                @db.VarChar(100)
+  nameEn                  String?               @map("name_en") @db.VarChar(100)
+  description             String?               @db.Text
+  applicableCategories    String[]              @map("applicable_categories")
+  applicableNationalities String[]              @default([]) @map("applicable_nationalities")
+  isActive                Boolean               @default(true) @map("is_active")
+  isDefault               Boolean               @default(false) @map("is_default")
+  version                 Int                   @default(1)
+  effectiveFrom           DateTime?             @map("effective_from") @db.Date
+  effectiveTo             DateTime?             @map("effective_to") @db.Date
+  items                   BillingTemplateItem[]
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy               String?               @map("created_by") @db.Uuid
+
+  @@index([isActive, isDefault])
+  @@index([effectiveFrom, effectiveTo])
+  @@map("billing_templates")
+}
+
+model BillingTemplateItem {
+  id            String              @id @default(uuid()) @db.Uuid
+  templateId    String              @map("template_id") @db.Uuid
+  name          String              @db.VarChar(100)
+  nameEn        String?             @map("name_en") @db.VarChar(100)
+  category      BillingItemCategory
+  baseAmount    Decimal             @map("base_amount") @db.Decimal(10, 2)
+  logicConfig   Json?               @map("logic_config")
+  conditions    Json?
+  defaultBillTo BillToParty         @default(WORKER) @map("default_bill_to")
+  displayOrder  Int                 @default(0) @map("display_order")
+  isRequired    Boolean             @default(true) @map("is_required")
+  template      BillingTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, displayOrder])
+  @@map("billing_template_items")
+}
+
+model BillingPlan {
+  id            String              @id @default(uuid()) @db.Uuid
+  deploymentId  String              @unique @map("deployment_id") @db.Uuid
+  templateId    String?             @map("template_id") @db.Uuid
+  totalAmount   Decimal             @map("total_amount") @db.Decimal(12, 2)
+  paidAmount    Decimal             @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  balanceAmount Decimal             @default(0) @map("balance_amount") @db.Decimal(12, 2)
+  status        BillingPlanStatus   @default(PENDING)
+  reviewStatus  BillingReviewStatus @default(NORMAL) @map("review_status")
+  reviewReason  String?             @map("review_reason") @db.Text
+  confirmedAt   DateTime?           @map("confirmed_at") @db.Timestamptz
+  confirmedBy   String?             @map("confirmed_by") @db.Uuid
+  items         BillingPlanItem[]
+  deployment    Deployment          @relation(fields: [deploymentId], references: [id])
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([deploymentId])
+  @@index([status, reviewStatus])
+  @@map("billing_plans")
+}
+
+model BillingPlanItem {
+  id             String              @id @default(uuid()) @db.Uuid
+  billingPlanId  String              @map("billing_plan_id") @db.Uuid
+  billingDate    DateTime            @map("billing_date") @db.Date
+  dueDate        DateTime?           @map("due_date") @db.Date
+  amount         Decimal             @db.Decimal(10, 2)
+  itemCategory   BillingItemCategory @map("item_category")
+  status         BillingItemStatus   @default(GENERATED)
+  billTo         BillToParty         @default(WORKER) @map("bill_to")
+  calculatedFrom Json?               @map("calculated_from")
+  isProrated     Boolean             @default(false) @map("is_prorated")
+  proratedDays   Int?                @map("prorated_days")
+  description    String?             @db.Text
+  remarks        String?             @db.Text
+  billingPlan    BillingPlan         @relation(fields: [billingPlanId], references: [id], onDelete: Cascade)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([billingPlanId, billingDate])
+  @@index([status])
+  @@index([itemCategory])
+  @@map("billing_plan_items")
+}
+
+model BillingItemDefinition {
+  id        String              @id @default(uuid()) @db.Uuid
+  code      String              @unique @db.VarChar(50) // 蝟餌絞?折霅蝣?(e.g., "UTILITY", "RENT")
+  name      String              @db.VarChar(100) // ?身憿舐內?迂 (e.g., "瘞湧鞎?)
+  nameEn    String?             @map("name_en") @db.VarChar(100)
+  category  BillingItemCategory // ??啁??enum ??
+  isSystem  Boolean             @default(false) @map("is_system") // 蝟餌絞?身蝘(銝?芷)
+  isActive  Boolean             @default(true) @map("is_active")
+  sortOrder Int                 @default(0) @map("sort_order")
+
+  // Relations
+  employerAliases EmployerBillingAlias[]
+  receivables     Receivable[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("billing_item_definitions")
+}
+
+model EmployerBillingAlias {
+  id           String @id @default(uuid()) @db.Uuid
+  employerId   String @map("employer_id") @db.Uuid
+  definitionId String @map("definition_id") @db.Uuid
+  customName   String @map("custom_name") @db.VarChar(100) // 閰脤?銝餌??啁??迂
+
+  employer   Employer              @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  definition BillingItemDefinition @relation(fields: [definitionId], references: [id])
+
+  @@unique([employerId, definitionId])
+  @@index([employerId])
+  @@map("employer_billing_aliases")
+}
+
+model Receivable {
+  id           String @id @default(uuid()) @db.Uuid
+  workerId     String @map("worker_id") @db.Uuid
+  employerId   String @map("employer_id") @db.Uuid
+  billingCycle String @map("billing_cycle") @db.VarChar(10) // 撣單? (e.g., "2024-01")
+
+  itemDefinitionId String @map("item_definition_id") @db.Uuid
+  itemName         String @map("item_name") @db.VarChar(100) // ??摮 (Snapshot)
+
+  amount  Decimal  @db.Decimal(10, 2) // ???
+  dueDate DateTime @map("due_date") @db.Date // ?撣單狡??
+  status  String   @default("PENDING") @db.VarChar(20) // PENDING, PARTIAL, PAID, CANCELLED
+  type    String   @default("REGULAR") @db.VarChar(20) // REGULAR (一般), ADJUSTMENT (補收/調整)
+
+  // 調整單連結到原始帳款
+  originalReceivableId String? @map("original_receivable_id") @db.Uuid
+
+  // Relations
+  transactions       PaymentTransaction[]
+  auditLogs          AccountingAuditLog[]
+  invoiceItems       InvoiceItem[]
+  worker             Worker                @relation(fields: [workerId], references: [id])
+  employer           Employer              @relation(fields: [employerId], references: [id])
+  itemDefinition     BillingItemDefinition @relation(fields: [itemDefinitionId], references: [id])
+  originalReceivable Receivable?           @relation("AdjustmentFrom", fields: [originalReceivableId], references: [id])
+  adjustments        Receivable[]          @relation("AdjustmentFrom")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
+
+  @@index([workerId, billingCycle])
+  @@index([employerId, billingCycle])
+  @@index([status])
+  @@map("receivables")
+}
+
+model ReceivableItem {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(20) // LAA01: Item Code
+
+  // Names (Multi-language)
+
+  nameZh String  @map("name_zh") @db.VarChar(100) // LAA02
+  nameEn String  @map("name_en") @db.VarChar(100) // LAA02_2
+  nameTh String? @map("name_th") @db.VarChar(100) // LAA02_1
+  nameId String? @map("name_id") @db.VarChar(100) // LAA02_3
+  nameVn String? @map("name_vn") @db.VarChar(100) // LAA02_4
+
+  // Accounting Settings
+
+  debitAccountCode  String? @map("debit_account_code") @db.VarChar(50) // LAA12
+  creditAccountCode String? @map("credit_account_code") @db.VarChar(50) // LAA16
+
+  // Type & Config
+
+  itemCategory       String? @map("item_category") @db.VarChar(50) // LAA13 (e.g., "flight", "medical", "service_fee")
+  isDailyCalculation Boolean @default(false) @map("is_daily_calculation") // LAA14
+  isActive           Boolean @default(true) @map("is_active") // LAA15
+
+  // Relations
+
+  pricingRules ReceivablePricingRule[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("receivable_items")
+}
+
+model ReceivablePricingRule {
+  id String @id @default(uuid()) @db.Uuid
+
+  itemId String @map("item_id") @db.Uuid
+
+  item ReceivableItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  nationalityId String? @map("nationality_id") @db.Uuid
+
+  nationality Nationality? @relation(fields: [nationalityId], references: [id])
+
+  gender GenderType? // Enum: male, female
+
+  employerId String? @map("employer_id") @db.Uuid // Special price for specific employer
+
+  // Tenure-based pricing (e.g., Year 1 vs Year 2 service fee)
+
+  minTenureMonths Int? @map("min_tenure_months") // e.g., 1 (Month 1-12)
+  maxTenureMonths Int? @map("max_tenure_months") // e.g., 12
+
+  amount Decimal @db.Decimal(10, 2)
+
+  description String? @db.Text // Internal note for this rule
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Indexes for fast lookup
+
+  @@index([itemId])
+  @@index([employerId])
+  @@map("receivable_pricing_rules")
+}
+
+model PaymentTransaction {
+  id           String @id @default(uuid()) @db.Uuid
+  receivableId String @map("receivable_id") @db.Uuid
+
+  amount        Decimal  @db.Decimal(10, 2) // 實收金額
+  paymentDate   DateTime @map("payment_date") @db.Date // 實收帳款日
+  paymentMethod String   @map("payment_method") @db.VarChar(30) // CASH, TRANSFER, SALARY_DEDUCTION
+
+  // 作廢機制
+  isVoided   Boolean   @default(false) @map("is_voided")
+  voidedAt   DateTime? @map("voided_at") @db.Timestamptz
+  voidedBy   String?   @map("voided_by") @db.Uuid
+  voidReason String?   @map("void_reason") @db.Text
+
+  note      String? @db.Text
+  createdBy String  @map("created_by") @db.Uuid
+
+  receivable Receivable @relation(fields: [receivableId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([receivableId])
+  @@index([paymentDate])
+  @@map("payment_transactions")
+}
+
+model AccountingAuditLog {
+  id           String @id @default(uuid()) @db.Uuid
+  receivableId String @map("receivable_id") @db.Uuid
+
+  action       String  @db.VarChar(30) // CREATE, UPDATE, VOID, ADJUSTMENT
+  fieldChanged String? @map("field_changed") @db.VarChar(50)
+  oldValue     String? @map("old_value") @db.Text
+  newValue     String? @map("new_value") @db.Text
+  reason       String? @db.Text
+
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  receivable Receivable @relation(fields: [receivableId], references: [id])
+
+  @@index([receivableId])
+  @@map("accounting_audit_logs")
+}
+
+model Invoice {
+  id        String @id @default(uuid()) @db.Uuid
+  invoiceNo String @unique @map("invoice_no") @db.VarChar(30) // 蝟餌絞????甈曉??
+  payerType String @map("payer_type") @db.VarChar(20) // EMPLOYER, WORKER
+  payerId   String @map("payer_id") @db.Uuid // ???Employer ??Worker
+
+  issueDate DateTime @default(now()) @map("issue_date") @db.Date
+  dueDate   DateTime @map("due_date") @db.Date
+
+  totalAmount Decimal @map("total_amount") @db.Decimal(12, 2)
+  status      String  @default("DRAFT") @db.VarChar(20) // DRAFT, ISSUED, PAID, CANCELLED
+
+  notes     String? @db.Text
+  createdBy String  @map("created_by") @db.Uuid
+
+  items InvoiceItem[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([payerType, payerId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id           String  @id @default(uuid()) @db.Uuid
+  invoiceId    String  @map("invoice_id") @db.Uuid
+  receivableId String  @map("receivable_id") @db.Uuid
+  amount       Decimal @db.Decimal(10, 2) // ?祆活隢狡?? (?航?芾??典?)
+
+  invoice    Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  receivable Receivable @relation(fields: [receivableId], references: [id])
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model TaxConfig {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  year Int @unique
+
+  minWage Int @map("min_wage")
+
+  minWageThresholdMultiplier Float @default(1.5) @map("min_wage_threshold_multiplier")
+
+  standardDeduction Int @map("standard_deduction")
+
+  salaryDeduction Int @map("salary_deduction")
+
+  personalExemption Int @map("personal_exemption")
+
+  taxRateResident Float @map("tax_rate_resident")
+
+  nonResidentLowRate Float @map("non_resident_low_rate")
+
+  nonResidentHighRate Float @map("non_resident_high_rate")
+
+  effectiveDate DateTime @map("effective_date") @db.Date
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("tax_configs")
+}
+
+model IncomeTaxCategory {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(10) // e.g., "50", "9A"
+
+  name String @db.VarChar(100) // e.g., "Income Tax"
+
+  nameEn String? @map("name_en") @db.VarChar(100)
+
+  // Tax Rates
+
+  taxRateNonResident Decimal @default(0) @map("tax_rate_non_resident") @db.Decimal(5, 2) // e.g., 20.00
+
+  description String? @db.Text
+
+  sortOrder Int @default(0) @map("sort_order")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("income_tax_categories")
+}

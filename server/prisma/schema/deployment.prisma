@@ -1,0 +1,165 @@
+// ==========================================
+// Deployment & Contracts
+// ==========================================
+
+model Deployment {
+  billingPlan BillingPlan?
+
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  workerId String @map("worker_id") @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  recruitmentLetterId String? @map("recruitment_letter_id") @db.Uuid
+
+  startDate DateTime @map("start_date") @db.Date
+
+  endDate DateTime? @map("end_date") @db.Date
+
+  status DeploymentStatus @default(active)
+
+  serviceStatus ServiceStatus @default(active_service) @map("service_status")
+
+  sourceType ManagementSourceType @default(direct_hiring) @map("source_type")
+
+  jobDescription String? @map("job_description") @db.Text
+
+  entryDate DateTime? @map("entry_date") @db.Date
+
+  // Handover Date
+
+  handoverDate DateTime? @map("handover_date") @db.Date
+
+  entryReportSerial String? @map("entry_report_serial") @db.VarChar(50)
+
+  flightNumber String? @map("flight_number") @db.VarChar(20)
+
+  flightArrivalDate DateTime? @map("flight_arrival_date") @db.Date
+
+  visaLetterNo String? @map("visa_letter_no") @db.VarChar(50)
+
+  jobType String? @map("job_type") @db.VarChar(50)
+
+  shift String? @map("shift") @db.VarChar(50)
+
+  // Overseas Recruitment Workflow Fields
+
+  overseasCheckStatus String? @map("overseas_check_status") @db.VarChar(20)
+
+  overseasCheckDate DateTime? @map("overseas_check_date") @db.Date
+
+  // Dynamic Contract Type
+
+  contractTypeId String? @map("contract_type_id") @db.Uuid
+
+  contractType ContractType? @relation(fields: [contractTypeId], references: [id])
+
+  // Dynamic Termination Reason
+
+  contractEndReasonId String? @map("contract_end_reason_id") @db.Uuid
+
+  contractEndReason ContractEndReason? @relation(fields: [contractEndReasonId], references: [id])
+
+  docVerificationStatus String? @map("doc_verification_status") @db.VarChar(20)
+
+  docSubmissionDate DateTime? @map("doc_submission_date") @db.Date
+
+  docVerifiedDate DateTime? @map("doc_verified_date") @db.Date
+
+  visaStatus String? @map("visa_status") @db.VarChar(20)
+
+  visaApplicationDate DateTime? @map("visa_application_date") @db.Date
+
+  visaNumber String? @map("visa_number") @db.VarChar(50)
+
+  // Termination Information
+
+  terminationReason String? @map("termination_reason") @db.VarChar(50)
+
+  terminationNotes String? @map("termination_notes") @db.Text
+
+  // Contract / Salary Info
+
+  basicSalary Decimal? @map("basic_salary") @db.Decimal(10, 2)
+
+  foodAmount Decimal? @map("food_amount") @db.Decimal(10, 2)
+
+  foodStatus String? @map("food_status") @db.VarChar(50)
+
+  // Specific Factory Location
+
+  factoryId String? @map("factory_id") @db.Uuid
+
+  factory EmployerFactory? @relation(fields: [factoryId], references: [id])
+
+  worker Worker @relation(fields: [workerId], references: [id])
+
+  employer Employer @relation(fields: [employerId], references: [id])
+
+  recruitmentLetter EmployerRecruitmentLetter? @relation(fields: [recruitmentLetterId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  healthChecks HealthCheck[]
+
+  permitDetails WorkerPermitDetail[]
+
+  insurances WorkerInsurance[]
+
+  runawayRecords RunawayRecord[]
+
+  // Soft Delete
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("deployments")
+}
+
+model RelocationNotification {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  workerId String @map("worker_id") @db.Uuid
+
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  // Addresses
+
+  oldAddress String? @map("old_address") @db.Text
+
+  newAddress String? @map("new_address") @db.Text
+
+  // Government Notification Tracking
+
+  notificationType String @default("CHANGE_OF_RESIDENCE") @map("notification_type") // e.g., CHANGE_OF_RESIDENCE (疇??疇??矇?穡/癟禮罈疆簞?癟翻簡)
+
+  // Timeline tracking
+
+  mailingDate DateTime? @map("mailing_date") @db.Date
+
+  filingDate DateTime? @map("filing_date") @db.Date
+
+  // Receipt info (Usually from government response)
+
+  receiptDate DateTime? @map("receipt_date") @db.Date
+
+  receiptNumber String? @map("receipt_number") @db.VarChar(50)
+
+  status String @default("PENDING") @db.VarChar(20) // PENDING, PROCESSING, COMPLETED, REJECTED
+
+  notes String? @db.Text
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("relocation_notifications")
+}

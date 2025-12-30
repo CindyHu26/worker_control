@@ -1,0 +1,405 @@
+// ==========================================
+// Agency Management (Domestic & Partner Agencies)
+// ==========================================
+
+model DomesticAgency {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(10)
+
+  agencyNameZh String @map("agency_name_zh") @db.VarChar(100)
+
+  agencyNameEn String? @map("agency_name_en") @db.VarChar(100)
+
+  agencyNameShort String? @map("agency_name_short") @db.VarChar(50)
+
+  phone String? @map("phone") @db.VarChar(20)
+
+  fax String? @map("fax") @db.VarChar(20)
+
+  email String? @map("email") @db.VarChar(100)
+
+  emergencyEmail String? @map("emergency_email") @db.VarChar(255)
+
+  website String? @map("website") @db.VarChar(100)
+
+  customerServicePhone String? @map("customer_service_phone") @db.VarChar(20)
+  emergencyPhone       String? @map("emergency_phone") @db.VarChar(20)
+
+  zipCode   String? @map("zip_code") @db.VarChar(5) // Zip Code
+  city      String? @db.VarChar(20) // City
+  district  String? @db.VarChar(20) // District
+  addressZh String? @map("address_zh") @db.VarChar(200) // Address (Chinese)
+  addressEn String? @map("address_en") @db.VarChar(200) // Address (English)
+
+  representativeName String? @map("representative_name") @db.VarChar(50)
+
+  representativeNameEn String? @map("representative_name_en") @db.VarChar(100)
+
+  representativeIdNo String? @map("representative_id_no") @db.VarChar(20)
+
+  representativePassport String? @map("representative_passport") @db.VarChar(20)
+
+  checkPayableTo String? @map("check_payable_to") @db.VarChar(50)
+
+  taxId String? @map("tax_id") @db.VarChar(10)
+
+  taxRegistrationNo String? @map("tax_registration_no") @db.VarChar(20)
+
+  permitNumber String? @map("permit_number") @db.VarChar(20)
+
+  permitValidFrom DateTime? @map("permit_valid_from") @db.Date
+
+  permitValidTo DateTime? @map("permit_valid_to") @db.Date
+
+  businessRegistrationNo String? @map("business_registration_no") @db.VarChar(50)
+
+  postalAccountNo String? @map("postal_account_no") @db.VarChar(20)
+
+  postalAccountName String? @map("postal_account_name") @db.VarChar(100)
+
+  bankName String? @map("bank_name") @db.VarChar(100)
+
+  bankCode String? @map("bank_code") @db.VarChar(3)
+
+  bankBranchCode String? @map("bank_branch_code") @db.VarChar(4)
+
+  bankAccountNo String? @map("bank_account_no") @db.VarChar(20)
+
+  bankAccountName String? @map("bank_account_name") @db.VarChar(100)
+
+  accountant String? @map("accountant") @db.VarChar(50)
+
+  isActive Boolean @default(true) @map("is_active")
+
+  sortOrder Int @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  bilateralTradeLicenses AgencyBilateralTradeLicense[]
+
+  bankAccounts DomesticAgencyBankAccount[]
+
+  employees Employee[]
+
+  @@map("domestic_agencies")
+}
+
+model Bank {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(12)
+
+  bankName String @map("bank_name") @db.VarChar(100)
+
+  bankNameEn String? @map("bank_name_en") @db.VarChar(100)
+
+  contactPerson String? @map("contact_person") @db.VarChar(50)
+
+  phone String? @map("phone") @db.VarChar(30)
+
+  fax String? @map("fax") @db.VarChar(30)
+
+  address String? @map("address") @db.VarChar(200)
+
+  notes String? @map("notes") @db.VarChar(200)
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  agencyAccounts DomesticAgencyBankAccount[]
+
+  @@map("banks")
+}
+
+model DomesticAgencyBankAccount {
+  id String @id @default(uuid()) @db.Uuid
+
+  domesticAgencyId String @map("domestic_agency_id") @db.Uuid
+
+  domesticAgency DomesticAgency @relation(fields: [domesticAgencyId], references: [id], onDelete: Cascade)
+
+  bankId String @map("bank_id") @db.Uuid
+
+  bank Bank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+
+  agencyUnitCode String @map("agency_unit_code") @db.VarChar(12)
+
+  agencyAccountNo String @map("agency_account_no") @db.VarChar(20)
+
+  accountPurpose String? @map("account_purpose") @db.VarChar(100)
+
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  notes String? @map("notes") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([domesticAgencyId, bankId, agencyAccountNo])
+  @@index([domesticAgencyId])
+  @@index([bankId])
+  @@map("domestic_agency_bank_accounts")
+}
+
+model AgencyBilateralTradeLicense {
+  id String @id @default(uuid()) @db.Uuid
+
+  agencyId String @map("agency_id") @db.Uuid
+
+  agency DomesticAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  country String @db.VarChar(2)
+
+  licenseNumber String? @map("license_number") @db.VarChar(50)
+
+  validFrom DateTime @map("valid_from") @db.Date
+
+  validTo DateTime @map("valid_to") @db.Date
+
+  status String @default("ACTIVE") @db.VarChar(20) // ACTIVE, EXPIRED, REVOKED
+
+  notes String? @map("notes") @db.Text
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([agencyId])
+  @@index([validTo])
+  @@map("agency_bilateral_trade_licenses")
+}
+
+model PartnerAgency {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(10)
+
+  agencyNameZh String @map("agency_name_zh") @db.VarChar(200)
+
+  agencyNameZhShort String? @map("agency_name_zh_short") @db.VarChar(100)
+
+  agencyNameEn String? @map("agency_name_en") @db.VarChar(200)
+
+  agencyNameEnShort String? @map("agency_name_en_short") @db.VarChar(100)
+
+  phone String? @map("phone") @db.VarChar(20)
+
+  fax String? @map("fax") @db.VarChar(20)
+
+  email String? @map("email") @db.VarChar(100)
+
+  country String? @map("country") @db.VarChar(2)
+
+  countryNameZh String? @map("country_name_zh") @db.VarChar(20)
+
+  addressZh String? @map("address_zh") @db.VarChar(200)
+
+  addressEn String? @map("address_en") @db.VarChar(200)
+
+  addressShort String? @map("address_short") @db.VarChar(200)
+
+  contactPerson String? @map("contact_person") @db.VarChar(50)
+
+  contactPhone String? @map("contact_phone") @db.VarChar(20)
+
+  mailingAddressZh String? @map("mailing_address_zh") @db.VarChar(200)
+
+  mailingAddressEn String? @map("mailing_address_en") @db.VarChar(200)
+
+  representativeName String? @map("representative_name") @db.VarChar(50)
+
+  representativeNameEn String? @map("representative_name_en") @db.VarChar(100)
+
+  representativeIdNo String? @map("representative_id_no") @db.VarChar(20)
+
+  representativePassport String? @map("representative_passport") @db.VarChar(20)
+
+  taxId String? @map("tax_id") @db.VarChar(10)
+
+  businessRegistrationNo String? @map("business_registration_no") @db.VarChar(50)
+
+  permitNumber String? @map("permit_number") @db.VarChar(50)
+
+  foreignLicenseNo String? @map("foreign_license_no") @db.VarChar(50)
+
+  foreignLicenseExpiry DateTime? @map("foreign_license_expiry") @db.Date
+
+  molPermitNo String? @map("mol_permit_no") @db.VarChar(20)
+
+  molValidFrom DateTime? @map("mol_valid_from") @db.Date
+
+  molValidTo DateTime? @map("mol_valid_to") @db.Date
+
+  payeeName String? @map("payee_name") @db.VarChar(100)
+
+  bankName String? @map("bank_name") @db.VarChar(100)
+
+  bankAccountNo String? @map("bank_account_no") @db.VarChar(50)
+
+  bankAddress String? @map("bank_address") @db.VarChar(200)
+
+  loanBankCode String? @map("loan_bank_code") @db.VarChar(10)
+
+  isActive Boolean @default(true) @map("is_active")
+
+  notes String? @map("notes") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  bilateralTradeLicenses PartnerAgencyBilateralLicense[]
+
+  contracts PartnerAgencyContract[]
+
+  @@map("partner_agencies")
+}
+
+model PartnerAgencyBilateralLicense {
+  id String @id @default(uuid()) @db.Uuid
+
+  agencyId String @map("agency_id") @db.Uuid
+
+  agency PartnerAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  licenseNumber String? @map("license_number") @db.VarChar(50)
+
+  validFrom DateTime @map("valid_from") @db.Date
+
+  validTo DateTime @map("valid_to") @db.Date
+
+  status String @default("ACTIVE") @db.VarChar(20)
+
+  notes String? @map("notes") @db.Text
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([agencyId])
+  @@index([validTo])
+  @@index([status])
+  @@map("partner_agency_bilateral_licenses")
+}
+
+model PartnerAgencyContract {
+  id String @id @default(uuid()) @db.Uuid
+
+  agencyId String @map("agency_id") @db.Uuid
+
+  agency PartnerAgency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  contractNo String @map("contract_no") @db.VarChar(50)
+
+  contractType String? @map("contract_type") @db.VarChar(50)
+
+  signedDate DateTime? @map("signed_date") @db.Date
+
+  validFrom DateTime? @map("valid_from") @db.Date
+
+  validTo DateTime? @map("valid_to") @db.Date
+
+  summary String? @map("summary") @db.Text
+
+  documentPath String? @map("document_path") @db.VarChar(255)
+
+  status String @default("ACTIVE") @db.VarChar(20)
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([agencyId])
+  @@index([contractNo])
+  @@index([validTo])
+  @@map("partner_agency_contracts")
+}
+
+model LoanBank {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(10)
+
+  nameZh String @map("name_zh") @db.VarChar(50)
+
+  nameEn String? @map("name_en") @db.VarChar(100)
+
+  sortOrder Int @default(0) @map("sort_order")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("loan_banks")
+}
+
+model AgencyCompany {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  name String @db.VarChar(100)
+
+  licenseNo String? @map("license_no") @db.VarChar(50)
+
+  taxId String? @map("tax_id") @db.VarChar(20)
+
+  address String? @db.Text
+
+  phone String? @db.VarChar(20)
+
+  fax String? @db.VarChar(20)
+
+  email String? @db.VarChar(100)
+
+  responsiblePerson String? @map("responsible_person") @db.VarChar(50)
+
+  isDefault Boolean @default(false) @map("is_default")
+
+  employers Employer[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("agency_companies")
+}
+
+model ForeignAgency {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  name String @db.VarChar(100)
+
+  code String? @db.VarChar(50)
+
+  address String? @db.Text
+
+  country String? @db.VarChar(50)
+
+  workers Worker[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("foreign_agencies")
+}

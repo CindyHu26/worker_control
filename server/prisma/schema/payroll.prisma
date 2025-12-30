@@ -1,0 +1,45 @@
+// ==========================================
+// Payroll Management
+// ==========================================
+
+model PayrollRecord {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  workerId String @map("worker_id") @db.Uuid
+
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  payDate DateTime @map("pay_date") @db.Date
+
+  salaryAmount Decimal @map("salary_amount") @db.Decimal(10, 2)
+
+  bonusAmount Decimal @map("bonus_amount") @db.Decimal(10, 2)
+
+  taxWithheld Decimal @map("tax_withheld") @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("payroll_records")
+}
+
+model InsuranceTier {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  grade Int @unique
+
+  minSalary Int @map("min_salary")
+
+  maxSalary Int @map("max_salary")
+
+  laborFee Int @map("labor_fee")
+
+  healthFee Int @map("health_fee")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("insurance_tiers")
+}

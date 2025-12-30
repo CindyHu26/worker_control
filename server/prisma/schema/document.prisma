@@ -1,0 +1,172 @@
+// ==========================================
+// Document Management & Templates
+// ==========================================
+
+model DocumentTemplate {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  name String @db.VarChar(255) // Specific version name e.g. "Labor Contract (Thai)"
+
+  filePath String @map("file_path") @db.Text
+
+  fileFormat String? @map("file_format") @db.VarChar(20) // docx, xlsx, odt, pdf
+
+  mimeType String? @map("mime_type") @db.VarChar(100)
+
+  originalName String? @map("original_name") @db.VarChar(255)
+
+  // Placeholder 癡穡簫疇簧? (JSON 疆?翹疇翹?疇?簡疇簫?疆竅?瓣翻?疇簞?疆??)
+
+  placeholderSchema Json? @map("placeholder_schema")
+
+  // Links
+
+  documentRequirementId String? @map("document_requirement_id") @db.Uuid
+
+  documentRequirement DocumentRequirement? @relation(fields: [documentRequirementId], references: [id])
+
+  nationalityId String? @map("nationality_id") @db.Uuid
+
+  nationality Nationality? @relation(fields: [nationalityId], references: [id])
+
+  language String? @db.VarChar(20) // e.g., "zh-TW", "en", "th"
+
+  version String? @db.VarChar(20) // e.g., "v1.0"
+
+  isActive Boolean @default(true) @map("is_active")
+
+  description String? @db.Text
+
+  category String? @db.VarChar(50)
+
+  isTested Boolean @default(false) @map("is_tested")
+
+  testedAt DateTime? @map("tested_at") @db.Timestamptz
+
+  testedBy String? @map("tested_by") @db.Uuid
+
+  activatedAt DateTime? @map("activated_at") @db.Timestamptz
+
+  activatedBy String? @map("activated_by") @db.Uuid
+
+  // Relations
+
+  generatedDocuments GeneratedDocument[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("document_templates")
+}
+
+model GeneratedDocument {
+  id String @id @default(uuid()) @db.Uuid
+
+  templateId String @map("template_id") @db.Uuid
+
+  template DocumentTemplate @relation(fields: [templateId], references: [id])
+
+  workerId String? @map("worker_id") @db.Uuid
+
+  employerId String? @map("employer_id") @db.Uuid
+
+  fileName String @map("file_name") @db.VarChar(255)
+
+  filePath String @map("file_path") @db.Text
+
+  fileSize Int? @map("file_size")
+
+  status String @default("SUCCESS") @db.VarChar(20) // SUCCESS, FAILED
+
+  errorMessage String? @map("error_message") @db.Text
+
+  generatedAt DateTime @default(now()) @map("generated_at") @db.Timestamptz
+
+  generatedBy String? @map("generated_by") @db.Uuid
+
+  @@index([workerId])
+  @@index([employerId])
+  @@index([templateId])
+  @@map("generated_documents")
+}
+
+model DocumentRequirement {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(50) // e.g., "LABOR_CONTRACT"
+
+  name String @db.VarChar(100) // e.g., "Labor Contract"
+
+  category String? @db.VarChar(50) // e.g., "Entry", "Medical"
+
+  isRequired Boolean @default(false) @map("is_required")
+
+  templates DocumentTemplate[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("document_requirements")
+}
+
+model OfficialDocument {
+  id String @id @default(uuid()) @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  // Optional: Link to a specific worker (e.g., Runaway letter for Worker A)
+
+  workerId String? @map("worker_id") @db.Uuid
+
+  worker Worker? @relation(fields: [workerId], references: [id])
+
+  documentType String @map("document_type") @db.VarChar(50)
+
+  docNumber String @map("doc_number") @db.VarChar(50)
+
+  issueDate DateTime @map("issue_date") @db.Date
+
+  expiryDate DateTime? @map("expiry_date") @db.Date
+
+  issuingAgency String? @map("issuing_agency") @db.VarChar(100)
+
+  title String? @db.VarChar(200)
+
+  description String? @db.Text
+
+  filePath String? @map("file_path") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([employerId])
+  @@index([workerId])
+  @@index([docNumber])
+  @@map("official_documents")
+}
+
+model Attachment {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  refId String @map("ref_id") @db.Uuid
+
+  refTable String @map("ref_table") @db.VarChar(50)
+
+  filePath String @map("file_path") @db.Text
+
+  fileName String @map("file_name") @db.VarChar(255)
+
+  fileType String? @map("file_type") @db.VarChar(100)
+
+  uploaderId String? @map("uploader_id") @db.Uuid
+
+  uploadedAt DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
+
+  @@index([refTable, refId])
+  @@map("attachments")
+}

@@ -1,0 +1,498 @@
+// ==========================================
+// Employer & Factory Management
+// ==========================================
+
+model Employer {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Business ID
+  code          String? @unique @db.VarChar(20) // Employer Code
+  shortName     String? @map("short_name") @db.VarChar(50) // Short Name
+  taxId         String? @unique @map("tax_id") @db.VarChar(20) // Tax ID (Unified Business No)
+  companyName   String  @map("company_name") @db.VarChar(100) // Company Name
+  companyNameEn String? @map("company_name_en") @db.VarChar(100) // Company Name (English)
+
+  // Responsible Person
+  responsiblePerson String? @map("responsible_person") @db.VarChar(50) // Responsible Person Name
+
+  address        String? @db.Text // Address (Chinese)
+  addressEn      String? @map("address_en") @db.Text // Address (English)
+  invoiceAddress String? @map("invoice_address") @db.Text // Invoice Address
+
+  // Other Addresses
+  taxAddress        String? @map("tax_address") @db.Text // Tax Address
+  healthBillAddress String? @map("health_bill_address") @db.Text // Health Bill Address
+  healthBillZip     String? @map("health_bill_zip") @db.VarChar(10) // Health Bill Zip
+
+  phoneNumber String? @map("phone_number") @db.VarChar(20) // Phone Number
+  mobilePhone String? @map("mobile_phone") @db.VarChar(20) // Mobile Phone
+  email       String? @db.VarChar(100) // Email
+
+  contactPerson String? @map("contact_person") @db.VarChar(50) // Contact Person
+  contactPhone  String? @map("contact_phone") @db.VarChar(20) // Contact Phone
+
+  // Internal Management
+  referrer      String?   @db.VarChar(50) // Referrer
+  terminateDate DateTime? @map("terminate_date") @db.Date // Termination Date
+
+  // Relations to Details
+
+  corporateInfo CorporateInfo?
+
+  individualInfo IndividualInfo?
+
+  // Relation to Category
+  applicationCategoryId String? @map("application_category_id") @db.Uuid
+
+  category ApplicationCategory? @relation(fields: [applicationCategoryId], references: [id])
+
+  // Existing Relations
+
+  recruitmentLetters EmployerRecruitmentLetter[]
+
+  deployments Deployment[]
+
+  permitDocuments PermitDocument[]
+
+  incidents Incident[]
+
+  serviceAssignments ServiceAssignment[]
+
+  jobOrders JobOrder[]
+
+  factories EmployerFactory[]
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  updatedBy String? @map("updated_by") @db.Uuid
+
+  createdByUser InternalUser? @relation("EmployerCreatedBy", fields: [createdBy], references: [id])
+
+  updatedByUser InternalUser? @relation("EmployerUpdatedBy", fields: [updatedBy], references: [id])
+
+  // CRM & Conversion
+
+  // Reverse relation: Employer can be created from Lead conversion
+
+  convertedFromLead Lead? @relation("ConvertedFromLead")
+
+  allocationRate       Decimal?  @map("allocation_rate") @db.Decimal(5, 4) // Allocation Rate
+  complianceStandard   String?   @map("compliance_standard") @db.VarChar(50) // Compliance Standard
+  zeroFeeEffectiveDate DateTime? @map("zero_fee_effective_date") @db.Date // Zero Fee Effective Date
+  industryAttributes   Json?     @map("industry_attributes") // Industry Attributes
+  monthlyServiceFee    Int       @default(1500) @map("monthly_service_fee") // Monthly Service Fee
+  remarks              String?   @db.Text // Remarks
+
+  unitTaxId  String? @map("unit_tax_id") @db.VarChar(50) // Unit Tax ID
+  houseTaxId String? @map("house_tax_id") @db.VarChar(50) // House Tax ID
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  laborCounts EmployerLaborCount[]
+
+  industryRecognitions IndustryRecognition[]
+
+  recruitmentProofs RecruitmentProof[]
+
+  officialDocuments OfficialDocument[]
+
+  // Phase 9: Accounting Module Relations
+  billingAliases EmployerBillingAlias[]
+  receivables    Receivable[]
+
+  // Soft Delete
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  // Quota Cache
+
+  totalQuota Int @default(0) @map("total_quota") // Total Quota
+
+  // Agency Relation
+
+  agencyId String? @map("agency_id") @db.Uuid
+
+  agency AgencyCompany? @relation(fields: [agencyId], references: [id])
+
+  @@map("employers")
+}
+
+model EmployerFactory {
+  id String @id @default(uuid()) @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  name String @map("name") @db.VarChar(100) // Factory Name
+
+  factoryRegNo String? @map("factory_reg_no") @db.VarChar(50) // Factory Registration No
+
+  address   String? @db.Text // Factory Address
+  addressEn String? @map("address_en") @db.Text // Factory Address (English)
+  zipCode   String? @map("zip_code") @db.VarChar(10) // Zip Code
+  city      String? @db.VarChar(20) // City
+  district  String? @db.VarChar(20) // District
+
+  laborCount   Int? @default(0) // Domestic Labor Count
+  foreignCount Int? @default(0) // Foreign Labor Count
+
+  // Factory Details
+  taxId             String? @map("tax_id") @db.VarChar(50) // Tax ID
+  laborInsuranceNo  String? @map("labor_insurance_no") @db.VarChar(50) // Labor Insurance No
+  healthInsuranceNo String? @map("health_insurance_no") @db.VarChar(50) // Health Insurance No
+  ranking           String? @map("ranking") @db.VarChar(20) // Factory Ranking
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+
+  deployments Deployment[]
+
+  industryRecognitions IndustryRecognition[]
+
+  workers Worker[]
+
+  // Recruitment Letter Relation
+
+  recruitmentLetters EmployerRecruitmentLetter[] @relation("LetterWorkFactory")
+
+  @@map("employer_factories")
+}
+
+model EmployerLaborCount {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  year Int
+
+  month Int
+
+  count Int @default(0) // Internal labor count
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([employerId, year, month])
+  @@map("employer_labor_counts")
+}
+
+model EmployerRecruitmentLetter {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  // --- 1. Recruitment Letter (Employer Recruitment Letter) ---
+
+  letterNumber String @unique @map("letter_number") @db.VarChar(50) // Recruitment Letter Number (e.g., 123456789)
+
+  issueDate DateTime @map("issue_date") @db.Date // Recruitment Letter Issue Date
+
+  expiryDate DateTime @map("expiry_date") @db.Date // Recruitment Letter Expiry Date
+
+  validUntil DateTime @default(now()) @map("valid_until") @db.Date // Recruitment Letter Valid Until Date (default to current date)
+
+  // --- [Phase 1 New Relations] ---
+
+  industryRecognitionId String? @map("industry_recognition_id") @db.Uuid
+
+  industryRecognition IndustryRecognition? @relation(fields: [industryRecognitionId], references: [id])
+
+  recruitmentProofId String? @map("recruitment_proof_id") @db.Uuid
+
+  recruitmentProof RecruitmentProof? @relation(fields: [recruitmentProofId], references: [id])
+
+  // --- 2. Industrial Bureau ---
+
+  // [DEPRECATED] Use relation industryRecognition instead
+
+  // Industrial Bureau Reference Number (e.g., 123456789)
+
+  industrialBureauRef String? @map("industrial_bureau_ref") @db.VarChar(50) // Industrial Bureau Reference Number
+
+  industrialBureauDate DateTime? @map("industrial_bureau_date") @db.Date // Industrial Bureau Date
+
+  industryTier String? @map("industry_tier") @db.VarChar(10) // Industry Tier (e.g., "B")
+
+  // --- 3. Domestic Recruitment ---
+
+  domesticRecruitmentRef String? @map("domestic_recruitment_ref") @db.VarChar(50) // Domestic Recruitment Reference Number
+
+  domesticRecruitmentDate DateTime? @map("domestic_recruitment_date") @db.Date // Domestic Recruitment Date
+
+  // --- 4. Review Fee ---
+
+  reviewFeeReceiptNo String? @map("review_fee_receipt_no") @db.VarChar(50) // Review Fee Receipt Number
+
+  reviewFeePayDate DateTime? @map("review_fee_pay_date") @db.Date // Review Fee Payment Date
+
+  reviewFeeAmount Int @default(200) @map("review_fee_amount") // Review Fee Amount (default to 200)
+
+  // --- 5. Quota ---
+
+  approvedQuota Int @default(0) @map("approved_quota") // Approved Quota
+
+  usedQuota Int @default(0) @map("used_quota") // Used Quota
+
+  // --- Legacy / Details ---
+
+  submissionDate DateTime? @map("submission_date") @db.Date // Submission Date
+
+  laborMinistryReceiptDate DateTime? @map("labor_ministry_receipt_date") @db.Date // Labor Ministry Receipt Date
+
+  // --- Legacy / Details ---
+
+  issueUnit String? @default("疇??疇??矇?穡") @map("issue_unit") @db.VarChar(50) // Issue Unit
+
+  issueWord String? @default("疇??疇??癟?翹瓣繙?疇簫?") @map("issue_word") @db.VarChar(50) // Issue Word
+
+  caseNumber String? @map("case_number") @db.VarChar(50) // Case Number
+
+  // Hierarchy (for split letters)
+
+  parentLetterId String? @map("parent_letter_id") @db.Uuid
+
+  parentLetter EmployerRecruitmentLetter? @relation("LetterHierarchy", fields: [parentLetterId], references: [id])
+
+  childLetters EmployerRecruitmentLetter[] @relation("LetterHierarchy")
+
+  // Work Location & Job Info
+
+  workAddress String? @map("work_address") @db.Text // Work Address
+
+  jobType String? @map("job_type") @db.VarChar(50) // Job Type (e.g., Full-time)
+
+  jobTitle String? @map("job_title") @db.VarChar(100) // Job Title (e.g., Software Engineer)
+
+  industryCode String? @map("industry_code") @db.VarChar(50) // Industry Code 
+
+  // Project / Bureau Info
+
+  projectCode String? @map("project_code") @db.VarChar(50) // Project Code (e.g., x1-03...)
+
+  // industrialBureauRef removed as it is defined above
+
+  // Quota Management - Moved to top
+
+  // Gender Constraints (Legacy support)
+
+  quotaMale Int @default(0) @map("quota_male")
+
+  quotaFemale Int @default(0) @map("quota_female")
+
+  // Project & Attributes
+
+  recruitmentProjectType String? @map("recruitment_project_type") @db.VarChar(100) // Recruitment Project Type (e.g., LBE24)
+
+  applyForRehiringBonus Boolean @default(false) @map("apply_for_rehiring_bonus") // Apply for Rehiring Bonus
+
+  // Industry Link
+
+  industryId String? @map("industry_id") @db.Uuid
+
+  industry Industry? @relation(fields: [industryId], references: [id])
+
+  // Work Address Logic
+
+  workAddressType String? @map("work_address_type") @db.VarChar(50) // FACTORY, COMPANY, FAMILY, OR_APPLICANT
+
+  workAddressFactoryId String? @map("work_address_factory_id") @db.Uuid
+
+  workAddressFactory EmployerFactory? @relation("LetterWorkFactory", fields: [workAddressFactoryId], references: [id])
+
+  // Other Attributes
+
+  recruitmentType String? @map("recruitment_type") @db.VarChar(20) // Recruitment Type (e.g., Temporary/Permanent/Seasonal)
+
+  nationalityId String? @map("nationality_id") @db.Uuid
+
+  nationality Nationality? @relation(fields: [nationalityId], references: [id])
+
+  // REMOVED: nationality     NationalityType?
+
+  canCirculate Boolean @default(true) @map("can_circulate") // Can Circulate
+
+  remarks String? @db.Text // Remarks
+
+  // Relations
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  deployments Deployment[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Soft Delete
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("employer_recruitment_letters")
+}
+
+model IndustryRecognition {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  factoryId String? @map("factory_id") @db.Uuid // Optional: link to specific factory if multi-site
+
+  bureauRefNumber String @unique @map("bureau_ref_number") @db.VarChar(50) // Bureau Reference Number
+
+  issueDate DateTime @map("issue_date") @db.Date // Issue Date
+
+  // Tier Management
+
+  tier String @map("tier") @db.VarChar(10) // A+, A, B, C, D
+
+  expiryDate DateTime? @map("expiry_date") @db.Date // Expiry Date (usually 3 years?)
+
+  allocationRate Decimal? @map("allocation_rate") @db.Decimal(5, 2) // e.g. 0.20
+
+  extraRate Decimal? @default(0) @map("extra_rate") @db.Decimal(5, 2) // Extra Quota Rate (e.g. 0.20)
+
+  fileUrl String? @map("file_url") @db.Text
+
+  // Stats
+
+  approvedQuota Int @default(0) @map("approved_quota")
+
+  usedQuota Int @default(0) @map("used_quota")
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  employerFactory EmployerFactory? @relation(fields: [factoryId], references: [id])
+
+  // Relations
+
+  recruitmentLetters EmployerRecruitmentLetter[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Soft Delete
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("industry_recognitions")
+}
+
+model RecruitmentProof {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  receiptNumber String @unique @map("receipt_number") @db.VarChar(50) // Receipt Number
+
+  registerDate DateTime @map("register_date") @db.Date // Register Date
+
+  issueDate DateTime @map("issue_date") @db.Date // Issue Date
+
+  jobCenter String? @map("job_center") @db.VarChar(50) // Job Center
+
+  status String @default("VALID") @db.VarChar(20) // VALID, EXPIRED, USED
+
+  // Fees
+
+  reviewFeeReceiptNo String? @map("review_fee_receipt_no") @db.VarChar(50) // Review Fee Receipt Number
+
+  reviewFeePayDate DateTime? @map("review_fee_pay_date") @db.Date
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  // Relations
+
+  recruitmentLetters EmployerRecruitmentLetter[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("recruitment_proofs")
+}
+
+model CorporateInfo {
+  id String @id @default(uuid()) @db.Uuid
+
+  employerId String @unique @map("employer_id") @db.Uuid
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  factoryRegistrationNo String? @map("factory_registration_no") @db.VarChar(50) // Factory Registration No
+  factoryRegistrationId String? @map("factory_registration_id") @db.VarChar(50) // Factory Registration ID
+  factoryAddress        String? @map("factory_address") @db.Text // Factory Address
+  factoryAddressEn      String? @map("factory_address_en") @db.Text // Factory Address (English)
+
+  industryType String?  @map("industry_type") @db.VarChar(50) // Industry Type
+  industryCode String?  @map("industry_code") @db.VarChar(20) // Industry Code
+  capital      Decimal? @db.Decimal(15, 2) // Capital Amount
+
+  laborInsuranceNo      String? @map("labor_insurance_no") @db.VarChar(50) // Labor Insurance No
+  laborInsuranceId      String? @map("labor_insurance_id") @db.VarChar(50) // Labor Insurance ID
+  healthInsuranceUnitNo String? @map("health_insurance_unit_no") @db.VarChar(50) // Health Insurance Unit No
+  healthInsuranceId     String? @map("health_insurance_id") @db.VarChar(50) // Health Insurance ID
+
+  securityFeeAccount String? @map("security_fee_account") @db.VarChar(50) // Security Fee Account
+  faxNumber          String? @map("fax_number") @db.VarChar(20) // Fax Number
+
+  // Institution Specifics
+
+  institutionCode String? @map("institution_code") @db.VarChar(50) // Institution Code
+  bedCount        Int?    @map("bed_count") // Bed Count
+
+  @@map("corporate_info")
+}
+
+model IndividualInfo {
+  id String @id @default(uuid()) @db.Uuid
+
+  employerId String @unique @map("employer_id") @db.Uuid
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  responsiblePersonDob    DateTime? @map("responsible_person_dob") @db.Date // Responsible Person DOB
+  responsiblePersonIdNo   String?   @map("responsible_person_id_no") @db.VarChar(20) // Responsible Person ID No
+  responsiblePersonFather String?   @map("responsible_person_father_name") @db.VarChar(50) // Father's Name
+  responsiblePersonMother String?   @map("responsible_person_mother_name") @db.VarChar(50) // Mother's Name
+  responsiblePersonSpouse String?   @map("responsible_person_spouse") @db.VarChar(50) // Spouse's Name
+  mobilePhone             String?   @map("mobile_phone") @db.VarChar(20) // Mobile Phone
+
+  // Detailed Individual Info
+  englishName  String? @map("english_name") @db.VarChar(100) // English Name
+  birthPlace   String? @map("birth_place") @db.VarChar(50) // Birth Place
+  birthPlaceEn String? @map("birth_place_en") @db.VarChar(100) // Birth Place (English)
+
+  // Residence Address
+  residenceAddress  String? @map("residence_address") @db.Text // Residence Address
+  residenceZip      String? @map("residence_zip") @db.VarChar(10) // Residence Zip
+  residenceCity     String? @map("residence_city") @db.VarChar(20) // Residence City
+  residenceDistrict String? @map("residence_district") @db.VarChar(20) // Residence District
+
+  idIssueDate      DateTime? @map("id_issue_date") @db.Date // ID Issue Date
+  idIssuePlace     String?   @map("id_issue_place") @db.VarChar(50) // ID Issue Place
+  idIssueType      String?   @map("id_issue_type") @db.VarChar(20) // ID Issue Type
+  militaryStatus   String?   @map("military_status") @db.VarChar(20) // Military Status
+  militaryStatusEn String?   @map("military_status_en") @db.VarChar(50) // Military Status (English)
+
+  // Home Care Specifics
+  patientName  String? @map("patient_name") @db.VarChar(50) // Patient Name
+  patientIdNo  String? @map("patient_id_no") @db.VarChar(20) // Patient ID No
+  careAddress  String? @map("care_address") @db.Text // Care Address
+  relationship String? @map("relationship") @db.VarChar(50) // Relationship
+
+  @@map("individual_info")
+}

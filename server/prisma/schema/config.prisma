@@ -1,0 +1,269 @@
+// ==========================================
+// Prisma Configuration & Shared Enums
+// ==========================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["clientExtensions", "prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// Enums
+// ==========================================
+
+enum UserRole {
+  admin // System Admin
+  manager // Manager
+  staff // Regular Staff
+
+  @@map("user_role")
+}
+
+enum GenderType {
+  male // Male
+  female // Female
+  other // Other
+
+  @@map("gender_type")
+}
+
+enum DeploymentStatus {
+  active // Active
+  ended // Ended
+  pending // Pending
+  terminated // Terminated
+
+  @@map("deployment_status")
+}
+
+enum IncidentSeverity {
+  low // Low
+  medium // Medium
+  high // High
+  critical // Critical
+
+  @@map("incident_severity")
+}
+
+enum IncidentStatus {
+  open // Open
+  in_progress // In Progress
+  closed // Closed
+
+  @@map("incident_status")
+}
+
+enum PermitType {
+  initial // Initial Recruitment
+  extension // Extension
+  reissue // Reissue
+
+  @@map("permit_type")
+}
+
+enum HealthCheckType {
+  entry // Entry Exam
+  mo6           @map("6mo") // 6-Month Periodic
+  mo18          @map("18mo") // 18-Month Periodic
+  mo30          @map("30mo") // 30-Month Periodic
+  supplementary // Supplementary
+
+  @@map("health_check_type")
+}
+
+enum HealthCheckResult {
+  pass // Pass
+  fail // Fail
+  pending // Pending
+
+  @@map("health_check_result")
+}
+
+enum WorkerCategory {
+  general // General Worker
+  intermediate_skilled // Intermediate Skilled
+  professional // Professional
+
+  @@map("worker_category")
+}
+
+enum ManagementSourceType {
+  direct_hiring // Direct Hiring
+  re_hiring // Re-hiring
+  transfer_in // Transfer In
+  replacement // Replacement
+
+  @@map("management_source_type")
+}
+
+enum ServiceStatus {
+  active_service // Active Service
+  contract_terminated // Contract Terminated
+  runaway // Runaway
+  transferred_out // Transferred Out
+  commission_ended // Commission Ended
+
+  @@map("service_status")
+}
+
+enum StaffRoleType {
+  sales_agent // Sales Agent
+  admin_staff // Admin Staff
+  bilingual_staff // Bilingual Staff
+  customer_service // Customer Service
+  accountant // Accountant
+
+  @@map("staff_role_type")
+}
+
+enum InsuranceType {
+  labor // Labor Insurance
+  health // Health Insurance
+  accident // Accident Insurance
+
+  @@map("insurance_type")
+}
+
+enum AddressType {
+  approval_letter // Approval Letter Address
+  medical_pickup // Medical Pickup Address
+  actual_residence // Actual Residence Address
+  arc // ARC Address
+  work // Work Address
+
+  @@map("address_type")
+}
+
+enum JobOrderStatus {
+  open // Open
+  sourcing // Sourcing
+  partial // Partial
+  filled // Filled
+  processing // Processing
+  completed // Completed
+  cancelled // Cancelled
+
+  @@map("job_order_status")
+}
+
+enum CandidateResult {
+  selected // Selected
+  rejected // Rejected
+  failed_medical // Failed Medical
+  pending // Pending
+
+  @@map("candidate_result")
+}
+
+enum WorkerEventType {
+  RUNAWAY // Runaway
+  TRANSFER_OUT // Transfer Out
+  DEPARTURE // Departure
+  DOMESTIC_HIRE // Domestic Hire
+  CONTRACT_RENEWAL // Contract Renewal
+  DEATH // Death
+  OTHER // Other
+
+  @@map("worker_event_type")
+}
+
+enum RunawayStatus {
+  reported_internally // Reported Internally
+  notification_submitted // Notification Submitted
+  confirmed_runaway // Confirmed Runaway
+  found // Found
+
+  @@map("runaway_status")
+}
+
+enum EmployerType {
+  BUSINESS // Business Entity
+  INDIVIDUAL // Individual
+  INSTITUTION // Institution
+}
+
+enum CommentEntityType {
+  WORKER // Worker
+  EMPLOYER // Employer
+  DEPLOYMENT // Deployment
+  JOB_ORDER // Job Order
+  LEAD // Lead
+  HEALTH_CHECK // Health Check
+
+  @@map("comment_entity_type")
+}
+
+enum AlertSeverity {
+  CRITICAL // Critical (3 days)
+  WARNING // Warning (1 month)
+  INFO // Info
+
+  @@map("alert_severity")
+}
+
+enum AlertStatus {
+  OPEN // Open
+  ACKNOWLEDGED // Acknowledged
+  RESOLVED // Resolved
+
+  @@map("alert_status")
+}
+
+enum BillingItemCategory {
+  SERVICE_FEE
+  ARC_FEE
+  HEALTH_CHECK_FEE
+  DORMITORY_FEE
+  MEDICAL_FEE
+  INSURANCE_FEE
+  AIRPORT_PICKUP
+  TRAINING_FEE
+  PLACEMENT_FEE
+  STABILIZATION_FEE
+  ADMIN_FEE
+  OTHER_FEE
+
+  @@map("billing_item_category")
+}
+
+enum BillingPlanStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+
+  @@map("billing_plan_status")
+}
+
+enum BillingReviewStatus {
+  NORMAL
+  NEEDS_REVIEW
+  FLAGGED
+
+  @@map("billing_review_status")
+}
+
+enum BillingItemStatus {
+  GENERATED
+  CONFIRMED
+  INVOICED
+  PAID
+  WAIVED
+  CANCELLED
+
+  @@map("billing_item_status")
+}
+
+enum BillToParty {
+  WORKER
+  EMPLOYER
+  AGENCY
+
+  @@map("bill_to_party")
+}

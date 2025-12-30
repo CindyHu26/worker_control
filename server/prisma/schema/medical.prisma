@@ -1,0 +1,125 @@
+// ==========================================
+// Medical & Health Check Management
+// ==========================================
+
+model HealthCheck {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  workerId String @map("worker_id") @db.Uuid
+
+  deploymentId String @map("deployment_id") @db.Uuid
+
+  checkType HealthCheckType @map("check_type")
+
+  checkDate DateTime @map("check_date") @db.Date
+
+  hospitalName String? @map("hospital_name") @db.VarChar(100)
+
+  result HealthCheckResult @default(pending)
+
+  reportDate DateTime? @map("report_date") @db.Date
+
+  failReason String? @map("fail_reason") @db.Text
+
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  medicalExceptions MedicalException[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("health_checks")
+}
+
+model Hospital {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  code String? @unique @db.VarChar(50)
+
+  name String @db.VarChar(255)
+
+  shortName String? @map("short_name") @db.VarChar(50)
+
+  address String? @db.Text
+
+  city String? @db.VarChar(50)
+
+  country String? @db.VarChar(50)
+
+  validUntil DateTime? @map("valid_until") @db.Date
+
+  // Contact Info
+
+  phone String? @db.VarChar(50) // LBB07
+
+  fax String? @db.VarChar(50) // LBB10
+
+  contactPerson String? @map("contact_person") @db.VarChar(50) // LBB09
+
+  // Legacy / Config
+
+  assessmentCode String? @map("assessment_code") @db.VarChar(50) // LBB11
+
+  sortOrder Int @default(999) @map("sort_order") // LBB12
+
+  isGeneral Boolean @default(false) @map("is_general")
+
+  isXray Boolean @default(false) @map("is_xray")
+
+  isOverseas Boolean @default(false) @map("is_overseas")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("hospitals")
+}
+
+model MedicalException {
+  id String @id @default(uuid()) @db.Uuid
+
+  workerId String @map("worker_id") @db.Uuid
+
+  healthCheckId String? @map("health_check_id") @db.Uuid
+
+  // Diagnosis Date
+
+  diagnosisDate DateTime @map("diagnosis_date") @db.Date
+
+  diseaseType String @map("disease_type") @db.VarChar(100)
+
+  description String? @db.Text
+
+  // Health Department Notification
+
+  healthDeptNotified Boolean @default(false) @map("health_dept_notified")
+
+  healthDeptNotifyDate DateTime? @map("health_dept_notify_date") @db.Date
+
+  employerNotified Boolean @default(false) @map("employer_notified")
+
+  employerNotifyDate DateTime? @map("employer_notify_date") @db.Date
+
+  // Treatment Status
+
+  treatmentStatus String @default("PENDING") @map("treatment_status") @db.VarChar(30)
+
+  resolutionDate DateTime? @map("resolution_date") @db.Date
+
+  remarks String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  worker Worker @relation(fields: [workerId], references: [id])
+
+  healthCheck HealthCheck? @relation(fields: [healthCheckId], references: [id])
+
+  @@index([treatmentStatus])
+  @@index([diseaseType])
+  @@map("medical_exceptions")
+}

@@ -1,0 +1,91 @@
+// ==========================================
+// Work Permits & Applications
+// ==========================================
+
+model PermitDocument {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  permitNumber String @unique @map("permit_number") @db.VarChar(50)
+
+  issueDate DateTime @map("issue_date") @db.Date
+
+  issuingAuthority String? @map("issuing_authority") @db.VarChar(100)
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  workerPermitDetails WorkerPermitDetail[]
+
+  @@map("permit_documents")
+}
+
+model EntryFiling {
+  id String @id @default(uuid()) @db.Uuid
+
+  workerId String @unique @map("worker_id") @db.Uuid
+
+  // Entry Date
+
+  entryDate DateTime @map("entry_date") @db.Date
+
+  flightNo String? @map("flight_no") @db.VarChar(20)
+
+  visaNo String? @map("visa_no") @db.VarChar(50)
+
+  // Entry Report Date
+
+  entryReportDate DateTime? @map("entry_report_date") @db.Date
+
+  entryReportRefNo String? @map("entry_report_ref_no") @db.VarChar(50)
+
+  entryReportStatus String @default("PENDING") @map("entry_report_status") @db.VarChar(20)
+
+  // Initial Exam Date
+
+  initialExamDate DateTime? @map("initial_exam_date") @db.Date
+
+  initialExamHospital String? @map("initial_exam_hospital") @db.VarChar(100)
+
+  initialExamResult String? @map("initial_exam_result") @db.VarChar(20)
+
+  // ARC Application Date
+
+  arcApplyDate DateTime? @map("arc_apply_date") @db.Date
+
+  arcReceiptNo String? @map("arc_receipt_no") @db.VarChar(50)
+
+  arcNo String? @map("arc_no") @db.VarChar(20)
+
+  arcStatus String @default("PENDING") @map("arc_status") @db.VarChar(20)
+
+  // Permit Application Date
+
+  permitApplyDate DateTime? @map("permit_apply_date") @db.Date
+
+  permitReceiptNo String? @map("permit_receipt_no") @db.VarChar(50)
+
+  permitNo String? @map("permit_no") @db.VarChar(50)
+
+  permitStatus String @default("PENDING") @map("permit_status") @db.VarChar(20)
+
+  // Overall Compliance
+
+  overallCompliance String @default("PENDING") @map("overall_compliance") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  worker Worker @relation(fields: [workerId], references: [id])
+
+  @@index([overallCompliance])
+  @@index([entryDate])
+  @@map("entry_filings")
+}

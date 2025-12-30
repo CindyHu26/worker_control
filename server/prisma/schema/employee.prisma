@@ -1,0 +1,182 @@
+// ==========================================
+// Internal Employee Management
+// ==========================================
+
+model Employee {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(18)
+
+  fullName String @map("full_name") @db.VarChar(50)
+
+  fullNameEn String? @map("full_name_en") @db.VarChar(100)
+
+  gender String? @map("gender") @db.VarChar(10)
+
+  nationality String? @map("nationality") @db.VarChar(20)
+
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+
+  idNumber String? @map("id_number") @db.VarChar(20)
+
+  departmentCode String? @map("department_code") @db.VarChar(10)
+
+  employeeNumber String? @map("employee_number") @db.VarChar(10)
+
+  jobTitle String? @map("job_title") @db.VarChar(50)
+
+  domesticAgencyId String? @map("domestic_agency_id") @db.Uuid
+
+  domesticAgency DomesticAgency? @relation(fields: [domesticAgencyId], references: [id], onDelete: SetNull)
+
+  phone String? @map("phone") @db.VarChar(30)
+
+  mobilePhone String? @map("mobile_phone") @db.VarChar(30)
+
+  extension String? @map("extension") @db.VarChar(12)
+
+  email String? @map("email") @db.VarChar(100)
+
+  receiveSms Boolean @default(false) @map("receive_sms")
+
+  contactPerson String? @map("contact_person") @db.VarChar(50)
+
+  contactPhone String? @map("contact_phone") @db.VarChar(30)
+
+  mailingAddressZh String? @map("mailing_address_zh") @db.VarChar(200)
+
+  mailingAddressEn String? @map("mailing_address_en") @db.VarChar(200)
+
+  residentialAddressZh String? @map("residential_address_zh") @db.VarChar(200)
+
+  residentialAddressEn String? @map("residential_address_en") @db.VarChar(200)
+
+  emergencyContact String? @map("emergency_contact") @db.VarChar(50)
+
+  emergencyPhone String? @map("emergency_phone") @db.VarChar(30)
+
+  isSales Boolean @default(false) @map("is_sales")
+
+  isAdmin Boolean @default(false) @map("is_admin")
+
+  isCustomerService Boolean @default(false) @map("is_customer_service")
+
+  isAccounting Boolean @default(false) @map("is_accounting")
+
+  isBilingual Boolean @default(false) @map("is_bilingual")
+
+  employerAutoCode String? @map("employer_auto_code") @db.VarChar(10)
+
+  contractCode String? @map("contract_code") @db.VarChar(4)
+
+  contractSeqUsed Int? @default(0) @map("contract_seq_used")
+
+  salesGroupCode String? @map("sales_group_code") @db.VarChar(10)
+
+  expertise String? @map("expertise") @db.VarChar(200)
+
+  postalAccountNo String? @map("postal_account_no") @db.VarChar(12)
+
+  postalAccountName String? @map("postal_account_name") @db.VarChar(100)
+
+  bankName String? @map("bank_name") @db.VarChar(100)
+
+  bankAccountName String? @map("bank_account_name") @db.VarChar(100)
+
+  bankAccountNo String? @map("bank_account_no") @db.VarChar(20)
+
+  hireDate DateTime? @map("hire_date") @db.Date
+
+  insuranceStartDate DateTime? @map("insurance_start_date") @db.Date
+
+  resignationDate DateTime? @map("resignation_date") @db.Date
+
+  insuranceEndDate DateTime? @map("insurance_end_date") @db.Date
+
+  notes String? @map("notes") @db.Text
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([code])
+  @@index([fullName])
+  @@index([departmentCode])
+  @@index([domesticAgencyId])
+  @@index([isActive])
+  @@map("employees")
+}
+
+model ServiceAssignment {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  employerId String? @map("employer_id") @db.Uuid
+
+  workerId String? @map("worker_id") @db.Uuid
+
+  internalUserId String @map("internal_user_id") @db.Uuid
+
+  role StaffRoleType
+
+  startDate DateTime @default(now()) @map("start_date") @db.Date
+
+  endDate DateTime? @map("end_date") @db.Date
+
+  notes String? @db.Text
+
+  employer Employer? @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  worker Worker? @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  internalUser InternalUser @relation("ServiceAssignedUser", fields: [internalUserId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("service_assignments")
+}
+
+model InternalUser {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  username String @unique @db.VarChar(50)
+
+  email String @unique @db.VarChar(255)
+
+  passwordHash String @map("password_hash") @db.VarChar(255)
+
+  role UserRole @default(staff)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations (Created By / Updated By)
+
+  createdEmployers Employer[] @relation("EmployerCreatedBy")
+
+  updatedEmployers Employer[] @relation("EmployerUpdatedBy")
+
+  createdWorkers Worker[] @relation("WorkerCreatedBy")
+
+  updatedWorkers Worker[] @relation("WorkerUpdatedBy")
+
+  createdJobOrders JobOrder[] @relation("JobOrderCreatedBy")
+
+  updatedJobOrders JobOrder[] @relation("JobOrderUpdatedBy")
+
+  assignedServices ServiceAssignment[] @relation("ServiceAssignedUser")
+
+  // Comments & Mentions
+
+  comments SystemComment[] @relation("CommentAuthor")
+
+  mentions CommentMention[] @relation("MentionedUser")
+
+  // Lead Assignment
+
+  assignedLeads Lead[] @relation("LeadAssignedUser")
+
+  @@map("internal_users")
+}

@@ -1,0 +1,277 @@
+// ==========================================
+// Reference Data and Master Tables
+// ==========================================
+
+// Application Category (MOL Permit Type)
+model ApplicationCategory {
+  id String @id @default(uuid()) @db.Uuid
+
+  code   String  @unique @db.VarChar(30) // Category Code
+  nameZh String  @map("name_zh") @db.VarChar(100) // Category Name (Chinese)
+  nameEn String? @map("name_en") @db.VarChar(100) // Category Name (English)
+
+  // Core Fields
+  type EmployerType @default(BUSINESS) // Employer Type
+
+  // Quota & Fee Config
+  quotaBaseRate       Decimal? @map("quota_base_rate") @db.Decimal(5, 2) // Quota Base Rate
+  securityFeeStandard Int      @default(2000) @map("security_fee_standard") // Standard Security Fee
+
+  // UI Config
+  iconName    String?  @map("icon_name") @db.VarChar(50) // Icon Name
+  color       String?  @db.VarChar(20) // Color
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  employers  Employer[]
+  workTitles WorkTitle[]
+
+  @@map("application_categories")
+}
+
+model WorkTitle {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Link to ApplicationCategory
+  categoryId String? @map("category_id") @db.Uuid
+
+  category ApplicationCategory? @relation(fields: [categoryId], references: [id])
+
+  code String @db.VarChar(20) // Work Title Code
+
+  // Multi-language Names
+  titleZh String  @map("title_zh") @db.VarChar(100) // Work Title (Chinese)
+  titleEn String  @map("title_en") @db.VarChar(100) // Work Title (English)
+  titleTh String? @map("title_th") @db.VarChar(100) // Work Title (Thai)
+  titleId String? @map("title_id") @db.VarChar(100) // Work Title (Indonesian)
+  titleVn String? @map("title_vn") @db.VarChar(100) // Work Title (Vietnamese)
+
+  // Classification Fields
+  isIntermediate Boolean @default(false) @map("is_intermediate") // Is Intermediate
+
+  isDefault Boolean @default(false) @map("is_default") // Is Default
+
+  // --- Fees ---
+
+  employmentSecurityFee Int @default(2000) @map("employment_security_fee") // General Security Fee
+
+  reentrySecurityFee Int @default(2000) @map("reentry_security_fee") // Re-entry Security Fee
+
+  // --- Insurance & Services ---
+
+  agencyAccidentInsurance Boolean @default(false) @map("agency_accident_insurance") // Agency Accident Insurance
+
+  agencyAccidentInsuranceAmt Int @default(0) @map("agency_accident_insurance_amount") // Agency Accident Insurance Amount
+
+  agencyLaborHealthInsurance Boolean @default(false) @map("agency_labor_health_insurance") // Agency Labor/Health Insurance
+
+  collectBankLoan Boolean @default(false) @map("collect_bank_loan") // Collect Bank Loan
+
+  // --- Payroll & Compliance ---
+
+  payDay Int? @map("pay_day") // Pay Day
+
+  requiresMedicalCheckup Boolean @default(false) @map("requires_medical_checkup") // Requires Medical Checkup (6mo)
+
+  // System Fields
+  sortOrder Int @default(0) @map("sort_order") // Sort Order
+
+  isActive Boolean @default(true) @map("is_active") // Is Active
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz // Created At
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([categoryId, code])
+  @@map("work_titles")
+}
+
+// Industry (DGBAS Standards)
+model Industry {
+  id       String  @id @default(uuid()) @db.Uuid
+  code     String  @unique @db.VarChar(10) // Industry Code
+  category String? @db.VarChar(5) // Category (A, B, C...)
+
+  // Names
+
+  nameZh String  @map("name_zh") @db.VarChar(100) // Industry Name (Chinese)
+  nameEn String? @map("name_en") @db.VarChar(100) // Industry Name (English)
+  nameTh String? @map("name_th") @db.VarChar(100) // Industry Name (Thai)
+  nameVn String? @map("name_vn") @db.VarChar(100) // Industry Name (Vietnamese)
+  nameId String? @map("name_id") @db.VarChar(100) // Industry Name (Indonesian)
+
+  issuingAgency String? @map("issuing_agency") @db.VarChar(100) // Issuing Agency
+  agencyCode    String? @map("agency_code") @db.VarChar(50) // Agency Code
+
+  version String? @db.VarChar(10) // Version
+
+  // Status
+  isOpen    Boolean  @default(true) @map("is_open") // Is Open (Allowed for FW)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz // Created At
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz // Updated At
+
+  // Relations
+
+  salaryConfigs IndustrySalaryConfig[]
+
+  recruitmentLetters EmployerRecruitmentLetter[]
+
+  jobTitles IndustryJobTitle[]
+
+  @@map("industries")
+}
+
+model IndustrySalaryConfig {
+  id String @id @default(uuid()) @db.Uuid
+
+  industryId String @map("industry_id") @db.Uuid
+
+  industry Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  effectiveDate DateTime @map("effective_date") @db.Date // Effective Date
+
+  // Salary Standards (Monthly)
+
+  technicalSalary Int @map("technical_salary") // Technical Salary
+
+  nonTechnicalSalary Int @map("non_technical_salary") // Non-Technical Salary
+
+  // Special Schedule
+
+  specialTechSalary Int? @map("special_tech_salary") // Special Schedule Tech Salary
+
+  specialNonTechSalary Int? @map("special_non_tech_salary") // Special Schedule Non-Tech Salary
+
+  // Mid-level Skilled
+
+  midLevelSalary Int? @map("mid_level_salary") // Mid-Level Salary
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([industryId])
+  @@index([effectiveDate])
+  @@map("industry_salary_configs")
+}
+
+model IndustryJobTitle {
+  id         String   @id @default(uuid()) @db.Uuid
+  industryId String   @map("industry_id") @db.Uuid
+  industry   Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  titleZh    String   @map("title_zh") @db.VarChar(100) // Job Title (Chinese)
+  titleEn    String?  @map("title_en") @db.VarChar(100) // Job Title (English)
+  titleTh    String?  @map("title_th") @db.VarChar(100) // Job Title (Thai)
+  titleVn    String?  @map("title_vn") @db.VarChar(100) // Job Title (Vietnamese)
+  titleId    String?  @map("title_id") @db.VarChar(100) // Job Title (Indonesian)
+  isActive   Boolean  @default(true) @map("is_active") // Is Active
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz // Created At
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([industryId])
+  @@map("industry_job_titles")
+}
+
+model ContractType {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(50)
+
+  name String @db.VarChar(100)
+
+  isControlled Boolean @default(false) @map("is_controlled")
+
+  description String? @db.Text
+
+  sortOrder Int @default(0) @map("sort_order")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  deployments Deployment[]
+
+  @@map("contract_types")
+}
+
+model Country {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(10) // ISO Country Code
+  nameZh    String   @map("name_zh") @db.VarChar(50) // Country Name (Chinese)
+  nameEn    String?  @map("name_en") @db.VarChar(50) // Country Name (English)
+  sortOrder Int      @default(0) @map("sort_order") // Sort Order
+  isActive  Boolean  @default(true) @map("is_active") // Is Active
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz // Created At
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz // Updated At
+
+  @@map("countries")
+}
+
+model Nationality {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  code String @unique @db.VarChar(3)
+
+  nameZh String @map("name_zh") @db.VarChar(50)
+
+  nameEn String @map("name_en") @db.VarChar(50)
+
+  workers Worker[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt                 DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  DocumentTemplate          DocumentTemplate[]
+  EmployerRecruitmentLetter EmployerRecruitmentLetter[]
+  ReceivablePricingRule     ReceivablePricingRule[]
+
+  @@map("nationalities")
+}
+
+model Department {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @unique @db.VarChar(10)
+
+  nameZh String @map("name_zh") @db.VarChar(50)
+
+  nameEn String? @map("name_en") @db.VarChar(100)
+
+  sortOrder Int @default(0) @map("sort_order")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("departments")
+}
+
+model ContractEndReason {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  code String @unique @db.VarChar(10)
+
+  nameZh String @map("name_zh") @db.VarChar(50)
+
+  nameEn String? @map("name_en") @db.VarChar(100)
+
+  sortOrder Int @default(0) @map("sort_order")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt  DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  Deployment Deployment[]
+
+  @@map("contract_end_reasons")
+}

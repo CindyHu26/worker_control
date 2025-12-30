@@ -1,0 +1,246 @@
+// ==========================================
+// Recruitment & Candidate Management
+// ==========================================
+
+model JobOrder {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  employerId String @map("employer_id") @db.Uuid
+
+  // Basic Info (Added for Phase 0.2)
+
+  title String @default("General Worker") @db.VarChar(200)
+
+  description String? @db.Text
+
+  skillRequirements String? @map("skill_requirements") @db.Text
+
+  workLocation String? @map("work_location") @db.VarChar(200)
+
+  jobType String? @map("job_type") @db.VarChar(100)
+
+  requiredCount Int @default(1) @map("required_count")
+
+  // Legacy/Other Fields
+
+  orderDate DateTime @default(now()) @map("order_date") @db.Date
+
+  requiredWorkers Int @default(1) @map("required_workers")
+
+  expectedArrivalDate DateTime? @map("expected_arrival_date") @db.Date
+
+  localRecruitmentDeadline DateTime? @map("local_recruitment_deadline") @db.Date
+
+  status JobOrderStatus @default(open)
+
+  jobCenter String? @map("job_center") @db.VarChar(100)
+
+  nationalityPreference String? @map("nationality_preference") @db.VarChar(50) // Nationality Preference (e.g., "VN,PH,ID")
+
+  genderPreference GenderType? @map("gender_preference") // Gender Preference
+
+  filledCount Int @default(0) @map("filled_count") // Filled Count
+
+  employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  updatedBy String? @map("updated_by") @db.Uuid
+
+  createdByUser InternalUser? @relation("JobOrderCreatedBy", fields: [createdBy], references: [id])
+
+  updatedByUser InternalUser? @relation("JobOrderUpdatedBy", fields: [updatedBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  interviews Interview[]
+
+  // Soft Delete
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("job_orders")
+}
+
+model Candidate {
+  id String @id @default(uuid()) @db.Uuid
+
+  // ?箸鞈?
+  nameZh      String?     @map("name_zh") @db.VarChar(100)
+  nameEn      String?     @map("name_en") @db.VarChar(100)
+  gender      GenderType?
+  birthDate   DateTime?   @map("birth_date") @db.Date
+  nationality String      @default("IDN") @db.VarChar(3)
+
+  // 霅瑞
+  passportNo     String?   @unique @map("passport_no") @db.VarChar(20)
+  passportExpiry DateTime? @map("passport_expiry") @db.Date
+
+  // 頨急?????  height        Int?
+  weight        Int?
+  maritalStatus String? @map("marital_status") @db.VarChar(20)
+  education     String? @db.VarChar(50)
+  skills        String? @db.Text
+
+  status String @default("NEW") @db.VarChar(20)
+
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  InterviewCandidate InterviewCandidate[]
+
+  @@map("candidates")
+}
+
+model Lead {
+  id String @id @default(uuid()) @db.Uuid
+
+  // 疇?繙疆?竅癡糧?癡穡?
+
+  companyName String @map("company_name") @db.VarChar(100)
+
+  taxId String? @unique @map("tax_id") @db.VarChar(20)
+
+  // 癡?簪癟繕癒癡糧?癡穡?
+
+  contactPerson String? @map("contact_person") @db.VarChar(50)
+
+  phone String? @db.VarChar(30)
+
+  email String? @db.VarChar(100)
+
+  address String? @db.Text
+
+  // 疆瞼簫疇??癡糧?癡穡?
+
+  industry String? @db.VarChar(50) // 癟?瞽疆瞼簫矇癒?疇?瞼 (e.g., MANUFACTURING)
+
+  estimatedWorkerCount Int? @map("estimated_worker_count")
+
+  status String @default("NEW") @db.VarChar(20) // NEW, CONTACTED, DISCOVERY, QUOTATION, NEGOTIATION, WON, LOST
+
+  // 癡聶翻癡繒瞻癡糧?癡穡?
+
+  source String? @db.VarChar(50) // 瓣職?疆繙?簿翹?walk-in, referral, web
+
+  assignedTo String? @map("assigned_to") @db.Uuid
+
+  assignedUser InternalUser? @relation("LeadAssignedUser", fields: [assignedTo], references: [id])
+
+  // 疆??矇??疆?糧癡穡?
+
+  lastContactDate DateTime? @map("last_contact_date") @db.Date
+
+  nextFollowUpDate DateTime? @map("next_follow_up_date") @db.Date
+
+  // 癡翻?疆簫瞿癡糧?癡穡?
+
+  convertedToEmployerId String? @unique @map("converted_to_employer_id") @db.Uuid
+
+  convertedEmployer Employer? @relation("ConvertedFromLead", fields: [convertedToEmployerId], references: [id])
+
+  convertedAt DateTime? @map("converted_at") @db.Timestamptz
+
+  // Relations
+
+  interactions LeadInteraction[]
+
+  // Audit
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Soft Delete
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([status])
+  @@index([assignedTo])
+  @@index([industry])
+  @@map("leads")
+}
+
+model Interview {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  jobOrderId String @map("job_order_id") @db.Uuid
+
+  interviewDate DateTime @map("interview_date") @db.Timestamptz
+
+  location String? @db.Text
+
+  interviewer String? @db.VarChar(100)
+
+  jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+
+  candidates InterviewCandidate[]
+
+  @@map("interviews")
+}
+
+model InterviewCandidate {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  interviewId String @map("interview_id") @db.Uuid
+
+  // Link to Candidate OR Worker
+
+  candidateId String? @map("candidate_id") @db.Uuid
+
+  workerId String? @map("worker_id") @db.Uuid
+
+  result CandidateResult @default(pending)
+
+  remarks String? @db.Text
+
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  candidate Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  worker Worker? @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([interviewId, workerId])
+  @@map("interview_candidates")
+}
+
+model LeadInteraction {
+  id String @id @default(uuid()) @db.Uuid
+
+  leadId String @map("lead_id") @db.Uuid
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  type String @db.VarChar(30) // call, meeting, email, quotation_sent
+
+  summary String @db.VarChar(200)
+
+  detailedNotes String? @map("detailed_notes") @db.Text
+
+  outcome String? @db.VarChar(50) // positive, negative, neutral, follow_up_needed
+
+  date DateTime @default(now()) @db.Timestamptz
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([leadId])
+  @@index([date])
+  @@map("lead_interactions")
+}

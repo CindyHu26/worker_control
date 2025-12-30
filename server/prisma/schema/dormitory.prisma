@@ -1,0 +1,85 @@
+// ==========================================
+// Dormitory & Accommodation Management
+// ==========================================
+
+model Dormitory {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  name String @db.VarChar(100)
+
+  address String? @db.Text
+
+  landlordName String? @map("landlord_name") @db.VarChar(50)
+
+  accommodationType String? @map("accommodation_type") @db.VarChar(50)
+
+  rentFee Int @default(0) @map("rent_fee")
+
+  managementFee Int @default(0) @map("management_fee")
+
+  totalArea Decimal? @map("total_area") @db.Decimal(10, 2)
+
+  capacity Int? @default(0)
+
+  bathroomCount Int? @default(0) @map("bathroom_count")
+
+  waterHeaterCount Int? @default(0) @map("water_heater_count")
+
+  hasFireExtinguisher Boolean @default(false) @map("has_fire_extinguisher")
+
+  hasFireAlarm Boolean @default(false) @map("has_fire_alarm")
+
+  fireSafetyExpiry DateTime? @map("fire_safety_expiry") @db.Date
+
+  rooms DormitoryRoom[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("dormitories")
+}
+
+model DormitoryRoom {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  dormitoryId String @map("dormitory_id") @db.Uuid
+
+  roomNumber String @map("room_number") @db.VarChar(20)
+
+  capacity Int @default(0)
+
+  area Decimal? @db.Decimal(10, 2) // Added for compliance checks
+
+  dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
+
+  beds DormitoryBed[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("dormitory_rooms")
+}
+
+model DormitoryBed {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  roomId String @map("room_id") @db.Uuid
+
+  bedCode String @map("bed_code") @db.VarChar(20)
+
+  isOccupied Boolean @default(false) @map("is_occupied")
+
+  room DormitoryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  worker Worker?
+
+  accommodationHistory WorkerAccommodationHistory[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("dormitory_beds")
+}
