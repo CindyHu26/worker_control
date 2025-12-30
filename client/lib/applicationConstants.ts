@@ -282,3 +282,16 @@ export function getApplicationCategoryOptions() {
         isIntermediate: cat.isIntermediate ?? false,
     }));
 }
+
+// ===========================================
+// 工廠五級制 (Employment Stability Fee Ranking)
+// ===========================================
+export const FACTORY_RANKING_OPTIONS = [
+    { value: "10", label: "D級行業: 10%" },
+    { value: "15", label: "C級行業: 15%" },
+    { value: "20", label: "B級行業: 20%" },
+    { value: "25", label: "A級行業: 25%" },
+    { value: "30", label: "營造業: 30%" },
+    { value: "35", label: "A+級行業: 35%" },
+    { value: "40", label: "自由貿易港區: 40%" },
+];

@@ -92,6 +92,17 @@ export default function ResponsiblePersonSection() {
                     <Input {...register('idIssuePlace')} placeholder="ex: 北市" />
                 </div>
                 <div className="space-y-2">
+                    <Label>發照類別</Label>
+                    <Select onValueChange={(v) => setValue('idIssueType', v)} defaultValue={watch('idIssueType')}>
+                        <SelectTrigger><SelectValue placeholder="請選擇" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="初發">初發</SelectItem>
+                            <SelectItem value="補發">補發</SelectItem>
+                            <SelectItem value="換發">換發</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
                     <Label>役別</Label>
                     <Input {...register('militaryStatus')} />
                 </div>
@@ -110,7 +121,7 @@ export default function ResponsiblePersonSection() {
                 </div>
                 <div className="space-y-2">
                     <Label>負責人行動電話</Label>
-                    <Input {...register('mobilePhoneIndividual')} placeholder="09xx-xxx-xxx" />
+                    <Input {...register('mobilePhone')} placeholder="09xx-xxx-xxx" />
                 </div>
 
 

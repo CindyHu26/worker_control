@@ -45,6 +45,14 @@ export default function BasicInfoSection() {
                         )}
                     </div>
                     <div className="space-y-2">
+                        <Label htmlFor="unitTaxId">單位稅籍編號</Label>
+                        <Input {...register('unitTaxId')} placeholder="單位稅籍編號" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="houseTaxId">房屋稅籍編號</Label>
+                        <Input {...register('houseTaxId')} placeholder="房屋稅籍編號" />
+                    </div>
+                    <div className="space-y-2">
                         <Label htmlFor="shortName">雇主簡稱</Label>
                         <Input {...register('shortName')} placeholder="列表顯示用" />
                     </div>

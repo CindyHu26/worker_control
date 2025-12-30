@@ -40,6 +40,8 @@ export class InstitutionStrategy implements IEmployerTypeStrategy {
             companyName: coreData.companyName,
             companyNameEn: coreData.companyNameEn,
             taxId: coreData.taxId,
+            unitTaxId: coreData.unitTaxId,
+            houseTaxId: coreData.houseTaxId,
             code: coreData.code,
             shortName: coreData.shortName,
             responsiblePerson: coreData.responsiblePerson,
@@ -59,7 +61,7 @@ export class InstitutionStrategy implements IEmployerTypeStrategy {
             complianceStandard: coreData.complianceStandard || 'NONE',
             zeroFeeEffectiveDate: parseOptionalDate(coreData.zeroFeeEffectiveDate),
             industryAttributes: industryAttributes || coreData.industryAttributes,
-            agencyId: coreData.agencyId,
+            agency: coreData.agencyId ? { connect: { id: coreData.agencyId } } : undefined,
             remarks: coreData.remarks,
             category: coreData.category ? { connect: { code: coreData.category } } : undefined
         };
@@ -81,6 +83,26 @@ export class InstitutionStrategy implements IEmployerTypeStrategy {
                 faxNumber: coreData.faxNumber
             }
         };
+
+        // Factories
+        if (factories && factories.length > 0) {
+            data.factories = {
+                create: factories.map((f: any) => ({
+                    name: f.name,
+                    factoryRegNo: f.factoryRegNo,
+                    taxId: f.taxId,
+                    laborInsuranceNo: f.laborInsuranceNo,
+                    healthInsuranceNo: f.healthInsuranceNo,
+                    ranking: f.ranking,
+                    address: f.address,
+                    addressEn: f.addressEn,
+                    zipCode: f.zipCode,
+                    cityCode: f.cityCode,
+                    laborCount: parseNumber(f.laborCount) || 0,
+                    foreignCount: parseNumber(f.foreignCount) || 0
+                }))
+            };
+        }
 
         return data;
     }

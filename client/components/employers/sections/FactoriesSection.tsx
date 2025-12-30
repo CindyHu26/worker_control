@@ -1,5 +1,5 @@
 
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext, useFieldArray, Controller } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -7,14 +7,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, Plus, Trash2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EmployerFormData } from '../EmployerFormSchema';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { FACTORY_RANKING_OPTIONS } from '@/lib/applicationConstants';
 import AddressInput from './AddressInput';
 
 export default function FactoriesSection() {
     const { register, control, setValue, watch, formState: { errors } } = useFormContext<EmployerFormData>();
-
-    // Watch shared fields
-    const selectedCategory = watch('category');
-    const selectedCategoryType = watch('categoryType');
 
     // Watch main address to copy
     const mainAddress = watch('address');
@@ -95,104 +99,112 @@ export default function FactoriesSection() {
             </div>
 
             {/* Factories List */}
-            {/* Show factories for everyone or just Business? Usually Business/Institution. */}
-            {(selectedCategoryType === 'BUSINESS' || selectedCategoryType === 'INSTITUTION') && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-lg flex items-center gap-2">
-                            <Building2 className="h-5 w-5 text-blue-600" />
-                            工廠列表 (Factories)
-                        </h3>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-blue-600" />
+                        工廠列表 (Factories)
+                    </h3>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => appendFactory({ name: `第 ${factoryFields.length + 1} 廠` })}
+                    >
+                        <Plus className="h-4 w-4 mr-1" /> 新增廠區
+                    </Button>
+                </div>
+
+                {factoryFields.map((field, index) => (
+                    <div key={field.id} className="relative border rounded-lg p-4 mb-4 bg-gray-50">
                         <Button
                             type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => appendFactory({ name: `第 ${factoryFields.length + 1} 廠` })}
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2 text-red-500 hover:bg-red-50"
+                            onClick={() => removeFactory(index)}
                         >
-                            <Plus className="h-4 w-4 mr-1" /> 新增廠區
+                            <Trash2 className="h-4 w-4" />
                         </Button>
-                    </div>
 
-                    {factoryFields.map((field, index) => (
-                        <div key={field.id} className="relative border rounded-lg p-4 mb-4 bg-gray-50">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="absolute top-2 right-2 text-red-500 hover:bg-red-50"
-                                onClick={() => removeFactory(index)}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div className="space-y-2">
-                                    <Label className="required">廠別名稱</Label>
-                                    <Input {...register(`factories.${index}.name`)} placeholder="ex: 一廠" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>工廠登記證號</Label>
-                                    <Input {...register(`factories.${index}.factoryRegNo`)} />
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="space-y-2">
+                                <Label className="required">廠別名稱</Label>
+                                <Input {...register(`factories.${index}.name`)} placeholder="ex: 一廠" />
                             </div>
+                            <div className="space-y-2">
+                                <Label>工廠登記證號</Label>
+                                <Input {...register(`factories.${index}.factoryRegNo`)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>統一編號 (Tax ID)</Label>
+                                <Input {...register(`factories.${index}.taxId`)} />
+                            </div>
+                        </div>
 
-                            <div className="mb-4">
-                                <Label className="mb-2 block">廠區地址</Label>
-                                <AddressInput
-                                    zipField={`factories.${index}.zipCode`}
-                                    cityField={`factories.${index}.city`}
-                                    districtField={`factories.${index}.district`}
-                                    detailField={`factories.${index}.detailAddress`}
-                                    fullAddressField={`factories.${index}.address`}
-                                    englishAddressField={`factories.${index}.addressEn`}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="space-y-2">
+                                <Label>勞保證號</Label>
+                                <Input {...register(`factories.${index}.laborInsuranceNo`)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>健保證號</Label>
+                                <Input {...register(`factories.${index}.healthInsuranceNo`)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>五級制 (Ranking)</Label>
+                                <Controller
+                                    control={control}
+                                    name={`factories.${index}.ranking`}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="選擇級別" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {FACTORY_RANKING_OPTIONS.map(opt => (
+                                                    <SelectItem key={opt.value} value={opt.value}>
+                                                        {opt.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
                                 />
                             </div>
+                        </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>本勞人數</Label>
-                                    <Input type="number" {...register(`factories.${index}.laborCount`)} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>外勞人數</Label>
-                                    <Input type="number" {...register(`factories.${index}.foreignCount`)} />
-                                </div>
+                        <div className="mb-4">
+                            <Label className="mb-2 block">廠區地址</Label>
+                            <AddressInput
+                                zipField={`factories.${index}.zipCode`}
+                                cityField={`factories.${index}.city`}
+                                districtField={`factories.${index}.district`}
+                                detailField={`factories.${index}.detailAddress`}
+                                fullAddressField={`factories.${index}.address`}
+                                englishAddressField={`factories.${index}.addressEn`}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>本勞人數</Label>
+                                <Input type="number" {...register(`factories.${index}.laborCount`)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>外勞人數</Label>
+                                <Input type="number" {...register(`factories.${index}.foreignCount`)} />
                             </div>
                         </div>
-                    ))}
-
-                    {factoryFields.length === 0 && (
-                        <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
-                            尚無工廠資料，請點擊新增
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Home Care Location */}
-            {selectedCategory === 'HOME_CARE' && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h3 className="font-semibold text-lg mb-4">被看護人與地點</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label>被看護人姓名</Label>
-                            <Input {...register('patientName')} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>身分證號</Label>
-                            <Input {...register('patientIdNo')} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>與雇主關係</Label>
-                            <Input {...register('relationship')} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>照護地點</Label>
-                            <Input {...register('careAddress')} />
-                        </div>
                     </div>
-                </div>
-            )}
+                ))}
+
+                {factoryFields.length === 0 && (
+                    <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
+                        尚無工廠資料，請點擊新增
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

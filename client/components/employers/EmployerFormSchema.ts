@@ -22,7 +22,13 @@ const factorySchema = z.object({
     addressEn: z.string().optional(), // 地址-英文
 
     laborCount: z.string().optional(), // 員工人數
-    foreignCount: z.string().optional() // 外勞人數
+    foreignCount: z.string().optional(), // 外勞人數
+
+    // 廠別專用資訊 (Added)
+    taxId: z.string().optional(), // 統一編號
+    laborInsuranceNo: z.string().optional(), // 勞保證號
+    healthInsuranceNo: z.string().optional(), // 健保證號
+    ranking: z.string().optional() // 五級制 (10%, 15%...)
 });
 
 // 主 Schema
@@ -32,6 +38,8 @@ export const baseSchema = z.object({
     // ==========================================
     code: z.string().optional(), // 雇主編號
     taxId: z.string().optional().or(z.literal('')), // 統一編號 (8碼) 或 身分證字號 (10碼)
+    unitTaxId: z.string().optional(), // [Added] 單位稅籍編號
+    houseTaxId: z.string().optional(), // [Added] 房屋稅籍編號
     shortName: z.string().optional(), // 雇主簡稱
 
     // ==========================================
@@ -66,6 +74,7 @@ export const baseSchema = z.object({
     responsiblePersonSpouse: z.string().optional(), // 配偶
     idIssueDate: z.string().optional(), // 發證日期
     idIssuePlace: z.string().optional(), // 發證地點
+    idIssueType: z.string().optional(), // [Added] 發證類別
     militaryStatus: z.string().optional(), // 役別
     militaryStatusEn: z.string().optional(), // 役別-英文
 
@@ -133,6 +142,9 @@ export const baseSchema = z.object({
     taxAddress: z.string().optional(), // 稅單地址
     healthBillAddress: z.string().optional(), // 健保帳單地址
     healthBillZip: z.string().optional(), // 健保帳單郵遞區號
+
+    // [Added] Industry Attributes (JSON)
+    industryAttributes: z.any().optional(),
 });
 
 // 驗證邏輯

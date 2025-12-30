@@ -34,7 +34,7 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
     }
 
     prepareCreateData(input: any): Prisma.EmployerCreateInput {
-        const { industryAttributes, ...coreData } = input;
+        const { industryAttributes, factories, ...coreData } = input;
 
         const data: Prisma.EmployerCreateInput = {
             companyName: coreData.companyName || coreData.responsiblePerson || '未命名',
@@ -42,6 +42,8 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
             code: coreData.code,
             shortName: coreData.shortName,
             taxId: coreData.taxId,
+            unitTaxId: coreData.unitTaxId,
+            houseTaxId: coreData.houseTaxId,
             responsiblePerson: coreData.responsiblePerson,
             phoneNumber: coreData.phoneNumber,
             mobilePhone: coreData.mobilePhone,
@@ -59,7 +61,7 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
             complianceStandard: coreData.complianceStandard || 'NONE',
             zeroFeeEffectiveDate: parseOptionalDate(coreData.zeroFeeEffectiveDate),
             industryAttributes: industryAttributes || coreData.industryAttributes,
-            agencyId: coreData.agencyId,
+            agency: coreData.agencyId ? { connect: { id: coreData.agencyId } } : undefined,
             remarks: coreData.remarks,
             category: coreData.category ? { connect: { code: coreData.category } } : undefined
         };
@@ -81,6 +83,7 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
                 militaryStatus: coreData.militaryStatus,
                 militaryStatusEn: coreData.militaryStatusEn,
                 idIssueDate: parseOptionalDate(coreData.idIssueDate),
+                idIssueType: coreData.idIssueType,
                 idIssuePlace: coreData.idIssuePlace,
                 patientName: coreData.patientName,
                 patientIdNo: coreData.patientIdNo,
@@ -88,6 +91,26 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
                 relationship: coreData.relationship
             }
         };
+
+        // Factories
+        if (factories && factories.length > 0) {
+            data.factories = {
+                create: factories.map((f: any) => ({
+                    name: f.name,
+                    factoryRegNo: f.factoryRegNo,
+                    taxId: f.taxId,
+                    laborInsuranceNo: f.laborInsuranceNo,
+                    healthInsuranceNo: f.healthInsuranceNo,
+                    ranking: f.ranking,
+                    address: f.address,
+                    addressEn: f.addressEn,
+                    zipCode: f.zipCode,
+                    cityCode: f.cityCode,
+                    laborCount: parseNumber(f.laborCount) || 0,
+                    foreignCount: parseNumber(f.foreignCount) || 0
+                }))
+            };
+        }
 
         return data;
     }
