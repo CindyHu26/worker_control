@@ -105,6 +105,7 @@ const categories = [
             { title: '銀行管理', desc: '維護銀行代碼與分行資料', icon: Landmark, href: '/banks' },
             { title: '貸款銀行管理', desc: '維護外勞貸款銀行資料', icon: DollarSign, href: '/loan-banks' },
             { title: '合約類別', desc: '維護系統合約分類', icon: FileCheck, href: '/contract-types' },
+            { title: '費用項目設定', desc: '維護系統標準收費項目', icon: DollarSign, href: '/settings/billing-item-definitions' },
             { title: '國別管理', desc: '維護外勞來源國與代碼', icon: Globe2, href: '/countries' }
         ]
     }

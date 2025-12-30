@@ -244,14 +244,16 @@ export default function EmployersPage() {
                 </div>
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            {renderTableHeaders()}
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {employers.map(renderRow)}
-                        </tbody>
-                    </table>
+                    <div className="w-full overflow-x-auto">
+                        <table className="w-full text-left min-w-[1000px]">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                {renderTableHeaders()}
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {employers.map(renderRow)}
+                            </tbody>
+                        </table>
+                    </div>
 
                     {/* Pagination Controls */}
                     <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">

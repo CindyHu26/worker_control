@@ -44,7 +44,7 @@ export default function GovtFeesPage() {
                         <p className="text-sm text-amber-800">
                             <span className="font-bold">🚧 功能開發中</span><br />
                             此頁面將提供以下功能：<br />
-                            • 居留證規費代墊紀錄<br />
+                            • 居留證費代墊紀錄<br />
                             • 健保費代墊紀錄<br />
                             • 其他行政規費登記<br />
                             • 費用請款單產生

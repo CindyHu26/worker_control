@@ -28,7 +28,7 @@ export default function RootLayout({
                     <CommandPalette />
 
                     {/* Main Content */}
-                    <main className="flex-1 overflow-auto min-w-0 bg-gray-50">
+                    <main className="flex-1 overflow-auto min-w-0 bg-gray-50 md:pl-[280px]">
                         {children}
                     </main>
                     <Toaster position="top-right" richColors />

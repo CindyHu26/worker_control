@@ -141,7 +141,7 @@ async function main() {
         },
         {
             code: 'ARC_FEE',
-            name: '居留證規費',
+            name: '居留證費',
             nameEn: 'ARC Fee',
             category: 'ARC_FEE' as const,
             isSystem: true,
@@ -399,7 +399,7 @@ async function main() {
             representativeName: '範例負責人',
             representativeNameEn: 'EXAMPLE REPRESENTATIVE',
             representativeIdNo: 'A123456789',
-            checkPayableTo: '範例負責人',
+            // checkPayableTo: '範例負責人',
             taxId: '12345678',
             permitNumber: '0001',
             permitValidFrom: new Date('2025-01-01'),
