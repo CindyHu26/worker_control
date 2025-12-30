@@ -82,6 +82,27 @@ const prisma = prismaClient.$extends({
                     return `${zip}${body}`;
                 },
             },
+            computedInvoiceAddress: {
+                needs: { invoiceCity: true, invoiceDistrict: true, invoiceAddressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.invoiceCity && !data.invoiceDistrict && !data.invoiceAddressDetail) return null;
+                    return `${data.invoiceCity || ''}${data.invoiceDistrict || ''}${data.invoiceAddressDetail || ''}`;
+                },
+            },
+            computedTaxAddress: {
+                needs: { taxCity: true, taxDistrict: true, taxAddressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.taxCity && !data.taxDistrict && !data.taxAddressDetail) return null;
+                    return `${data.taxCity || ''}${data.taxDistrict || ''}${data.taxAddressDetail || ''}`;
+                },
+            },
+            computedHealthBillAddress: {
+                needs: { healthBillCity: true, healthBillDistrict: true, healthBillAddressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.healthBillCity && !data.healthBillDistrict && !data.healthBillAddressDetail) return null;
+                    return `${data.healthBillCity || ''}${data.healthBillDistrict || ''}${data.healthBillAddressDetail || ''}`;
+                },
+            },
         },
         employerFactory: {
             computedFullAddress: {
@@ -170,9 +191,85 @@ const prisma = prismaClient.$extends({
                     return `${zip}${body}`;
                 },
             },
+            computedMailingFullAddress: {
+                needs: { mailingCity: true, mailingDistrict: true, mailingAddressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.mailingCity && !data.mailingDistrict && !data.mailingAddressDetail) return null;
+                    return `${data.mailingCity || ''}${data.mailingDistrict || ''}${data.mailingAddressDetail || ''}`;
+                },
+            },
         },
         // Note: IndividualInfo is accessed via Employer typically, but if accessed directly:
         individualInfo: {
+            computedFullAddress: {
+                needs: { city: true, district: true, addressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.city && !data.district && !data.addressDetail) return null;
+                    return `${data.city || ''}${data.district || ''}${data.addressDetail || ''}`;
+                },
+            },
+            formattedAddress: {
+                needs: { zipCode: true, city: true, district: true, addressDetail: true } as any,
+                compute(data: any) {
+                    const zip = data.zipCode ? `[${data.zipCode}] ` : '';
+                    const body = `${data.city || ''}${data.district || ''}${data.addressDetail || ''}`;
+                    return `${zip}${body}`;
+                },
+            },
+            computedCareAddress: {
+                needs: { careCity: true, careDistrict: true, careAddressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.careCity && !data.careDistrict && !data.careAddressDetail) return null;
+                    return `${data.careCity || ''}${data.careDistrict || ''}${data.careAddressDetail || ''}`;
+                },
+            },
+        },
+        corporateInfo: {
+            computedFactoryAddress: {
+                needs: { factoryCity: true, factoryDistrict: true, factoryAddressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.factoryCity && !data.factoryDistrict && !data.factoryAddressDetail) return null;
+                    return `${data.factoryCity || ''}${data.factoryDistrict || ''}${data.factoryAddressDetail || ''}`;
+                },
+            },
+        },
+        employerRecruitmentLetter: {
+            computedWorkAddress: {
+                needs: { workAddressCity: true, workAddressDistrict: true, workAddressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.workAddressCity && !data.workAddressDistrict && !data.workAddressDetail) return null;
+                    return `${data.workAddressCity || ''}${data.workAddressDistrict || ''}${data.workAddressDetail || ''}`;
+                },
+            },
+        },
+        worker: {
+            computedForeignAddress: {
+                needs: { foreignCity: true, foreignDistrict: true, foreignAddressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.foreignCity && !data.foreignDistrict && !data.foreignAddressDetail) return null;
+                    return `${data.foreignCity || ''}${data.foreignDistrict || ''}${data.foreignAddressDetail || ''}`;
+                },
+            },
+        },
+        workerAddressHistory: {
+            computedFullAddress: {
+                needs: { city: true, district: true, addressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.city && !data.district && !data.addressDetail) return null;
+                    return `${data.city || ''}${data.district || ''}${data.addressDetail || ''}`;
+                },
+            },
+        },
+        workerAccommodationHistory: {
+            computedFullAddress: {
+                needs: { city: true, district: true, addressDetail: true } as any,
+                compute(data: any) {
+                    if (!data.city && !data.district && !data.addressDetail) return null;
+                    return `${data.city || ''}${data.district || ''}${data.addressDetail || ''}`;
+                },
+            },
+        },
+        dormitory: {
             computedFullAddress: {
                 needs: { city: true, district: true, addressDetail: true } as any,
                 compute(data: any) {

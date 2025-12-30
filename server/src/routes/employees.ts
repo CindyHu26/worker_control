@@ -31,8 +31,26 @@ const createSchema = z.object({
     contactPhone: z.string().max(30).optional().nullable(),
 
     // Address
+    mailingCity: z.string().max(20).optional().nullable(),
+    mailingDistrict: z.string().max(20).optional().nullable(),
+    mailingAddressDetail: z.string().max(200).optional().nullable(),
+    mailingZipCode: z.string().max(10).optional().nullable(),
+    mailingFullAddress: z.string().max(300).optional().nullable(),
+    mailingFullAddressEn: z.string().max(300).optional().nullable(),
+
+    // Legacy Mailing (Mapped to detail/full if provided)
     mailingAddressZh: z.string().max(200).optional().nullable(),
     mailingAddressEn: z.string().max(200).optional().nullable(),
+
+    // Residence Address
+    city: z.string().max(20).optional().nullable(),
+    district: z.string().max(20).optional().nullable(),
+    addressDetail: z.string().max(200).optional().nullable(),
+    zipCode: z.string().max(10).optional().nullable(),
+    fullAddress: z.string().max(300).optional().nullable(),
+    fullAddressEn: z.string().max(300).optional().nullable(),
+
+    // Legacy Residence
     residentialAddressZh: z.string().max(200).optional().nullable(),
     residentialAddressEn: z.string().max(200).optional().nullable(),
 
@@ -125,6 +143,29 @@ router.post('/', async (req: Request, res: Response) => {
             dataToCreate.insuranceEndDate = new Date(validatedData.insuranceEndDate);
         }
 
+        // Map Legacy Address Fields
+        if (!dataToCreate.mailingAddressDetail && validatedData.mailingAddressZh) {
+            dataToCreate.mailingAddressDetail = validatedData.mailingAddressZh;
+            dataToCreate.mailingFullAddress = validatedData.mailingAddressZh;
+        }
+        if (!dataToCreate.mailingFullAddressEn && validatedData.mailingAddressEn) {
+            dataToCreate.mailingFullAddressEn = validatedData.mailingAddressEn;
+        }
+
+        if (!dataToCreate.addressDetail && validatedData.residentialAddressZh) {
+            dataToCreate.addressDetail = validatedData.residentialAddressZh;
+            dataToCreate.fullAddress = validatedData.residentialAddressZh;
+        }
+        if (!dataToCreate.fullAddressEn && validatedData.residentialAddressEn) {
+            dataToCreate.fullAddressEn = validatedData.residentialAddressEn;
+        }
+
+        // Remove legacy keys
+        delete dataToCreate.mailingAddressZh;
+        delete dataToCreate.mailingAddressEn;
+        delete dataToCreate.residentialAddressZh;
+        delete dataToCreate.residentialAddressEn;
+
         // Handle domestic agency relation
         if (validatedData.domesticAgencyId) {
             dataToCreate.domesticAgency = {
@@ -165,6 +206,37 @@ router.put('/:id', async (req: Request, res: Response) => {
         if (validatedData.insuranceEndDate) {
             dataToUpdate.insuranceEndDate = new Date(validatedData.insuranceEndDate);
         }
+
+        // Map Legacy Address Fields
+        if (validatedData.mailingAddressZh !== undefined) {
+            if (!dataToUpdate.mailingAddressDetail && validatedData.mailingAddressZh) {
+                dataToUpdate.mailingAddressDetail = validatedData.mailingAddressZh;
+                dataToUpdate.mailingFullAddress = validatedData.mailingAddressZh;
+            }
+        }
+        if (validatedData.mailingAddressEn !== undefined) {
+            if (!dataToUpdate.mailingFullAddressEn && validatedData.mailingAddressEn) {
+                dataToUpdate.mailingFullAddressEn = validatedData.mailingAddressEn;
+            }
+        }
+
+        if (validatedData.residentialAddressZh !== undefined) {
+            if (!dataToUpdate.addressDetail && validatedData.residentialAddressZh) {
+                dataToUpdate.addressDetail = validatedData.residentialAddressZh;
+                dataToUpdate.fullAddress = validatedData.residentialAddressZh;
+            }
+        }
+        if (validatedData.residentialAddressEn !== undefined) {
+            if (!dataToUpdate.fullAddressEn && validatedData.residentialAddressEn) {
+                dataToUpdate.fullAddressEn = validatedData.residentialAddressEn;
+            }
+        }
+
+        // Remove legacy keys
+        delete dataToUpdate.mailingAddressZh;
+        delete dataToUpdate.mailingAddressEn;
+        delete dataToUpdate.residentialAddressZh;
+        delete dataToUpdate.residentialAddressEn;
 
         // Handle domestic agency relation
         if (validatedData.domesticAgencyId !== undefined) {

@@ -25,7 +25,12 @@ model Worker {
 
   mobilePhone String? @map("mobile_phone") @db.VarChar(50) // Mobile Phone
 
-  foreignAddress String? @map("foreign_address") @db.Text // Foreign Address
+  // Foreign Address Standardized
+  foreignCity          String? @map("foreign_city") @db.VarChar(50)
+  foreignDistrict      String? @map("foreign_district") @db.VarChar(50)
+  foreignAddressDetail String? @map("foreign_address_detail") @db.VarChar(200)
+  foreignZipCode       String? @map("foreign_zip_code") @db.VarChar(20)
+  foreignFullAddress   String? @map("foreign_full_address") @db.VarChar(300)
 
   maritalStatus String? @map("marital_status") @db.VarChar(20) // Marital Status
 
@@ -216,7 +221,11 @@ model WorkerAddressHistory {
 
   addressType AddressType @map("address_type")
 
+  city          String? @db.VarChar(20)
+  district      String? @db.VarChar(20)
   addressDetail String @map("address_detail") @db.Text
+  zipCode       String? @map("zip_code") @db.VarChar(10)
+  fullAddress   String? @map("full_address") @db.VarChar(300)
 
   startDate DateTime @map("start_date") @db.Date
 
@@ -349,7 +358,11 @@ model WorkerAccommodationHistory {
 
   // Accommodation Details
 
-  address String? @db.Text
+  city          String? @db.VarChar(20)
+  district      String? @db.VarChar(20)
+  addressDetail String? @map("address_detail") @db.VarChar(200)
+  zipCode       String? @map("zip_code") @db.VarChar(10)
+  fullAddress   String? @map("full_address") @db.VarChar(300)
 
   dormitoryBedId String? @map("dormitory_bed_id") @db.Uuid
 

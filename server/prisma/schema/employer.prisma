@@ -25,12 +25,26 @@ model Employer {
   fullAddress   String? @map("full_address") @db.VarChar(300) // 完整地址(台北市信義區信義路五段7號)
   fullAddressEn String? @map("full_address_en") @db.VarChar(300) // 完整英文地址
 
-  invoiceAddress String? @map("invoice_address") @db.Text // Invoice Address
+  // Invoice Address
+  invoiceCity          String? @map("invoice_city") @db.VarChar(20)
+  invoiceDistrict      String? @map("invoice_district") @db.VarChar(20)
+  invoiceAddressDetail String? @map("invoice_address_detail") @db.VarChar(200)
+  invoiceZipCode       String? @map("invoice_zip_code") @db.VarChar(10)
+  invoiceFullAddress   String? @map("invoice_full_address") @db.VarChar(300)
 
   // Other Addresses
-  taxAddress        String? @map("tax_address") @db.Text // Tax Address
-  healthBillAddress String? @map("health_bill_address") @db.Text // Health Bill Address
-  healthBillZip     String? @map("health_bill_zip") @db.VarChar(10) // Health Bill Zip
+  // Other Addresses
+  taxCity          String? @map("tax_city") @db.VarChar(20)
+  taxDistrict      String? @map("tax_district") @db.VarChar(20)
+  taxAddressDetail String? @map("tax_address_detail") @db.VarChar(200)
+  taxZipCode       String? @map("tax_zip_code") @db.VarChar(10)
+  taxFullAddress   String? @map("tax_full_address") @db.VarChar(300)
+
+  healthBillCity          String? @map("health_bill_city") @db.VarChar(20)
+  healthBillDistrict      String? @map("health_bill_district") @db.VarChar(20)
+  healthBillAddressDetail String? @map("health_bill_address_detail") @db.VarChar(200)
+  healthBillZipCode       String? @map("health_bill_zip_code") @db.VarChar(10)
+  healthBillFullAddress   String? @map("health_bill_full_address") @db.VarChar(300)
 
   phoneNumber String? @map("phone_number") @db.VarChar(20) // Phone Number
   mobilePhone String? @map("mobile_phone") @db.VarChar(20) // Mobile Phone
@@ -278,7 +292,12 @@ model EmployerRecruitmentLetter {
 
   // Work Location & Job Info
 
-  workAddress String? @map("work_address") @db.Text // Work Address
+  // Work Location & Job Info
+  workAddressCity          String? @map("work_address_city") @db.VarChar(20)
+  workAddressDistrict      String? @map("work_address_district") @db.VarChar(20)
+  workAddressDetail        String? @map("work_address_detail") @db.VarChar(200)
+  workAddressZipCode       String? @map("work_address_zip_code") @db.VarChar(10)
+  workAddressFull          String? @map("work_address_full") @db.VarChar(300)
 
   jobType String? @map("job_type") @db.VarChar(50) // Job Type (e.g., Full-time)
 
@@ -446,8 +465,12 @@ model CorporateInfo {
 
   factoryRegistrationNo String? @map("factory_registration_no") @db.VarChar(50) // Factory Registration No
   factoryRegistrationId String? @map("factory_registration_id") @db.VarChar(50) // Factory Registration ID
-  factoryAddress        String? @map("factory_address") @db.Text // Factory Address
-  factoryAddressEn      String? @map("factory_address_en") @db.Text // Factory Address (English)
+  factoryCity          String? @map("factory_city") @db.VarChar(20)
+  factoryDistrict      String? @map("factory_district") @db.VarChar(20)
+  factoryAddressDetail String? @map("factory_address_detail") @db.VarChar(200)
+  factoryZipCode       String? @map("factory_zip_code") @db.VarChar(10)
+  factoryFullAddress   String? @map("factory_full_address") @db.VarChar(300)
+  factoryFullAddressEn String? @map("factory_full_address_en") @db.VarChar(300)
 
   industryType String?  @map("industry_type") @db.VarChar(50) // Industry Type
   industryCode String?  @map("industry_code") @db.VarChar(20) // Industry Code
@@ -508,7 +531,11 @@ model IndividualInfo {
   // Home Care Specifics
   patientName  String? @map("patient_name") @db.VarChar(50) // Patient Name
   patientIdNo  String? @map("patient_id_no") @db.VarChar(20) // Patient ID No
-  careAddress  String? @map("care_address") @db.Text // Care Address
+  careCity          String? @map("care_city") @db.VarChar(20)
+  careDistrict      String? @map("care_district") @db.VarChar(20)
+  careAddressDetail String? @map("care_address_detail") @db.VarChar(200)
+  careZipCode       String? @map("care_zip_code") @db.VarChar(10)
+  careFullAddress   String? @map("care_full_address") @db.VarChar(300)
   relationship String? @map("relationship") @db.VarChar(50) // Relationship
 
   @@map("individual_info")

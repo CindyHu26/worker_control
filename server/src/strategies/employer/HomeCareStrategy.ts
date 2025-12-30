@@ -52,10 +52,20 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
             district: coreData.district,
             zipCode: coreData.zipCode,
             addressEn: coreData.addressEn,
-            invoiceAddress: coreData.invoiceAddress,
-            taxAddress: coreData.taxAddress,
-            healthBillAddress: coreData.healthBillAddress,
-            healthBillZip: coreData.healthBillZip,
+            invoiceCity: coreData.invoiceCity,
+            invoiceDistrict: coreData.invoiceDistrict,
+            invoiceAddressDetail: coreData.invoiceAddressDetail || coreData.invoiceAddress,
+            invoiceZipCode: coreData.invoiceZipCode,
+
+            taxCity: coreData.taxCity,
+            taxDistrict: coreData.taxDistrict,
+            taxAddressDetail: coreData.taxAddressDetail || coreData.taxAddress,
+            taxZipCode: coreData.taxZipCode,
+
+            healthBillCity: coreData.healthBillCity,
+            healthBillDistrict: coreData.healthBillDistrict,
+            healthBillAddressDetail: coreData.healthBillAddressDetail || coreData.healthBillAddress,
+            healthBillZipCode: coreData.healthBillZipCode || coreData.healthBillZip,
             email: coreData.email,
             contactPerson: coreData.contactPerson,
             contactPhone: coreData.contactPhone,
@@ -90,8 +100,12 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
                 idIssueType: coreData.idIssueType,
                 idIssuePlace: coreData.idIssuePlace,
                 patientName: coreData.patientName,
+
                 patientIdNo: coreData.patientIdNo,
-                careAddress: coreData.careAddress,
+                careCity: coreData.careCity,
+                careDistrict: coreData.careDistrict,
+                careAddressDetail: coreData.careAddressDetail || coreData.careAddress,
+                careZipCode: coreData.careZipCode,
                 relationship: coreData.relationship
             }
         };
@@ -106,10 +120,11 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
                     laborInsuranceNo: f.laborInsuranceNo,
                     healthInsuranceNo: f.healthInsuranceNo,
                     ranking: f.ranking,
-                    address: f.address,
-                    addressEn: f.addressEn,
-                    zipCode: f.zipCode,
-                    cityCode: f.cityCode,
+                    factoryCity: f.city || f.factoryCity,
+                    factoryDistrict: f.district || f.factoryDistrict,
+                    factoryAddressDetail: f.addressDetail || f.address || f.factoryAddress || f.factoryAddressDetail,
+                    factoryZipCode: f.zipCode || f.factoryZipCode,
+                    factoryFullAddressEn: f.addressEn,
                     laborCount: parseNumber(f.laborCount) || 0,
                     foreignCount: parseNumber(f.foreignCount) || 0
                 }))

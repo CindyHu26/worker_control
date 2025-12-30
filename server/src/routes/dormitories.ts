@@ -22,13 +22,18 @@ router.get('/', async (req, res) => {
 // POST /api/dormitories
 router.post('/', async (req, res) => {
     try {
-        const { name, address, accommodationType } = req.body;
+        const { name, city, district, addressDetail, zipCode, accommodationType } = req.body;
         // landlordName, landlordPhone removed as they might not exist in schema
         const dorm = await prisma.dormitory.create({
             data: {
-                name, address, accommodationType,
+                name,
+                city,
+                district,
+                addressDetail,
+                zipCode,
+                accommodationType,
                 // safetyInspectionDate: safetyInspectionDate ? new Date(safetyInspectionDate) : undefined
-            }
+            } as any
         });
         res.status(201).json(dorm);
     } catch (error) {

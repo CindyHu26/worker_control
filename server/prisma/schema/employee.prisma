@@ -43,7 +43,14 @@ model Employee {
 
   contactPhone String? @map("contact_phone") @db.VarChar(30)
 
-  mailingAddressZh String? @map("mailing_address_zh") @db.VarChar(200)
+  // Standardized Mailing Address
+  mailingCity          String? @map("mailing_city") @db.VarChar(20)
+  mailingDistrict      String? @map("mailing_district") @db.VarChar(20)
+  mailingAddressDetail String? @map("mailing_address_detail") @db.VarChar(200)
+  mailingZipCode       String? @map("mailing_zip_code") @db.VarChar(10)
+
+  mailingFullAddress   String? @map("mailing_full_address") @db.VarChar(300)
+  mailingFullAddressEn String? @map("mailing_full_address_en") @db.VarChar(300)
 
   // Standardized Address Fields
   city          String? @db.VarChar(20) // Residence City
