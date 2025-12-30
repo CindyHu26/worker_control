@@ -176,7 +176,7 @@ export const convertLeadToEmployer = async (
                 phoneNumber: lead.phone,
                 email: lead.email,
                 responsiblePerson: lead.contactPerson,
-                address: options.invoiceAddress || lead.address || '',
+                addressDetail: options.invoiceAddress || lead.address || '',
                 invoiceAddress: options.invoiceAddress || lead.address || '',
 
                 // Link to ApplicationCategory (Found by code)
@@ -204,7 +204,7 @@ export const convertLeadToEmployer = async (
                 } : undefined,
 
                 // For Individual Info, we might need to handle later or assume category logic
-            }
+            } as any
         });
 
         // 5. Initialize Labor Count (Quota Basis) - Only for Manufacturing

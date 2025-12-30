@@ -207,7 +207,7 @@ export const getWorkerDashboardData = async (workerId: string) => {
         },
         job: {
             employerName: currentDeployment?.employer?.companyName,
-            workAddress: currentDeployment?.employer?.address || currentDeployment?.jobDescription,
+            workAddress: (currentDeployment?.employer as any)?.fullAddress || currentDeployment?.jobDescription,
             salary: currentDeployment?.basicSalary ? Number(currentDeployment.basicSalary) : 0,
             jobType: currentDeployment?.jobType,
         },

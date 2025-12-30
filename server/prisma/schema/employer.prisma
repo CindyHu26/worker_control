@@ -15,8 +15,16 @@ model Employer {
   // Responsible Person
   responsiblePerson String? @map("responsible_person") @db.VarChar(50) // Responsible Person Name
 
-  address        String? @db.Text // Address (Chinese)
-  addressEn      String? @map("address_en") @db.Text // Address (English)
+  // Standardized Address Fields
+  city          String? @db.VarChar(20) // 縣市 (台北市)
+  district      String? @db.VarChar(20) // 鄉鎮市區 (信義區)
+  addressDetail String? @map("address_detail") @db.VarChar(200) // 路段號碼 (信義路五段7號)
+  zipCode       String? @map("zip_code") @db.VarChar(10) // 郵遞區號 (110)
+
+  // Computed/Cache Fields
+  fullAddress   String? @map("full_address") @db.VarChar(300) // 完整地址(台北市信義區信義路五段7號)
+  fullAddressEn String? @map("full_address_en") @db.VarChar(300) // 完整英文地址
+
   invoiceAddress String? @map("invoice_address") @db.Text // Invoice Address
 
   // Other Addresses
@@ -134,11 +142,15 @@ model EmployerFactory {
 
   factoryRegNo String? @map("factory_reg_no") @db.VarChar(50) // Factory Registration No
 
-  address   String? @db.Text // Factory Address
-  addressEn String? @map("address_en") @db.Text // Factory Address (English)
-  zipCode   String? @map("zip_code") @db.VarChar(10) // Zip Code
-  city      String? @db.VarChar(20) // City
-  district  String? @db.VarChar(20) // District
+  // Standardized Address Fields
+  city          String? @db.VarChar(20) // 縣市 (台北市)
+  district      String? @db.VarChar(20) // 鄉鎮市區 (信義區)
+  addressDetail String? @map("address_detail") @db.VarChar(200) // 路段號碼 (信義路五段7號)
+  zipCode       String? @map("zip_code") @db.VarChar(10) // 郵遞區號 (110)
+
+  // Computed/Cache Fields
+  fullAddress   String? @map("full_address") @db.VarChar(300) // 完整地址
+  fullAddressEn String? @map("full_address_en") @db.VarChar(300) // 完整英文地址
 
   laborCount   Int? @default(0) // Domestic Labor Count
   foreignCount Int? @default(0) // Foreign Labor Count
@@ -477,10 +489,15 @@ model IndividualInfo {
   birthPlaceEn String? @map("birth_place_en") @db.VarChar(100) // Birth Place (English)
 
   // Residence Address
-  residenceAddress  String? @map("residence_address") @db.Text // Residence Address
-  residenceZip      String? @map("residence_zip") @db.VarChar(10) // Residence Zip
-  residenceCity     String? @map("residence_city") @db.VarChar(20) // Residence City
-  residenceDistrict String? @map("residence_district") @db.VarChar(20) // Residence District
+  // Standardized Address Fields (Residence)
+  city          String? @db.VarChar(20) // Residence City
+  district      String? @db.VarChar(20) // Residence District
+  addressDetail String? @map("address_detail") @db.VarChar(200) // Residence Address
+  zipCode       String? @map("zip_code") @db.VarChar(10) // Residence Zip
+
+  // Computed/Cache Fields
+  fullAddress   String? @map("full_address") @db.VarChar(300)
+  fullAddressEn String? @map("full_address_en") @db.VarChar(300)
 
   idIssueDate      DateTime? @map("id_issue_date") @db.Date // ID Issue Date
   idIssuePlace     String?   @map("id_issue_place") @db.VarChar(50) // ID Issue Place

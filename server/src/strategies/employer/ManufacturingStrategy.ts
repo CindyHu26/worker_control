@@ -36,7 +36,7 @@ export class ManufacturingStrategy implements IEmployerTypeStrategy {
     prepareCreateData(input: any): Prisma.EmployerCreateInput {
         const { factories, industryAttributes, ...coreData } = input;
 
-        const data: Prisma.EmployerCreateInput = {
+        const data: any = {
             companyName: coreData.companyName,
             companyNameEn: coreData.companyNameEn,
             taxId: coreData.taxId,
@@ -47,7 +47,10 @@ export class ManufacturingStrategy implements IEmployerTypeStrategy {
             responsiblePerson: coreData.responsiblePerson,
             phoneNumber: coreData.phoneNumber,
             mobilePhone: coreData.mobilePhone,
-            address: coreData.address,
+            addressDetail: coreData.addressDetail || coreData.address,
+            city: coreData.city,
+            district: coreData.district,
+            zipCode: coreData.zipCode,
             addressEn: coreData.addressEn,
             invoiceAddress: coreData.invoiceAddress,
             taxAddress: coreData.taxAddress,
@@ -96,10 +99,12 @@ export class ManufacturingStrategy implements IEmployerTypeStrategy {
                     laborInsuranceNo: f.laborInsuranceNo,
                     healthInsuranceNo: f.healthInsuranceNo,
                     ranking: f.ranking,
-                    address: f.address,
+                    addressDetail: f.addressDetail || f.address,
                     addressEn: f.addressEn,
                     zipCode: f.zipCode,
-                    cityCode: f.cityCode,
+                    city: f.city,
+                    district: f.district,
+                    // cityCode: f.cityCode, // Is this legacy? Keeping if needed or removing if replaced by city/district
                     laborCount: parseNumber(f.laborCount) || 0,
                     foreignCount: parseNumber(f.foreignCount) || 0
                 }))
@@ -114,12 +119,15 @@ export class ManufacturingStrategy implements IEmployerTypeStrategy {
         // Using update/upsert patterns for nested relations
         const { factories, corporateInfo, ...coreData } = input;
 
-        const data: Prisma.EmployerUpdateInput = {
+        const data: any = {
             companyName: coreData.companyName,
             shortName: coreData.shortName,
             taxId: coreData.taxId,
             phoneNumber: coreData.phoneNumber,
-            address: coreData.address,
+            addressDetail: coreData.addressDetail || coreData.address,
+            city: coreData.city,
+            district: coreData.district,
+            zipCode: coreData.zipCode,
             allocationRate: coreData.allocationRate ? parseNumber(coreData.allocationRate) : undefined,
             zeroFeeEffectiveDate: coreData.zeroFeeEffectiveDate ? parseOptionalDate(coreData.zeroFeeEffectiveDate) : undefined
         };

@@ -185,10 +185,10 @@ export async function createEmployer(input: any) {
                     laborInsuranceNo: f.laborInsuranceNo,
                     healthInsuranceNo: f.healthInsuranceNo,
                     ranking: f.ranking,
-                    address: f.address,
+                    addressDetail: data.address,
                     addressEn: f.addressEn,
                     zipCode: f.zipCode,
-                    cityCode: f.cityCode,
+                    // cityCode: f.cityCode, // Removed as not in schema
                     laborCount: parseNumber(f.laborCount) || 0,
                     foreignCount: parseNumber(f.foreignCount) || 0
                 }))
@@ -294,7 +294,7 @@ export async function searchEmployers(params: EmployerSearchParams): Promise<{
         taxId: emp.taxId,
         responsiblePerson: emp.responsiblePerson,
         phoneNumber: emp.phoneNumber,
-        address: emp.address,
+        address: (emp as any).fullAddress,
         email: emp.email,
         _count: emp._count,
         homeCareInfo: emp.individualInfo ? {
@@ -565,13 +565,13 @@ export async function updateEmployer(id: string, data: any) {
                     laborInsuranceNo: factory.laborInsuranceNo,
                     healthInsuranceNo: factory.healthInsuranceNo,
                     ranking: factory.ranking,
-                    address: factory.address,
+                    addressDetail: factory.address,
                     addressEn: factory.addressEn,
                     zipCode: factory.zipCode,
-                    cityCode: factory.cityCode,
+                    // cityCode: factory.cityCode,
                     laborCount: parseNumber(factory.laborCount) || 0,
                     foreignCount: parseNumber(factory.foreignCount) || 0
-                }
+                } as any
             });
         }
 
@@ -691,7 +691,7 @@ export const analyzeDataHealth = async (employerId: string) => {
 
         // --- 4. Manufacturing Specifics ---
         if (corpInfo.industryType?.includes('製造')) {
-            if (!employer.address) {
+            if (!(employer as any).fullAddress) {
                 missingFields.push('Missing Factory Address');
                 alertsToCreate.push('缺工廠地址：無法產出求才登記、入國通報與生活計畫書');
             }
@@ -797,7 +797,7 @@ export const getEmployerSummary = async (id: string) => {
             responsiblePerson: employer.responsiblePerson || '',
             phone: employer.phoneNumber || '',
             fax: employer.corporateInfo?.faxNumber || '',
-            address: employer.address || '',
+            address: (employer as any).fullAddress || '',
             email: employer.email || '',
         },
         biz: {

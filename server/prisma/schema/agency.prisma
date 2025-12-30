@@ -26,11 +26,15 @@ model DomesticAgency {
   customerServicePhone String? @map("customer_service_phone") @db.VarChar(20)
   emergencyPhone       String? @map("emergency_phone") @db.VarChar(20)
 
-  zipCode   String? @map("zip_code") @db.VarChar(5) // Zip Code
-  city      String? @db.VarChar(20) // City
-  district  String? @db.VarChar(20) // District
-  addressZh String? @map("address_zh") @db.VarChar(200) // Address (Chinese)
-  addressEn String? @map("address_en") @db.VarChar(200) // Address (English)
+  // Standardized Address Fields
+  city          String? @db.VarChar(20) // 縣市
+  district      String? @db.VarChar(20) // 鄉鎮市區
+  addressDetail String? @map("address_detail") @db.VarChar(200) // 路段號碼
+  zipCode       String? @map("zip_code") @db.VarChar(10) // 郵遞區號
+
+  // Computed/Cache Fields
+  fullAddress   String? @map("full_address") @db.VarChar(300) // 完整地址
+  fullAddressEn String? @map("full_address_en") @db.VarChar(300) // 完整英文地址
 
   representativeName String? @map("representative_name") @db.VarChar(50)
 
@@ -104,7 +108,14 @@ model Bank {
 
   fax String? @map("fax") @db.VarChar(30)
 
-  address String? @map("address") @db.VarChar(200)
+  // Standardized Address Fields
+  city          String? @db.VarChar(20)
+  district      String? @db.VarChar(20)
+  addressDetail String? @map("address_detail") @db.VarChar(200)
+  zipCode       String? @map("zip_code") @db.VarChar(10)
+
+  fullAddress   String? @map("full_address") @db.VarChar(300)
+  fullAddressEn String? @map("full_address_en") @db.VarChar(300)
 
   notes String? @map("notes") @db.VarChar(200)
 
@@ -363,7 +374,14 @@ model AgencyCompany {
 
   taxId String? @map("tax_id") @db.VarChar(20)
 
-  address String? @db.Text
+  // Standardized Address Fields
+  city          String? @db.VarChar(20)
+  district      String? @db.VarChar(20)
+  addressDetail String? @map("address_detail") @db.VarChar(200)
+  zipCode       String? @map("zip_code") @db.VarChar(10)
+
+  fullAddress   String? @map("full_address") @db.VarChar(300)
+  fullAddressEn String? @map("full_address_en") @db.VarChar(300)
 
   phone String? @db.VarChar(20)
 

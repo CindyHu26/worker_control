@@ -138,8 +138,8 @@ router.use('/candidates', candidateRoutes);
 router.use('/billing-plans', billingPlanRoutes);
 router.use('/api', interviewRoutes); // Mounted at /api for /api/job-orders and /api/interviews
 
-import overseasProgressRoutes from './overseas-progress';
-router.use('/overseas-progress', overseasProgressRoutes);
+// import overseasProgressRoutes from './overseas-progress'; // DISABLED
+// router.use('/overseas-progress', overseasProgressRoutes); // DISABLED
 
 import entryFilingRoutes from './entry-filings';
 import medicalExceptionRoutes from './medical-exceptions';

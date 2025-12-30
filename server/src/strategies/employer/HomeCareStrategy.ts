@@ -36,7 +36,7 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
     prepareCreateData(input: any): Prisma.EmployerCreateInput {
         const { industryAttributes, factories, ...coreData } = input;
 
-        const data: Prisma.EmployerCreateInput = {
+        const data: any = {
             companyName: coreData.companyName || coreData.responsiblePerson || '未命名',
             companyNameEn: coreData.companyNameEn,
             code: coreData.code,
@@ -47,7 +47,10 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
             responsiblePerson: coreData.responsiblePerson,
             phoneNumber: coreData.phoneNumber,
             mobilePhone: coreData.mobilePhone,
-            address: coreData.address,
+            addressDetail: coreData.addressDetail || coreData.address,
+            city: coreData.city,
+            district: coreData.district,
+            zipCode: coreData.zipCode,
             addressEn: coreData.addressEn,
             invoiceAddress: coreData.invoiceAddress,
             taxAddress: coreData.taxAddress,
@@ -77,9 +80,10 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
                 englishName: coreData.englishName,
                 birthPlace: coreData.birthPlace,
                 birthPlaceEn: coreData.birthPlaceEn,
-                residenceAddress: coreData.residenceAddress,
-                residenceZip: coreData.residenceZip,
-                residenceCityCode: coreData.residenceCityCode,
+                addressDetail: coreData.residenceAddress, // Map legacy to new
+                zipCode: coreData.residenceZip, // Map legacy to new
+                city: coreData.residenceCity,
+                district: coreData.residenceDistrict,
                 militaryStatus: coreData.militaryStatus,
                 militaryStatusEn: coreData.militaryStatusEn,
                 idIssueDate: parseOptionalDate(coreData.idIssueDate),
@@ -118,11 +122,14 @@ export class HomeCareStrategy implements IEmployerTypeStrategy {
     prepareUpdateData(input: any): Prisma.EmployerUpdateInput {
         const { individualInfo, ...coreData } = input;
 
-        const data: Prisma.EmployerUpdateInput = {
+        const data: any = {
             companyName: coreData.companyName,
             shortName: coreData.shortName,
             phoneNumber: coreData.phoneNumber,
-            address: coreData.address,
+            addressDetail: coreData.addressDetail || coreData.address,
+            city: coreData.city,
+            district: coreData.district,
+            zipCode: coreData.zipCode,
             responsiblePerson: coreData.responsiblePerson
         };
 

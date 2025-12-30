@@ -39,7 +39,7 @@ export class BillingGeneratorService {
             include: {
                 deployments: {
                     where: {
-                        status: { not: 'cancelled' }, // Use 'cancelled' string literal if enum not available
+                        status: { not: 'terminated' }, // Use 'terminated' enum value
                         // Or deployment status logic
                     }
                 }
@@ -53,7 +53,7 @@ export class BillingGeneratorService {
         // Simplify: Calculate days from first entry date if available?
         // Or sum ranges.
         // Assuming deployment ranges don't overlap.
-        for (const dep of worker.deployments) {
+        for (const dep of (worker as any).deployments) {
             const start = dep.startDate ? new Date(dep.startDate) : null;
             if (!start) continue;
 

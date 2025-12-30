@@ -36,7 +36,7 @@ export class InstitutionStrategy implements IEmployerTypeStrategy {
     prepareCreateData(input: any): Prisma.EmployerCreateInput {
         const { factories, industryAttributes, ...coreData } = input;
 
-        const data: Prisma.EmployerCreateInput = {
+        const data: any = {
             companyName: coreData.companyName,
             companyNameEn: coreData.companyNameEn,
             taxId: coreData.taxId,
@@ -47,7 +47,10 @@ export class InstitutionStrategy implements IEmployerTypeStrategy {
             responsiblePerson: coreData.responsiblePerson,
             phoneNumber: coreData.phoneNumber,
             mobilePhone: coreData.mobilePhone,
-            address: coreData.address,
+            addressDetail: coreData.addressDetail || coreData.address,
+            city: coreData.city,
+            district: coreData.district,
+            zipCode: coreData.zipCode,
             addressEn: coreData.addressEn,
             invoiceAddress: coreData.invoiceAddress,
             taxAddress: coreData.taxAddress,
@@ -110,11 +113,14 @@ export class InstitutionStrategy implements IEmployerTypeStrategy {
     prepareUpdateData(input: any): Prisma.EmployerUpdateInput {
         const { corporateInfo, ...coreData } = input;
 
-        const data: Prisma.EmployerUpdateInput = {
+        const data: any = {
             companyName: coreData.companyName,
             shortName: coreData.shortName,
             phoneNumber: coreData.phoneNumber,
-            address: coreData.address
+            addressDetail: coreData.addressDetail || coreData.address,
+            city: coreData.city,
+            district: coreData.district,
+            zipCode: coreData.zipCode
         };
 
         if (corporateInfo) {

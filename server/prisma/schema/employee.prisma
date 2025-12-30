@@ -45,11 +45,14 @@ model Employee {
 
   mailingAddressZh String? @map("mailing_address_zh") @db.VarChar(200)
 
-  mailingAddressEn String? @map("mailing_address_en") @db.VarChar(200)
+  // Standardized Address Fields
+  city          String? @db.VarChar(20) // Residence City
+  district      String? @db.VarChar(20) // Residence District
+  addressDetail String? @map("address_detail") @db.VarChar(200) // Residence Address
+  zipCode       String? @map("zip_code") @db.VarChar(10) // Residence Zip
 
-  residentialAddressZh String? @map("residential_address_zh") @db.VarChar(200)
-
-  residentialAddressEn String? @map("residential_address_en") @db.VarChar(200)
+  fullAddress   String? @map("full_address") @db.VarChar(300)
+  fullAddressEn String? @map("full_address_en") @db.VarChar(300)
 
   emergencyContact String? @map("emergency_contact") @db.VarChar(50)
 

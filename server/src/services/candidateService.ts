@@ -89,8 +89,8 @@ export const candidateService = {
     async createCandidate(data: Prisma.CandidateCreateInput) {
         // Check duplicate
         const duplicate = await this.checkDuplicate(
-            data.passportNo,
-            data.nameZh,
+            data.passportNo || undefined,
+            data.nameZh || undefined,
             data.birthDate as Date
         );
 
@@ -124,7 +124,6 @@ export const candidateService = {
                     nationality: row['國籍'] || row['nationality'] || 'IDN',
                     passportNo: row['護照號碼'] || row['passportNo'],
                     passportExpiry: row['護照效期'] ? new Date(row['護照效期']) : undefined,
-                    height: row['身高'] ? parseInt(row['身高']) : undefined,
                     weight: row['體重'] ? parseInt(row['體重']) : undefined,
                     maritalStatus: row['婚姻'] || row['maritalStatus'],
                     education: row['學歷'] || row['education'],
@@ -134,8 +133,8 @@ export const candidateService = {
 
                 // Check duplicate
                 const dup = await this.checkDuplicate(
-                    candidateData.passportNo,
-                    candidateData.nameZh,
+                    candidateData.passportNo || undefined,
+                    candidateData.nameZh || undefined,
                     candidateData.birthDate as Date
                 );
 

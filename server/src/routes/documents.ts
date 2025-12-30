@@ -377,17 +377,17 @@ router.post('/batch-generate', async (req, res) => {
                                 fAddr = attrs.factoryAddress;
                             } catch (e) { }
                         }
-                        resolvedAddress = fAddr || emp.address || '';
+                        resolvedAddress = fAddr || (emp as any).fullAddress || '';
                         break;
                     }
                     case 'EMPLOYER_HOME':
-                        resolvedAddress = emp.address || '';
+                        resolvedAddress = (emp as any).fullAddress || '';
                         break;
                     case 'COMPANY':
-                        resolvedAddress = emp.address || '';
+                        resolvedAddress = (emp as any).fullAddress || '';
                         break;
                     case 'AGENCY':
-                        resolvedAddress = emp.agency?.address || '';
+                        resolvedAddress = (emp.agency as any)?.fullAddress || '';
                         break;
                     default:
                         resolvedAddress = '';
