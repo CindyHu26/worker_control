@@ -131,6 +131,7 @@ model ComplianceRule {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
 
   @@map("compliance_rules")
 }
@@ -155,6 +156,7 @@ model OfficialAgency {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
 
   // Relations
 

@@ -81,6 +81,7 @@ model DomesticAgency {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
 
   // Relations
 
@@ -124,6 +125,7 @@ model Bank {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
 
   // Relations
 
@@ -273,6 +275,7 @@ model PartnerAgency {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
 
   // Relations
 
@@ -361,6 +364,7 @@ model LoanBank {
   isActive Boolean @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
 
   @@map("loan_banks")
 }
@@ -398,6 +402,7 @@ model AgencyCompany {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
 
   @@map("agency_companies")
 }
