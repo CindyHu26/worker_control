@@ -8,18 +8,18 @@ const prisma = new PrismaClient();
 
 async function main() {
     // 1. Seed Admin User
-    const adminEmail = 'admin@example.com';
     const adminUsername = 'admin';
     const defaultPasswordHash = await bcrypt.hash('change_me', 10);
 
     const admin = await prisma.internalUser.upsert({
         where: { username: adminUsername },
         update: {
-            passwordHash: defaultPasswordHash // Update it if exists too, to fix legacy plain text
+            passwordHash: defaultPasswordHash,
+            name: '系統管理員'
         },
         create: {
             username: adminUsername,
-            email: adminEmail,
+            name: '系統管理員',
             passwordHash: defaultPasswordHash,
             role: 'admin'
         }
@@ -748,7 +748,10 @@ async function main() {
             mobilePhone: '0900-123456',
             email: 'sales@example.com',
             receiveSms: false,
-            mailingAddressZh: '台北市信義區信義路五段7號',
+            mailingCity: '台北市',
+            mailingDistrict: '信義區',
+            mailingAddressDetail: '信義路五段7號',
+            mailingZipCode: '110',
             isSales: true,
             isAdmin: false,
             isCustomerService: false,

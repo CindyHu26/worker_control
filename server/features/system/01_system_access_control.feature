@@ -12,25 +12,26 @@ Feature: 系統存取與用戶管理 (System Access Control)
     Given 我以 "admin" 身份登入
     When 我建立一個新的使用者:
       | username | user_staff_01       |
-      | role     | staff               |
+      | role     | STAFF               |
       | email    | staff@company.local |
     Then 系統應在 "internal_users" 資料表中建立該帳號
     And 該帳號的預設狀態應為 "ACTIVE"
 
   Scenario: 一般員工嘗試新增帳號應被拒絕
-    Given 我以 "user_staff_01" (角色: staff) 身份登入
+    Given 我以 "user_staff_01" (角色: STAFF) 身份登入
     When 我嘗試發送請求至 "POST /api/users"
     Then 回應狀態碼應為 403 (Forbidden)
     And 系統不應建立任何新帳號
 
-  Scenario: 管理者可以更新用戶角色
+  Scenario: 密碼安全性要求
     Given 我以 "admin" 身份登入
-    And 系統中存在用戶 "user_staff_01"
-    When 我將用戶 "user_staff_01" 的角色更新為 "manager"
-    Then 該用戶在資料庫中的角色應為 "manager"
+    When 我嘗試建立一個密碼過短的使用者:
+      | username | user_weak_pass      |
+      | password | 123                 |
+    Then 系統應拒絕建立該帳號
+    And 回應錯誤訊息應包含 "密碼長度不足"
 
-  Scenario: 管理者可以停用帳號
-    Given 我以 "admin" 身份登入
-    And 系統中存在用戶 "user_to_disable"
-    When 我停用用戶 "user_to_disable"
-    Then 該用戶應無法登入系統
+  Scenario: 帳號停用與禁止登入
+    Given 系統中存在用戶 "user_left" 且狀態為 "ACTIVE"
+    When 我將該用戶狀態更新為 "DISABLED"
+    Then 該用戶嘗試登入時應收到 "帳號已停用" 訊息

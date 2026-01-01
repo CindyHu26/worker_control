@@ -86,7 +86,8 @@ const categories = [
             { title: '批次轉移', desc: '大量移工轉換雇主', icon: ArrowRightLeft, href: '/system/batch-transfer' },
             { title: '服務團隊', desc: '業務與雙語人員指派', icon: Users2, href: '/system/teams' },
             { title: '操作歷程', desc: '系統存取與修改紀錄', icon: History, href: '/system/audit-logs' },
-            { title: '員工管理', desc: '管理公司內部員工資料', icon: Users2, href: '/employees' }
+            { title: '員工管理', desc: '管理公司內部員工資料', icon: Users2, href: '/employees' },
+            { title: '帳號與權限', desc: '管理使用者帳號與角色權限', icon: Shield, href: '/system/users' }
         ]
     },
     {

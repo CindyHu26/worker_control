@@ -26,7 +26,7 @@ const getUserId = async (req: AuthRequest) => {
 router.get('/', async (req: AuthRequest, res) => {
     try {
         const userId = await getUserId(req);
-        console.log('[Notifications] Fetching for userId:', userId);
+        // console.log('[Notifications] Fetching for userId:', userId);
         if (!userId) return res.json([]);
 
         const mentions = await prisma.commentMention.findMany({
@@ -46,7 +46,7 @@ router.get('/', async (req: AuthRequest, res) => {
             take: 20
         });
 
-        console.log(`[Notifications] Found ${mentions.length} mentions`);
+        // console.log(`[Notifications] Found ${mentions.length} mentions`);
 
         // Format for frontend
         const notifications = mentions.map(m => {

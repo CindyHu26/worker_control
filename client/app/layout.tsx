@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Sidebar from '../components/layout/Sidebar';
+import { MainContent } from '../components/layout/MainContent';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,9 +29,9 @@ export default function RootLayout({
                     <CommandPalette />
 
                     {/* Main Content */}
-                    <main className="flex-1 overflow-auto min-w-0 bg-gray-50 md:pl-[280px]">
+                    <MainContent>
                         {children}
-                    </main>
+                    </MainContent>
                     <Toaster position="top-right" richColors />
                 </Providers>
             </body>

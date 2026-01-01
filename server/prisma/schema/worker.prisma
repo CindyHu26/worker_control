@@ -223,7 +223,7 @@ model WorkerAddressHistory {
 
   city          String? @db.VarChar(20)
   district      String? @db.VarChar(20)
-  addressDetail String @map("address_detail") @db.Text
+  addressDetail String  @map("address_detail") @db.Text
   zipCode       String? @map("zip_code") @db.VarChar(10)
   fullAddress   String? @map("full_address") @db.VarChar(300)
 

@@ -45,3 +45,26 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
         next();
     });
 }
+
+// Alias for authenticateToken
+export const authenticate = authenticateToken;
+
+// Role-based authorization middleware
+export function authorize(allowedRoles: string[]) {
+    return (req: AuthRequest, res: Response, next: NextFunction) => {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Unauthorized: No user found' });
+        }
+
+        const userRole = req.user.role;
+        if (!allowedRoles.includes(userRole)) {
+            return res.status(403).json({
+                message: 'Forbidden: Insufficient permissions',
+                required: allowedRoles,
+                current: userRole
+            });
+        }
+
+        next();
+    };
+}

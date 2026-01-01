@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PageContainer, { TableWrapper } from '@/components/layout/PageContainer';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -15,7 +16,6 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { apiGet, apiDelete } from '@/lib/api';
-import TableWrapper from '@/components/ui/TableWrapper';
 
 interface Employee {
     id: string;
@@ -57,7 +57,7 @@ export default function EmployeesPage() {
     }, [searchTerm]);
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`確定要刪除員工 "${name}" 嗎？`)) return;
+        if (!confirm(`確定要刪除員工 \"${name}\" 嗎？`)) return;
 
         try {
             await apiDelete(`http://localhost:3001/api/employees/${id}`);
@@ -70,24 +70,32 @@ export default function EmployeesPage() {
     };
 
     return (
-        <div className="container mx-auto py-8 space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold tracking-tight">員工管理</h1>
+        <PageContainer
+            title="員工管理"
+            subtitle="管理公司內部員工資料與組織架構"
+            breadcrumbs={[
+                { label: '首頁', href: '/' },
+                { label: '系統設定', href: '/portal' },
+                { label: '員工管理' }
+            ]}
+            actions={
                 <Link href="/employees/new">
-                    <Button>
+                    <Button className="bg-blue-600 hover:bg-blue-700">
                         <Plus className="mr-2 h-4 w-4" /> 新增員工
                     </Button>
                 </Link>
-            </div>
-
-            <div className="flex items-center space-x-2 max-w-sm">
-                <Search className="h-4 w-4 text-gray-500" />
-                <Input
-                    placeholder="搜尋姓名、代碼、員工編號或信箱..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-white"
-                />
+            }
+        >
+            <div className="mb-6">
+                <div className="flex items-center space-x-2 max-w-sm">
+                    <Search className="h-4 w-4 text-gray-500" />
+                    <Input
+                        placeholder="搜尋姓名、代碼、員工編號或信箱..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-white"
+                    />
+                </div>
             </div>
 
             <TableWrapper>
@@ -153,6 +161,6 @@ export default function EmployeesPage() {
                     </TableBody>
                 </Table>
             </TableWrapper>
-        </div>
+        </PageContainer>
     );
 }
