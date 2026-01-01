@@ -165,4 +165,8 @@ router.use('/invoices', invoiceRoutes);
 import runawayRoutes from './runaway';
 router.use('/runaways', runawayRoutes);
 
+// Schema-Driven UI Routes
+import schemaRoutes from './schemas';
+router.use('/schemas', schemaRoutes);
+
 export default router;

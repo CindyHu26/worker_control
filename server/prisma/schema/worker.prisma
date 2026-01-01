@@ -17,6 +17,10 @@ model Worker {
 
   nationality Nationality? @relation(fields: [nationalityId], references: [id])
 
+  // [Dynamic Extension]
+  attributes Json? @map("attributes") @db.JsonB // General dynamic attributes
+  healthData Json? @map("health_data") @db.JsonB // Health-related dynamic attributes
+
   // REMOVED: nationality NationalityType
 
   category WorkerCategory @default(general) // Worker Category
