@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Globe } from 'lucide-react';
-import { TAIWAN_CITIES } from '@/data/taiwan-cities';
+
 import { toast } from 'sonner';
 import { translateAddress } from '@/utils/translationUtils';
 
@@ -30,6 +30,7 @@ export default function AddressInput({
     labelPrefix = ''
 }: AddressInputProps) {
     const { register, watch, setValue } = useFormContext();
+    const [cities, setCities] = useState<string[]>([]);
     const [districts, setDistricts] = useState<string[]>([]);
     const [isTranslating, setIsTranslating] = useState(false);
 
@@ -38,33 +39,72 @@ export default function AddressInput({
     const district = watch(districtField);
     const detail = watch(detailField);
 
-    // Update districts when city changes
+    // Initial Fetch Cities
     useEffect(() => {
-        if (city && TAIWAN_CITIES[city]) {
-            setDistricts(TAIWAN_CITIES[city]);
-            // If current district is not in new city list, clear it
-            if (district && !TAIWAN_CITIES[city].includes(district)) {
-                setValue(districtField, '');
-            }
+        fetch('/api/utils/cities')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setCities(data);
+                }
+            })
+            .catch(err => console.error('Failed to fetch cities:', err));
+    }, []);
+
+    // Fetch Districts when city changes
+    useEffect(() => {
+        if (city) {
+            fetch(`/api/utils/districts?city=${city}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        setDistricts(data);
+                        // Validate current district
+                        if (district && !data.includes(district)) {
+                            setValue(districtField, '');
+                        }
+                    }
+                })
+                .catch(err => console.error('Failed to fetch districts:', err));
         } else {
             setDistricts([]);
+            setValue(districtField, '');
         }
-    }, [city, district, districtField, setValue]);
+    }, [city, setValue, districtField]);
 
-    // Auto-fill from Zip
+    // Auto-fill Zip when City/District changes
+    useEffect(() => {
+        if (city && district) {
+            // Check if current zip matches already? 
+            // We only autofill if zip is empty or we want to force consistency.
+            // Usually valid to overwrite to ensure correctness.
+            // But we must debounce or avoid conflict with manual zip typing.
+            // Let's only fetch if zip is empty OR if the user just selected city/district
+
+            fetch(`/api/utils/zip-code?city=${city}&district=${district}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.zipCode && data.zipCode !== zip) {
+                        setValue(zipField, data.zipCode);
+                    }
+                })
+                .catch(() => {
+                    // Ignore 404
+                });
+        }
+    }, [city, district, setValue, zipField]); // Removed zip from dependency to avoid loop? No, if zip changes we don't need to re-fetch zip.
+
+    // Auto-fill from Zip Manual Entry
     const handleZipBlur = async () => {
         if (!zip || zip.length < 3) return;
 
         try {
-            const res = await fetch(`/api/address/lookup?zip=${zip}`);
+            const res = await fetch(`/api/utils/lookup?zipCode=${zip}`);
             if (res.ok) {
                 const data = await res.json();
-                // data: { zip, city, district, fullEn }
+                // data: { city, district }
                 if (data.city) setValue(cityField, data.city);
                 if (data.district) setValue(districtField, data.district);
-
-                // If we also get English address part, we can store it temporarily or just use for translation later
-                // But fullEn usually contains "Dist., City".
             }
         } catch (error) {
             console.error('Failed to lookup address:', error);
@@ -76,10 +116,6 @@ export default function AddressInput({
         // Only compose if we have at least city and district
         if (city && district) {
             const composed = `${zip || ''}${city}${district}${detail || ''}`;
-            // Avoid overwriting if user manually edited full address field separately? 
-            // Design choice: fullAddressField is the source of truth for submission, but UI uses parts.
-            // Check if fullAddressField matches what we expect, to avoid loops if we sync back.
-            // For now, simple binding: changes in parts -> update full
             setValue(fullAddressField, composed, { shouldValidate: true });
         }
     }, [zip, city, district, detail, fullAddressField, setValue]);
@@ -93,36 +129,49 @@ export default function AddressInput({
 
         setIsTranslating(true);
         try {
-            const res = await fetch(`/api/address/lookup?zip=${zip || ''}`); // Try lookup by zip first for accurate City/Dist En
+            const res = await fetch(`/api/utils/lookup?zipCode=${zip || ''}`); // Try lookup by zip first for accurate City/Dist En
 
             let cityEn = '';
             let districtEn = '';
 
             if (res.ok) {
-                const data = await res.json();
-                // Parse fullEn "Zhongzheng Dist., Taipei City"
-                // Split by comma
-                const parts = data.fullEn.split(',').map((p: string) => p.trim());
-                if (parts.length >= 2) {
-                    districtEn = parts[0];
-                    cityEn = parts[1];
+                // Since we don't have full english address in simple lookup anymore (addressService provides city/dist maps),
+                // we might need to rely on translation utils or enhance lookup.
+                // Re-checking addressService... it stores English names in countyMap!
+                // But my /lookup endpoint currently returns { city: "xxx", district: "yyy" } from zipCodeMap.
+                // It does NOT return English names.
+                // I should update /lookup or use `translateAddress` from utils.
+
+                // Let's use the explicit translation endpoint or utils if available.
+                // The original code tried to use lookup data. 
+                // Let's call /api/utils/translate-address (if it exists) or rely on `translateAddress` imported from client utils.
+                // But client `translateAddress` (from '@/utils/translationUtils') might be basic.
+                // The server has a robust one.
+
+                // Use Server-side translation
+                const fullAddr = `${zip || ''}${city}${district}${detail}`;
+                const transRes = await fetch('/api/utils/translate-address', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address: fullAddr })
+                });
+
+                if (transRes.ok) {
+                    const transData = await transRes.json();
+                    setValue(englishAddressField, transData.addressEn);
+                    toast.success('地址翻譯完成');
+                    return;
                 }
             } else {
-                // Fallback translation if API fails or zip not found
-                // We should add client-side fallback using pinyin-pro if API fails
-                // (Omitted for brevity, assuming API roughly works or we use utils)
+                // Fallback
             }
 
-            // Translate Street part
+            // Fallback to client-side or error
             const streetEn = translateAddress(detail);
+            // Basic fallback
+            setValue(englishAddressField, `${streetEn}, ${district}, ${city} ${zip || ''}, Taiwan`);
+            toast.success('地址翻譯完成 (僅部分翻譯)');
 
-            // Compose: No. 123, Street, Dist., City, 10041, Taiwan
-            // Format: Street, District, City Zip
-            // Or: Street, District, City, Zip
-            const fullEn = `${streetEn}, ${districtEn || district}, ${cityEn || city} ${zip || ''}, Taiwan (R.O.C.)`;
-
-            setValue(englishAddressField, fullEn);
-            toast.success('地址翻譯完成');
         } catch (error) {
             console.error('Translation failed', error);
             toast.error('翻譯失敗');
@@ -152,7 +201,7 @@ export default function AddressInput({
                             <SelectValue placeholder="選擇縣市" />
                         </SelectTrigger>
                         <SelectContent>
-                            {Object.keys(TAIWAN_CITIES).map(cityName => (
+                            {cities.map(cityName => (
                                 <SelectItem key={cityName} value={cityName}>{cityName}</SelectItem>
                             ))}
                         </SelectContent>

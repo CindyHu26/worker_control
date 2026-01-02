@@ -3,6 +3,9 @@ import path from 'path';
 
 // In-memory data stores
 const countyMap = new Map<string, string>(); // "臺北市信義區" -> "Xinyi Dist., Taipei City"
+const zipCodeMap = new Map<string, { city: string, district: string }>(); // "110" -> { city: "臺北市", district: "信義區" }
+const cityDistrictsMap = new Map<string, string[]>(); // "臺北市" -> ["中正區", "信義區", ...]
+const reverseZipMap = new Map<string, string>(); // "臺北市中正區" -> "100"
 const roadMap = new Map<string, string>();   // "信義路" -> "Xinyi Rd."
 const villageMap = new Map<string, string>(); // "永吉里" -> "Yongji Vil."
 
@@ -24,14 +27,58 @@ export async function loadAddressDatasets() {
         const countyData = fs.readFileSync(path.join(datasetPath, 'county_10706.csv'), 'utf-8');
         const countyLines = countyData.split('\n').filter(line => line.trim());
 
-        for (const line of countyLines) {
+        // Temporary map to collect districts set to avoid duplicates
+        const tempCityDistricts = new Map<string, Set<string>>();
+
+        for (const rawLine of countyLines) {
+            const line = rawLine.trim();
             // Format: 100,臺北市中正區,"Zhongzheng Dist., Taipei City"
-            const match = line.match(/^\d+,([^,]+),"?([^"]+)"?$/);
+            // We capture the zip code group now: ^(\d+)
+            const match = line.match(/^(\d+),([^,]+),"?([^"]+)"?$/);
             if (match) {
-                const chineseName = match[1].trim();
-                const englishName = match[2].trim().replace(/"/g, '');
+                const zipCode = match[1].trim();
+                const chineseName = match[2].trim();
+                const englishName = match[3].trim().replace(/"/g, '');
+
                 countyMap.set(chineseName, englishName);
+
+                // Split City/District for Zip Code Map
+                // Regex tries to find the boundary between City (ending in 縣/市) and District (ending in 區/鎮/鄉/市)
+                // Note: "新竹市東區" matches City=新竹市, District=東區. "宜蘭縣宜蘭市" matches City=宜蘭縣, District=宜蘭市.
+                // Special handling for "釣魚台", "南海諸島" which might not fit perfect patterns, regex might return null.
+                const splitMatch = chineseName.match(/^(.+?[縣市])(.+?[區鎮鄉市])$/);
+                if (splitMatch) {
+                    const city = splitMatch[1];
+                    const district = splitMatch[2];
+
+                    zipCodeMap.set(zipCode, { city, district });
+                    reverseZipMap.set(chineseName, zipCode); // "臺北市中正區" -> "100"
+
+                    // Add to City/District Map
+                    if (!tempCityDistricts.has(city)) {
+                        tempCityDistricts.set(city, new Set());
+                    }
+                    tempCityDistricts.get(city)!.add(district);
+                } else {
+                    // Fallback for cases like "釣魚台" (no city/district structure)
+                    // We treat the whole name as city or handle specifically if needed. 
+                    // For now, let's treat the whole part as "District" with empty City if it doesn't match standard pattern, 
+                    // or just ignore if it's not critical for the "City/District" dropdowns.
+                    // Given the request is specific about "City"+"District" fields, we store what we can.
+                    zipCodeMap.set(zipCode, {
+                        city: '',
+                        district: chineseName
+                    });
+                    // We don't add to cascading maps if it doesn't fit the structure
+                }
             }
+        }
+
+        // Convert Sets to Arrays for the final map
+        for (const [city, districtsSet] of tempCityDistricts) {
+            // Sort districts might be nice? Keeping original order might be better if CSV is sorted.
+            // But Sets don't guarantee order perfectly, so let's just convert.
+            cityDistrictsMap.set(city, Array.from(districtsSet));
         }
 
         // Load Road data
@@ -63,7 +110,7 @@ export async function loadAddressDatasets() {
         }
 
 
-        console.log(`✅ Address datasets loaded: ${countyMap.size} counties, ${roadMap.size} roads, ${villageMap.size} villages`);
+        console.log(`✅ Address datasets loaded: ${countyMap.size} counties, ${roadMap.size} roads, ${villageMap.size} villages, ${zipCodeMap.size} zip codes`);
         isInitialized = true;
     } catch (error) {
         console.error('❌ Failed to load address datasets:', error);
@@ -262,7 +309,40 @@ export function translateAddress(address: string): string {
     return parts.join(', ');
 }
 
+/**
+ * Lookup City and District by Zip Code
+ */
+export function lookupByZipCode(zipCode: string) {
+    return zipCodeMap.get(zipCode) || null;
+}
+
+/**
+ * Get all available Cities
+ */
+export function getCities(): string[] {
+    return Array.from(cityDistrictsMap.keys());
+}
+
+/**
+ * Get Districts for a given City
+ */
+export function getDistricts(city: string): string[] {
+    return cityDistrictsMap.get(city) || [];
+}
+
+/**
+ * Get Zip Code for City and District
+ */
+export function getZipCode(city: string, district: string): string | null {
+    const fullName = city + district;
+    return reverseZipMap.get(fullName) || null;
+}
+
 export const addressService = {
     loadAddressDatasets,
-    translateAddress
+    translateAddress,
+    lookupByZipCode,
+    getCities,
+    getDistricts,
+    getZipCode
 };

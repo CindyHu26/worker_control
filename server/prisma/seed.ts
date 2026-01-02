@@ -128,7 +128,34 @@ async function main() {
         console.log(`✅ Compliance Rule ${r.code} seeded`);
     }
 
-    // 9. Billing Item Definitions (費用項目定義)
+    // 9. Reference Data (通用下拉選單資料)
+    console.log('Seeding reference data...');
+    const referenceData = [
+        // Contract Types
+        { category: 'BUSINESS_CONTRACT_TYPE', code: 'FULL_SERVICE', label: '全權委託 (Full Service)', labelEn: 'Full Service', sortOrder: 1, isSystem: false },
+        { category: 'BUSINESS_CONTRACT_TYPE', code: 'DOCUMENT_ONLY', label: '單辦文件 (Document Only)', labelEn: 'Document Only', sortOrder: 2, isSystem: false },
+        { category: 'BUSINESS_CONTRACT_TYPE', code: 'CONSULTING', label: '顧問服務 (Consulting)', labelEn: 'Consulting', sortOrder: 3, isSystem: false },
+        // Recruitment Types per Taiwan MOL regulations (system protected)
+        { category: 'RECRUITMENT_TYPE', code: 'INITIAL', label: '初次招募', labelEn: 'Initial Recruitment', sortOrder: 1, isSystem: true },
+        { category: 'RECRUITMENT_TYPE', code: 'RE_RECRUIT', label: '重新招募', labelEn: 'Re-Recruitment', sortOrder: 2, isSystem: true },
+        { category: 'RECRUITMENT_TYPE', code: 'REPLACEMENT', label: '遞補', labelEn: 'Replacement', sortOrder: 3, isSystem: true },
+        // Nationalities (system protected)
+        { category: 'NATIONALITY', code: 'TH', label: '泰國', labelEn: 'Thailand', sortOrder: 1, isSystem: true },
+        { category: 'NATIONALITY', code: 'PH', label: '菲律賓', labelEn: 'Philippines', sortOrder: 2, isSystem: true },
+        { category: 'NATIONALITY', code: 'VN', label: '越南', labelEn: 'Vietnam', sortOrder: 3, isSystem: true },
+        { category: 'NATIONALITY', code: 'ID', label: '印尼', labelEn: 'Indonesia', sortOrder: 4, isSystem: true },
+    ];
+
+    for (const ref of referenceData) {
+        await prisma.referenceData.upsert({
+            where: { category_code: { category: ref.category, code: ref.code } },
+            update: { label: ref.label, labelEn: ref.labelEn, sortOrder: ref.sortOrder, isSystem: ref.isSystem },
+            create: ref
+        });
+        console.log(`✅ Reference Data ${ref.category}/${ref.code} seeded`);
+    }
+
+    // 10. Billing Item Definitions (費用項目定義)
     console.log('Seeding billing item definitions...');
     const billingItems = [
         {

@@ -162,3 +162,71 @@ export function useDomesticAgencies() {
 
     return { agencies, loading, error };
 }
+
+// ==========================================
+// Generic Reference Data Hook (for ReferenceData model)
+// ==========================================
+
+export interface GenericReferenceItem {
+    id: string;
+    category: string;
+    code: string;
+    label: string;
+    labelEn?: string;
+    sortOrder: number;
+    isSystem: boolean;
+    isActive: boolean;
+}
+
+/**
+ * Generic hook to fetch reference data by category
+ * @param category - The category code (e.g., 'BUSINESS_CONTRACT_TYPE')
+ */
+export function useReferenceDataByCategory(category: string) {
+    const [data, setData] = useState<GenericReferenceItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!category) {
+            setData([]);
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        fetch(`/api/reference/items/${category}`, { credentials: 'include' })
+            .then(res => {
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                return res.json();
+            })
+            .then(items => {
+                if (Array.isArray(items)) {
+                    setData(items);
+                } else {
+                    setData([]);
+                    setError('Invalid data format');
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                setError(err.message);
+                setData([]);
+                setLoading(false);
+            });
+    }, [category]);
+
+    return { data, loading, error };
+}
+
+/**
+ * Helper to convert GenericReferenceItem[] to options for Select components
+ */
+export function toSelectOptions(items: GenericReferenceItem[]) {
+    return items.map(item => ({
+        value: item.code,
+        label: item.label,
+        labelEn: item.labelEn
+    }));
+}
+

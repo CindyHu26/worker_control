@@ -449,6 +449,9 @@ export type EmployerSearchParams = z.infer<typeof EmployerSearchParamsSchema>;
 /**
  * Bank Response
  */
+/**
+ * Bank Response
+ */
 export const BankResponseSchema = z.object({
     id: z.string().uuid(),
     code: z.string(),
@@ -457,7 +460,17 @@ export const BankResponseSchema = z.object({
     contactPerson: z.string().nullable(),
     phone: z.string().nullable(),
     fax: z.string().nullable(),
-    address: z.string().nullable(),
+    // Standardized Address Fields
+    city: z.string().nullable(),
+    district: z.string().nullable(),
+    addressDetail: z.string().nullable(),
+    zipCode: z.string().nullable(),
+    fullAddress: z.string().nullable(),
+    fullAddressEn: z.string().nullable(),
+
+    // Legacy alias (optional, if frontend relies on it) 
+    address: z.string().nullable().optional(),
+
     notes: z.string().nullable(),
     isActive: z.boolean(),
     createdAt: z.string().datetime().or(z.date()),
@@ -489,7 +502,17 @@ export const CreateBankInputSchema = z.object({
     contactPerson: z.string().optional(),
     phone: z.string().optional(),
     fax: z.string().optional(),
+
+    // Address Fields
+    city: z.string().optional(),
+    district: z.string().optional(),
+    addressDetail: z.string().optional(),
+    zipCode: z.string().optional(),
+    fullAddress: z.string().optional(),
+    fullAddressEn: z.string().optional(),
+    // Legacy support to avoid breaking if submitted
     address: z.string().optional(),
+
     notes: z.string().optional(),
     isActive: z.boolean().optional().default(true)
 });

@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { FACTORY_RANKING_OPTIONS } from '@/lib/applicationConstants';
-import AddressInput from './AddressInput';
+import AddressInput from '@/components/common/AddressInput';
 
 export default function FactoriesSection() {
     const { register, control, setValue, watch, formState: { errors } } = useFormContext<EmployerFormData>();

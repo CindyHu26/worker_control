@@ -49,11 +49,9 @@ model Deployment {
 
   overseasCheckDate DateTime? @map("overseas_check_date") @db.Date
 
-  // Dynamic Contract Type
+  // Dynamic Contract Type (uses ReferenceData category: BUSINESS_CONTRACT_TYPE)
 
-  contractTypeId String? @map("contract_type_id") @db.Uuid
-
-  contractType ContractType? @relation(fields: [contractTypeId], references: [id])
+  contractTypeCode String? @map("contract_type_code") @db.VarChar(50)
 
   // Dynamic Termination Reason
 

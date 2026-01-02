@@ -158,7 +158,7 @@ router.post('/full-entry', async (req, res) => {
         const body = req.body;
         const dynamicAttributes = separateAttributes(body);
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             // 1. Create Worker
             const worker = await tx.worker.create({
                 data: {
@@ -190,6 +190,13 @@ router.post('/full-entry', async (req, res) => {
                     lineId: body.lineId,
                     bankAccountNo: body.bankAccountNo,
                     bankCode: body.bankCode,
+
+                    // Address Fields (Standardized Foreign Address)
+                    foreignCity: body.foreignCity,
+                    foreignDistrict: body.foreignDistrict,
+                    foreignAddressDetail: body.foreignAddressDetail,
+                    foreignZipCode: body.foreignZipCode,
+                    foreignFullAddress: body.foreignFullAddress,
 
                     // Dynamic Fields
                     attributes: dynamicAttributes,
@@ -243,7 +250,7 @@ router.post('/', async (req, res) => {
         // Let's just use the same logic but without deployment
         const dynamicAttributes = separateAttributes(body);
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             const worker = await tx.worker.create({
                 data: {
                     englishName: body.englishName,
@@ -363,7 +370,7 @@ router.post('/:id/transfer', async (req, res) => {
     }
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             // 1. Find Current Active Deployment
             const currentDeployment = await tx.deployment.findFirst({
                 where: {
@@ -460,7 +467,7 @@ router.post('/:id/arrange-entry', async (req, res) => {
     }
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             // 1. Update Worker Info (Pickup Person)
             await tx.worker.update({
                 where: { id },

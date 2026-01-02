@@ -243,26 +243,7 @@ export default function WorkerForm({
                                 Given the plan was "Hybrid", let's keep them STATIC here if they are special (like having file upload button next to them).
                                 Or I can mix.
                             */}
-                            <div>
-                                <Label htmlFor="passportNo">護照號碼</Label>
-                                <Input id="passportNo" {...methods.register('passportNo')} />
-                            </div>
-                            <div>
-                                <Label htmlFor="passportIssueDate">發照日期</Label>
-                                <Input id="passportIssueDate" type="date" {...methods.register('passportIssueDate')} />
-                            </div>
-                            <div>
-                                <Label htmlFor="passportExpiryDate">到期日期</Label>
-                                <Input id="passportExpiryDate" type="date" {...methods.register('passportExpiryDate')} />
-                            </div>
-
-                            <div className="flex items-end">
-                                <Button type="button" variant="outline" className="w-full">
-                                    上傳護照掃描檔
-                                </Button>
-                            </div>
-
-                            {/* Dynamic Extensions for Passport (if any) */}
+                            {/* Dynamic Extensions for Passport (now handles passportNo etc from schema) */}
                             {getFieldsByGroup('passport').map(field => (
                                 <SmartField key={field.name} {...field} />
                             ))}
@@ -286,18 +267,7 @@ export default function WorkerForm({
                                 />
                             </div>
 
-                            {/* Date Fields - Static for now or move to config? 
-                                Let's keep static to match the existing 'deployment' logic which is separate from Worker core 
-                             */}
-                            <div>
-                                <Label htmlFor="deploymentDate">派遣日期</Label>
-                                <Input id="deploymentDate" type="date" {...methods.register('deploymentDate')} />
-                            </div>
-                            <div>
-                                <Label htmlFor="contractEndDate">合約到期</Label>
-                                <Input id="contractEndDate" type="date" {...methods.register('contractEndDate')} />
-                            </div>
-
+                            {/* Dynamic Fields including contractStartDate, contractEndDate */}
                             {getFieldsByGroup('deployment').map(field => (
                                 <SmartField key={field.name} {...field} />
                             ))}

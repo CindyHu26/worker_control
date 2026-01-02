@@ -12,6 +12,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import SmartForm from '@/components/form/SmartForm';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import { FieldConfig } from '@/types/form-config';
 import { apiGet, apiPost, apiPut } from '@/lib/api';
 import { flattenEntityData } from '@/lib/form-utils';
@@ -106,7 +107,10 @@ export default function EntityDetailPage() {
 
     if (loading) {
         return (
-            <div className="container mx-auto py-6">
+            <StandardPageLayout
+                title="Loading..."
+                description="Please wait"
+            >
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex items-center justify-center p-8">
@@ -114,91 +118,92 @@ export default function EntityDetailPage() {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+            </StandardPageLayout>
         );
     }
 
     if (error && !schema.length) {
         return (
-            <div className="container mx-auto py-6">
+            <StandardPageLayout
+                title="Error"
+                description="Failed to load"
+                actions={
+                    <Button variant="outline" onClick={handleBack}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to List
+                    </Button>
+                }
+            >
                 <Card>
                     <CardContent className="pt-6">
                         <div className="text-center text-destructive">
                             <h2 className="text-xl font-semibold mb-2">Error</h2>
                             <p>{error}</p>
-                            <Button onClick={handleBack} className="mt-4">
-                                Back to List
-                            </Button>
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+            </StandardPageLayout>
         );
     }
 
     return (
-        <div className="container mx-auto py-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={handleBack}>
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">
-                            {isNew ? `New ${displayName}` : `Edit ${displayName}`}
-                        </h1>
-                        <p className="text-muted-foreground">
-                            {isNew
-                                ? `Create a new ${displayName.toLowerCase()} record`
-                                : `Editing record: ${id.substring(0, 8)}...`
-                            }
-                        </p>
+        <StandardPageLayout
+            title={isNew ? `New ${displayName}` : `Edit ${displayName}`}
+            description={
+                isNew
+                    ? `Create a new ${displayName.toLowerCase()} record`
+                    : `Editing record: ${id.substring(0, 8)}...`
+            }
+            actions={
+                <Button variant="outline" onClick={handleBack}>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                </Button>
+            }
+        >
+            <div className="space-y-4">
+                {/* Error Display */}
+                {error && (
+                    <div className="rounded-md bg-destructive/15 p-4 text-destructive">
+                        {error}
                     </div>
-                </div>
+                )}
+
+                {/* Form */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Details</CardTitle>
+                        <CardDescription>
+                            Fill in the fields below. Fields marked with ● are core database columns.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <SmartForm
+                            config={schema}
+                            defaultValues={defaultValues}
+                            onSubmit={handleSubmit}
+                            submitLabel={
+                                saving
+                                    ? 'Saving...'
+                                    : isNew
+                                        ? 'Create'
+                                        : 'Save Changes'
+                            }
+                            className="max-w-2xl"
+                        />
+                    </CardContent>
+                </Card>
+
+                {/* Debug Info (dev only) */}
+                {process.env.NODE_ENV === 'development' && (
+                    <details className="text-xs text-muted-foreground">
+                        <summary className="cursor-pointer">Debug: Schema Info</summary>
+                        <pre className="mt-2 p-2 bg-muted rounded overflow-auto max-h-48">
+                            {JSON.stringify({ entity, id, isNew, schemaCount: schema.length }, null, 2)}
+                        </pre>
+                    </details>
+                )}
             </div>
-
-            {/* Error Display */}
-            {error && (
-                <div className="rounded-md bg-destructive/15 p-4 text-destructive">
-                    {error}
-                </div>
-            )}
-
-            {/* Form */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Details</CardTitle>
-                    <CardDescription>
-                        Fill in the fields below. Fields marked with ● are core database columns.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <SmartForm
-                        config={schema}
-                        defaultValues={defaultValues}
-                        onSubmit={handleSubmit}
-                        submitLabel={
-                            saving
-                                ? 'Saving...'
-                                : isNew
-                                    ? 'Create'
-                                    : 'Save Changes'
-                        }
-                        className="max-w-2xl"
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Debug Info (dev only) */}
-            {process.env.NODE_ENV === 'development' && (
-                <details className="text-xs text-muted-foreground">
-                    <summary className="cursor-pointer">Debug: Schema Info</summary>
-                    <pre className="mt-2 p-2 bg-muted rounded overflow-auto max-h-48">
-                        {JSON.stringify({ entity, id, isNew, schemaCount: schema.length }, null, 2)}
-                    </pre>
-                </details>
-            )}
-        </div>
+        </StandardPageLayout>
     );
 }

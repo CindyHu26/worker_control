@@ -44,7 +44,7 @@ import workerDocumentRoutes from './workerDocuments';
 import referenceDataRoutes from './referenceData';
 import relocationRoutes from './relocation';
 import employerCategoryRoutes from './employerCategories';
-import contractTypeRoutes from './contractTypes';
+// import contractTypeRoutes from './contractTypes'; // REMOVED - Uses ReferenceData now
 import countryRoutes from './countries';
 // import jobTypeRoutes from './jobTypes';
 import industryRoutes from './industries';
@@ -61,6 +61,7 @@ import addressRouter from './address';
 const router = Router();
 
 router.use('/address', addressRouter);
+router.use('/utils', utilsRoutes);
 router.use('/partner-agency-contracts', partnerAgencyContractRoutes);
 router.use('/departments', departmentRoutes);
 
@@ -105,7 +106,7 @@ router.use('/tax-config', taxConfigRoutes);
 router.use('/search', searchRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/leads', leadsRoutes);
-router.use('/utils', utilsRoutes);
+// router.use('/utils', utilsRoutes); // Moved up
 // router.use('/interviews', interviewsRouter);
 router.use('/hospitals', hospitalRoutes);
 
@@ -127,7 +128,7 @@ router.use('/banks', bankRoutes);
 router.use('/partner-agencies', partnerAgencyRoutes);
 
 router.use('/loan-banks', loanBankRoutes);
-router.use('/contract-types', contractTypeRoutes);
+// router.use('/contract-types', contractTypeRoutes); // REMOVED - Uses ReferenceData now
 router.use('/countries', countryRoutes);
 
 import billingPlanRoutes from './billingPlans';

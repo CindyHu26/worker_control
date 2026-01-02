@@ -31,15 +31,13 @@ export const workerFormSchema: FieldDefinition[] = [
     placeholder: '約翰'
   },
   {
-    name: 'nationalityId', // Changed from nationality string to ID for relation, but frontend might select ID
+    name: 'nationalityId',
     label: '國籍',
     type: 'select',
     required: true,
     core: true,
     group: 'basic',
-    options: [
-      // In a real app, these might come from a separate API call or be injected
-    ]
+    options: [] // Populated by frontend or API
   },
   {
     name: 'dob',
@@ -55,8 +53,8 @@ export const workerFormSchema: FieldDefinition[] = [
     core: true,
     group: 'basic',
     options: [
-        { label: '男性', value: 'Male' },
-        { label: '女性', value: 'Female' }
+      { label: '男性', value: 'Male' },
+      { label: '女性', value: 'Female' }
     ]
   },
   {
@@ -66,60 +64,114 @@ export const workerFormSchema: FieldDefinition[] = [
     core: true,
     group: 'basic'
   },
-  
-  // --- Address (Core) ---
+
+  // --- Address (Foreign) ---
   {
-    name: 'foreignAddress', // Note: schema has split fields but simple form uses one? Let's check schema.
-    // Schema has: foreignCity, foreignDistrict, foreignAddressDetail.
-    // For now, let's map to 'foreignFullAddress' or just 'foreignAddressDetail' if we want simple.
-    // Let's assume we map to 'foreignAddressDetail' for the simple input.
-    label: '國外地址',
+    name: 'foreignCity',
+    label: '國外地址 (城市)',
     type: 'text',
     core: true,
     group: 'basic'
-    // actually schema mapping logic needs to handle this. 
-    // If core=true, it expects `worker[name]`.
+  },
+  {
+    name: 'foreignDistrict',
+    label: '國外地址 (區域)',
+    type: 'text',
+    core: true,
+    group: 'basic'
+  },
+  {
+    name: 'foreignAddressDetail',
+    label: '國外路段地址',
+    type: 'text', // text-area?
+    core: true,
+    group: 'basic'
+  },
+  /*
+  {
+    name: 'foreignZipCode',
+    label: '郵遞區號 (國外)',
+    type: 'text',
+    core: true,
+    group: 'basic'
+  },
+  */
+
+  // --- Passport Info ---
+  {
+    name: 'passportNumber',
+    label: '護照號碼',
+    type: 'text',
+    core: true, // Handled by route logic
+    group: 'passport',
+    required: true
+  },
+  {
+    name: 'passportIssueDate',
+    label: '發照日期',
+    type: 'date',
+    core: true,
+    group: 'passport'
+  },
+  {
+    name: 'passportExpiryDate',
+    label: '到期日期',
+    type: 'date',
+    core: true,
+    group: 'passport'
   },
 
-  // --- Dynamic Attributes (JSONB) ---
-  // These are examples of fields that might NOT be in the core schema directly
-  // or are currently in schema but we want to fail-over to JSON if removed?
-  // No, let's add some NEW fields that are definitely Regulation-based.
-  
+  // --- Deployment Info ---
   {
-      name: 'vaccineStage',
-      label: '疫苗劑次',
-      type: 'select',
-      core: false, // Stored in attributes
-      group: 'health',
-      options: [
-          { label: '未施打', value: '0' },
-          { label: '第一劑', value: '1' },
-          { label: '第二劑', value: '2' },
-          { label: '第三劑', value: '3' },
-          { label: '第四劑', value: '4' }
-      ]
+    name: 'contractStartDate',
+    label: '派遣日期 (合約起始)',
+    type: 'date',
+    core: true,
+    group: 'deployment'
   },
   {
-      name: 'epidemicHotel',
-      label: '防疫旅館',
-      type: 'text',
-      core: false,
-      group: 'health',
-      placeholder: '請輸入旅館名稱'
+    name: 'contractEndDate',
+    label: '合約到期日',
+    type: 'date',
+    core: true,
+    group: 'deployment'
   },
-    {
-      name: 'height',
-      label: '身高 (cm)',
-      type: 'number',
-      core: true, 
-      group: 'personal'
-    },
-    {
-      name: 'weight',
-      label: '體重 (kg)',
-      type: 'number',
-      core: true, 
-      group: 'personal'
-    }
+
+  // --- Dynamic Attributes (Health / Personal) ---
+  {
+    name: 'vaccineStage',
+    label: '疫苗劑次',
+    type: 'select',
+    core: false,
+    group: 'health',
+    options: [
+      { label: '未施打', value: '0' },
+      { label: '第一劑', value: '1' },
+      { label: '第二劑', value: '2' },
+      { label: '第三劑', value: '3' },
+      { label: '第四劑', value: '4' }
+    ]
+  },
+  {
+    name: 'epidemicHotel',
+    label: '防疫旅館',
+    type: 'text',
+    core: false,
+    group: 'health',
+    placeholder: '請輸入旅館名稱'
+  },
+  {
+    name: 'height',
+    label: '身高 (cm)',
+    type: 'number',
+    core: true,
+    group: 'personal'
+  },
+  {
+    name: 'weight',
+    label: '體重 (kg)',
+    type: 'number',
+    core: true,
+    group: 'personal'
+  }
 ];

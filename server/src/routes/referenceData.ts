@@ -189,4 +189,134 @@ router.get('/departments', async (req, res) => {
     }
 });
 
+// ==========================================
+// Generic Reference Data CRUD (for Master Data Management)
+// ==========================================
+
+/**
+ * GET /api/reference/categories
+ * Returns distinct categories from ReferenceData
+ */
+router.get('/categories', async (req, res) => {
+    try {
+        const categories = await prisma.referenceData.findMany({
+            select: { category: true },
+            distinct: ['category'],
+            orderBy: { category: 'asc' }
+        });
+        res.json(categories.map(c => c.category));
+    } catch (error: any) {
+        console.error('Error fetching reference categories:', error);
+        res.status(500).json({ error: 'Failed to fetch categories' });
+    }
+});
+
+/**
+ * GET /api/reference/items/:category
+ * Returns all items for a specific category
+ */
+router.get('/items/:category', async (req, res) => {
+    try {
+        const items = await prisma.referenceData.findMany({
+            where: {
+                category: req.params.category,
+                isActive: true
+            },
+            orderBy: { sortOrder: 'asc' }
+        });
+        res.json(items);
+    } catch (error: any) {
+        console.error('Error fetching reference items:', error);
+        res.status(500).json({ error: 'Failed to fetch items' });
+    }
+});
+
+/**
+ * POST /api/reference/items/:category
+ * Create new reference data item
+ */
+router.post('/items/:category', async (req, res) => {
+    try {
+        const { code, label, labelEn, sortOrder, metadata } = req.body;
+
+        if (!code || !label) {
+            return res.status(400).json({ error: 'Code and label are required' });
+        }
+
+        const item = await prisma.referenceData.create({
+            data: {
+                category: req.params.category,
+                code,
+                label,
+                labelEn,
+                sortOrder: sortOrder || 0,
+                metadata,
+                isSystem: false
+            }
+        });
+        res.status(201).json(item);
+    } catch (error: any) {
+        console.error('Error creating reference item:', error);
+        if (error.code === 'P2002') {
+            return res.status(400).json({ error: 'Code already exists in this category' });
+        }
+        res.status(500).json({ error: 'Failed to create item' });
+    }
+});
+
+/**
+ * PUT /api/reference/items/:category/:code
+ * Update reference data item
+ */
+router.put('/items/:category/:code', async (req, res) => {
+    try {
+        const { label, labelEn, sortOrder, isActive, metadata } = req.body;
+
+        const existing = await prisma.referenceData.findUnique({
+            where: { category_code: { category: req.params.category, code: req.params.code } }
+        });
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        const item = await prisma.referenceData.update({
+            where: { category_code: { category: req.params.category, code: req.params.code } },
+            data: { label, labelEn, sortOrder, isActive, metadata }
+        });
+        res.json(item);
+    } catch (error: any) {
+        console.error('Error updating reference item:', error);
+        res.status(500).json({ error: 'Failed to update item' });
+    }
+});
+
+/**
+ * DELETE /api/reference/items/:category/:code
+ * Delete reference data item (blocked if isSystem)
+ */
+router.delete('/items/:category/:code', async (req, res) => {
+    try {
+        const existing = await prisma.referenceData.findUnique({
+            where: { category_code: { category: req.params.category, code: req.params.code } }
+        });
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        if (existing.isSystem) {
+            return res.status(403).json({ error: 'Cannot delete system items' });
+        }
+
+        await prisma.referenceData.delete({
+            where: { category_code: { category: req.params.category, code: req.params.code } }
+        });
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Error deleting reference item:', error);
+        res.status(500).json({ error: 'Failed to delete item' });
+    }
+});
+
 export default router;

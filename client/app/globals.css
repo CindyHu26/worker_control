@@ -8,6 +8,12 @@
   --background-end-rgb: 241, 245, 249;
 }
 
+/* Prevent double scrollbars - only layout containers should scroll */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(to bottom right, rgb(var(--background-start-rgb)), rgb(var(--background-end-rgb)));

@@ -45,7 +45,9 @@ router.post('/agency-companies', async (req, res) => {
     try {
         const {
             name, licenseNo, taxId, responsiblePerson, address, phone, fax, email, isDefault,
-            // New Fields
+            // Address Fields
+            city, district, addressDetail, zipCode, fullAddress,
+            // New Fields that might be in schema or will be ignored if not
             bankName, bankCode, bankBranch, bankAccountNo, bankAccountName,
             sealLargeUrl, sealSmallUrl, logoUrl,
             agencyCode, licenseExpiryDate,
@@ -67,20 +69,23 @@ router.post('/agency-companies', async (req, res) => {
                 licenseNo,
                 taxId,
                 responsiblePerson,
-                fullAddress: address,
+                // Address Mapping
+                city,
+                district,
+                addressDetail,
+                zipCode,
+                fullAddress: fullAddress || address,
+                fullAddressEn: addressEn, // Map addressEn to fullAddressEn
+
                 phone,
                 fax,
                 email,
-                // New Fields - NOT IN SCHEMA
+                // New Fields - NOT IN SCHEMA (Keep commented or handle if schema updated)
                 // bankName, bankCode, bankBranch, bankAccountNo, bankAccountName,
                 // sealLargeUrl, sealSmallUrl, logoUrl,
                 // agencyCode,
                 // licenseExpiryDate: licenseExpiryDate ? new Date(licenseExpiryDate) : null,
-                // Bilingual
-                fullAddressEn: addressEn,
-                // representativeEn, // Not in schema based on view_file (only representativeNameEn in DomesticAgency, not AgencyCompany?)
-                // AgencyCompany has responsiblePerson. No responsiblePersonEn?
-                // Schema has fullAddressEn? Yes.
+
                 isDefault: !!isDefault
             } as any
         });
@@ -96,7 +101,11 @@ router.post('/agency-companies', async (req, res) => {
 router.put('/agency-companies/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { isDefault, licenseExpiryDate, ...otherData } = req.body;
+        const {
+            isDefault, licenseExpiryDate,
+            city, district, addressDetail, zipCode, fullAddress, address, addressEn,
+            ...otherData
+        } = req.body;
 
         if (isDefault) {
             // Unset other defaults
@@ -110,12 +119,18 @@ router.put('/agency-companies/:id', async (req, res) => {
             where: { id },
             data: {
                 ...otherData,
-                licenseExpiryDate: licenseExpiryDate ? new Date(licenseExpiryDate) : null,
+                city,
+                district,
+                addressDetail,
+                zipCode,
+                fullAddress: fullAddress || address,
+                fullAddressEn: addressEn,
+
+                // licenseExpiryDate: licenseExpiryDate ? new Date(licenseExpiryDate) : null,
                 isDefault,
                 // Bilingual
-                nameEn: otherData.nameEn,
-                addressEn: otherData.addressEn,
-                representativeEn: otherData.representativeEn
+                // nameEn: otherData.nameEn,
+                // representativeEn: otherData.representativeEn
             } as any
         });
 

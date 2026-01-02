@@ -12,6 +12,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import SmartTable from '@/components/data-table/SmartTable';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import { FieldConfig } from '@/types/form-config';
 import { apiGet } from '@/lib/api';
 import { Plus, RefreshCw } from 'lucide-react';
@@ -101,7 +102,7 @@ export default function EntityListPage() {
 
     if (error) {
         return (
-            <div className="container mx-auto py-6">
+            <StandardPageLayout title="Error" description="Failed to load data">
                 <Card>
                     <CardContent className="pt-6">
                         <div className="text-center text-destructive">
@@ -113,63 +114,65 @@ export default function EntityListPage() {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+            </StandardPageLayout>
         );
     }
 
     return (
-        <div className="container mx-auto py-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">{displayName}</h1>
-                    <p className="text-muted-foreground">
-                        Manage {displayName.toLowerCase()} using the Universal Entity Architecture
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={handleRefresh} disabled={loading}>
+        <StandardPageLayout
+            title={displayName}
+            description={`Manage ${displayName.toLowerCase()} using the Universal Entity Architecture`}
+            actions={
+                <>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleRefresh}
+                        disabled={loading}
+                    >
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
                     <Button onClick={handleCreate}>
                         <Plus className="h-4 w-4 mr-2" />
                         Create New
                     </Button>
-                </div>
+                </>
+            }
+        >
+            <div className="space-y-4">
+                {/* Schema Info Badge */}
+                {schema.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                            {schema.filter(f => f.isCore).length} Core Fields
+                        </span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                            {schema.filter(f => !f.isCore).length} Dynamic Fields
+                        </span>
+                    </div>
+                )}
+
+                {/* Data Table */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Records</CardTitle>
+                        <CardDescription>
+                            {meta ? `${meta.total} total records` : 'Loading...'}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <SmartTable
+                            entity={entity}
+                            schema={schema}
+                            data={data}
+                            meta={meta || undefined}
+                            onPageChange={handlePageChange}
+                            onRefresh={handleRefresh}
+                            loading={loading}
+                        />
+                    </CardContent>
+                </Card>
             </div>
-
-            {/* Schema Info Badge */}
-            {schema.length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                        {schema.filter(f => f.isCore).length} Core Fields
-                    </span>
-                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                        {schema.filter(f => !f.isCore).length} Dynamic Fields
-                    </span>
-                </div>
-            )}
-
-            {/* Data Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Records</CardTitle>
-                    <CardDescription>
-                        {meta ? `${meta.total} total records` : 'Loading...'}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <SmartTable
-                        entity={entity}
-                        schema={schema}
-                        data={data}
-                        meta={meta || undefined}
-                        onPageChange={handlePageChange}
-                        onRefresh={handleRefresh}
-                        loading={loading}
-                    />
-                </CardContent>
-            </Card>
-        </div>
+        </StandardPageLayout>
     );
 }

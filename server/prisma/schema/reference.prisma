@@ -2,6 +2,25 @@
 // Reference Data and Master Tables
 // ==========================================
 
+// Generic Reference Data for dropdowns
+model ReferenceData {
+  id        String   @id @default(uuid()) @db.Uuid
+  category  String   @db.VarChar(50)  // e.g., BUSINESS_CONTRACT_TYPE, BANK_TYPE
+  code      String   @db.VarChar(50)  // e.g., FULL_SERVICE
+  label     String   @db.VarChar(100) // Display label (Chinese)
+  labelEn   String?  @map("label_en") @db.VarChar(100) // English label
+  sortOrder Int      @default(0) @map("sort_order")
+  isSystem  Boolean  @default(false) @map("is_system") // If true, cannot be deleted by users
+  isActive  Boolean  @default(true) @map("is_active")
+  metadata  Json?    @db.JsonB // Extra fields if needed
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([category, code])
+  @@index([category])
+  @@map("reference_data")
+}
+
 // Application Category (MOL Permit Type)
 model ApplicationCategory {
   id String @id @default(uuid()) @db.Uuid
@@ -180,31 +199,7 @@ model IndustryJobTitle {
   @@map("industry_job_titles")
 }
 
-model ContractType {
-  id String @id @default(uuid()) @db.Uuid
-
-  code String @unique @db.VarChar(50)
-
-  name String @db.VarChar(100)
-
-  isControlled Boolean @default(false) @map("is_controlled")
-
-  description String? @db.Text
-
-  sortOrder Int @default(0) @map("sort_order")
-
-  isActive Boolean @default(true) @map("is_active")
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  // Relations
-
-  deployments Deployment[]
-
-  @@map("contract_types")
-}
+// ContractType model removed - now uses ReferenceData with category: BUSINESS_CONTRACT_TYPE
 
 model Country {
   id        String   @id @default(uuid()) @db.Uuid

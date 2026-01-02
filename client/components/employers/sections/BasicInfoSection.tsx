@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Languages } from 'lucide-react';
 import type { EmployerFormData } from '../EmployerFormSchema';
 import { toCompanyEnglish, toPinyin } from '@/utils/translationUtils';
-import AddressInput from './AddressInput';
+import AddressInput from '@/components/common/AddressInput';
 
 /**
  * BasicInfoSection - 雇主基本資料區塊
