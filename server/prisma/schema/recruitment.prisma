@@ -8,64 +8,97 @@ model JobOrder {
   employerId String @map("employer_id") @db.Uuid
 
   // Basic Info (Added for Phase 0.2)
-
   title String @default("General Worker") @db.VarChar(200)
-
   description String? @db.Text
-
   skillRequirements String? @map("skill_requirements") @db.Text
-
   workLocation String? @map("work_location") @db.VarChar(200)
-
   jobType String? @map("job_type") @db.VarChar(100)
+  
+  // --- Core Identity ---
+  // Distinguish between 初次, 重招, 遞補 using ReferenceData codes
+  recruitmentType String? @map("recruitment_type") @db.VarChar(50)
+  
+  // The official document number (e.g., 勞動發事字第...)
+  letterNumber String? @map("letter_number") @db.VarChar(100)
 
-  requiredCount Int @default(1) @map("required_count")
+  // --- Constraints ---
+  // Limits this letter to a specific country (Optional, if null = any country)
+  countryCode String? @map("country_code") @db.VarChar(10)
+  // Limits to specific work title (e.g., Caregiver)
+  workTitleCode String? @map("work_title_code") @db.VarChar(50)
+
+  // --- Timeline ---
+  issueDate DateTime? @map("issue_date") @db.Date // 發文日期
+  validUntil DateTime? @map("valid_until") @db.Date // 招募有效期限
+
+  // --- The Quota System (Crucial) ---
+  quota Int @default(0) // 核准總名額 (Total approved)
+  
+  // Instead of 20 separate columns, we calculate "Used" dynamically, 
+  // but we store the cached counter for performance.
+  usedQuota Int @default(0) @map("used_quota") // 已使用名額 (Linked to Worker Applications)
+
+  requiredCount Int @default(1) @map("required_count") // Legacy field, might sync with quota or keep for simple orders
+  requiredWorkers Int @default(1) @map("required_workers") // Legacy field
+
+  // --- Genealogy ---
+  // If this is a Supplementary Letter (遞補函), which original letter is it based on?
+  parentJobOrderId String? @map("parent_job_order_id") @db.Uuid
+  parentJobOrder JobOrder? @relation("JobOrderLineage", fields: [parentJobOrderId], references: [id])
+  childJobOrders JobOrder[] @relation("JobOrderLineage")
+
+  // --- Flexible Attributes (The "AppSheet" Power) ---
+  // Store things like: "extensionDate" (展延日期), "isProject" (專案引進), "remarks"
+  attributes Json? @db.JsonB
 
   // Legacy/Other Fields
-
   orderDate DateTime @default(now()) @map("order_date") @db.Date
-
-  requiredWorkers Int @default(1) @map("required_workers")
-
   expectedArrivalDate DateTime? @map("expected_arrival_date") @db.Date
-
   localRecruitmentDeadline DateTime? @map("local_recruitment_deadline") @db.Date
-
   status JobOrderStatus @default(open)
-
   jobCenter String? @map("job_center") @db.VarChar(100)
-
-  nationalityPreference String? @map("nationality_preference") @db.VarChar(50) // Nationality Preference (e.g., "VN,PH,ID")
-
-  genderPreference GenderType? @map("gender_preference") // Gender Preference
-
-  filledCount Int @default(0) @map("filled_count") // Filled Count
+  nationalityPreference String? @map("nationality_preference") @db.VarChar(50) 
+  genderPreference GenderType? @map("gender_preference") 
+  filledCount Int @default(0) @map("filled_count") 
 
   employer Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
-
   createdBy String? @map("created_by") @db.Uuid
-
   updatedBy String? @map("updated_by") @db.Uuid
-
   createdByUser InternalUser? @relation("JobOrderCreatedBy", fields: [createdBy], references: [id])
-
   updatedByUser InternalUser? @relation("JobOrderUpdatedBy", fields: [updatedBy], references: [id])
-
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-
   interviews Interview[]
+  workerApplications WorkerApplication[]
 
   // Soft Delete
-
   isDeleted Boolean @default(false) @map("is_deleted")
-
   deletedAt DateTime? @map("deleted_at")
 
+  @@unique([employerId, letterNumber]) // Prevent duplicate entry of same letter
   @@map("job_orders")
+}
+
+model WorkerApplication {
+  id String @id @default(uuid()) @db.Uuid
+  
+  jobOrderId String @map("job_order_id") @db.Uuid
+  jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+
+  // Can link to a Worker (if already hired/imported) or Candidate (if in process)
+  workerId String? @map("worker_id") @db.Uuid
+  worker Worker? @relation("WorkerApplication", fields: [workerId], references: [id])
+  
+  candidateId String? @map("candidate_id") @db.Uuid
+  candidate Candidate? @relation(fields: [candidateId], references: [id])
+
+  status String @default("ACTIVE") @db.VarChar(20) // ACTIVE, CANCELLED, REJECTED
+  
+  appliedAt DateTime @default(now()) @map("applied_at") @db.Timestamptz
+  
+  @@map("worker_applications")
 }
 
 model Candidate {
@@ -93,6 +126,7 @@ model Candidate {
   createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz
   InterviewCandidate InterviewCandidate[]
+  workerApplications WorkerApplication[]
 
   @@map("candidates")
 }

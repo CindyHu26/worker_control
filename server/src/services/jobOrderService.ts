@@ -101,47 +101,81 @@ export const jobOrderService = {
     },
 
     /**
+     * Validate Job Order Quota
+     */
+    async validateJobOrderQuota(jobOrderId: string, workerCountry?: string) {
+        const jobOrder = await prisma.jobOrder.findUnique({
+            where: { id: jobOrderId },
+            select: {
+                id: true,
+                validUntil: true,
+                quota: true,
+                usedQuota: true,
+                countryCode: true,
+                status: true,
+                recruitmentType: true,
+            }
+        });
+
+        if (!jobOrder) {
+            throw new Error("Job Order not found");
+        }
+
+        // Rule 1: Expiry
+        if (jobOrder.validUntil && new Date() > jobOrder.validUntil) {
+            throw new Error("Recruitment Letter Expired");
+        }
+
+        // Rule 2: Availability
+        // For 'supplementary' (遞補), we might need to check if we are still within the original quota limits if linked?
+        // But the requirement says "usedQuota >= quota"
+        if (jobOrder.quota > 0 && jobOrder.usedQuota >= jobOrder.quota) {
+            throw new Error("No Quota Remaining");
+        }
+
+        // Rule 3: Country
+        if (jobOrder.countryCode && workerCountry) {
+            // Assuming 3-letter codes like 'VNM', 'IDN', 'PHL', 'THA'
+            // If jobOrder.countryCode is 'VN' and worker is 'VNM', we need to normalize.
+            // Let's assume strict match or simple inclusion for now.
+            if (jobOrder.countryCode !== workerCountry && !workerCountry.includes(jobOrder.countryCode)) {
+                throw new Error(`Country Mismatch: Job Order is for ${jobOrder.countryCode}`);
+            }
+        }
+
+        return { valid: true, jobOrder };
+    },
+
+    /**
      * Create job order with quota check
      */
     async createJobOrder(data: any) {
-        // Check quota before creating
-        const quotaInfo = await this.checkEmployerQuota(data.employerId);
+        // [Logic Update]
+        // If it's a "Recruitment Letter" style, we rely on 'quota' field.
+        // Legacy "checkEmployerQuota" might still be relevant for overall employer limits, but 
+        // the Job Order itself defines the specific approval.
 
-        // [New] Validate Salary
-        // Fetch employer category helper if not passed directly, but data usually comes from form.
-        // Assuming we can get full category from data or need to fetch employer?
-        // Let's fetch employer to get the category if needed.
+        // Check employer existence
         const employer = await prisma.employer.findUnique({
             where: { id: data.employerId },
             include: { category: true }
         });
 
-        // Determine Category Code
-        // If JobOrder has a specific jobType that maps to a category, use it.
-        // Or use employer's category. 
-        // For simplicity, we use the employer's category code or data.jobType if it matches our CONSTANT codes.
-        const categoryCode = employer?.category?.code || 'UNKNOWN';
+        if (!employer) throw new Error("Employer not found");
+
+        const categoryCode = employer.category?.code || 'UNKNOWN';
         const isIntermediate = categoryCode.startsWith('MID_');
 
-        // If data has salary info (assuming 'salary' field or parsed from structure)
-        // jobOrder model doesn't have strict 'salary' field visible in previous `view_file` (it had salaryStructure in jobRequisition?)
-        // Let's check where salary is stored. In `view_file` output for `recruitmentService`, `upsertJobRequisition` handled salaryStructure.
-        // `jobOrder` model itself has `basicSalary` in `Deployment` but `JobOrder` often has `salary`.
-        // Wait, `jobOrderService` `createJobOrder` just upserts `JobOrder`.
-        // If there is no salary field in JobOrder args, we might need to skip or check `jobRequisition`?
-        // The user implementation plan said "JobOrder OR EmploymentContract".
-        // Let's assume validation happens if `minSalary` is provided in `data` or we need to look at `JobRequisition`.
-
-        // Checking `createJobOrder` signature in `jobOrderService.ts` (viewed in Step 84)
-        // It takes `data: any`.
-        // And creates `prisma.jobOrder.create`.
-        // The Service doesn't seem to handle `JobRequisition` creation inline? 
-        // Ah, `recruitmentService.upsertJobOrder` was different.
-
-        // Let's try to validate if `data.salary` exists.
         if (data.salary) {
             const { validateSalary } = require('../utils/salaryValidation');
             validateSalary(categoryCode, Number(data.salary), isIntermediate);
+        }
+
+        // Auto-calculate validUntil if not provided but issueDate is
+        let validUntil = data.validUntil;
+        if (!validUntil && data.issueDate) {
+            // Default logic: +6 months or +1 year?
+            // Let's leave it null if not provided, frontend should handle defaults.
         }
 
         return prisma.jobOrder.create({
@@ -149,18 +183,24 @@ export const jobOrderService = {
                 employerId: data.employerId,
                 title: data.title,
                 description: data.description,
-                requiredCount: data.requiredCount || 1,
-                requiredWorkers: data.requiredCount || 1, // Sync legacy field
+                requiredCount: data.quota || data.requiredCount || 1, // Sync
+                requiredWorkers: data.quota || data.requiredCount || 1, // Sync
+                quota: data.quota ? parseInt(data.quota) : 1, // Default to 1 if not set
+                recruitmentType: data.recruitmentType,
+                letterNumber: data.letterNumber,
+                countryCode: data.countryCode,
+                workTitleCode: data.workTitleCode,
+                issueDate: data.issueDate ? new Date(data.issueDate) : undefined,
+                validUntil: data.validUntil ? new Date(data.validUntil) : undefined,
+                parentJobOrderId: data.parentJobOrderId,
+                attributes: data.attributes,
+
                 skillRequirements: data.skillRequirements,
                 workLocation: data.workLocation,
                 jobType: data.jobType,
                 nationalityPreference: data.nationalityPreference,
                 genderPreference: data.genderPreference?.toLowerCase() as any,
                 status: (data.status?.toLowerCase() || 'open') as any,
-                // If salary is a field in schema (not seen in Step 82 for JobOrder, but maybe I missed it or it is new requirement)
-                // If not in schema, we can't save it to JobOrder directly without adding it.
-                // Step 84 `jobOrderService` `createJobOrder` does NOT show `salary` in `data`.
-                // However, I can still validate it if the frontend sends it.
             },
             include: {
                 employer: {

@@ -116,6 +116,8 @@ model Worker {
 
   interviewCandidates InterviewCandidate[]
 
+  workerApplications WorkerApplication[] @relation("WorkerApplication")
+
   payrolls PayrollRecord[]
 
   // Phase 9: Accounting Module Relations

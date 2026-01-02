@@ -295,7 +295,7 @@ importers:
         specifier: ^4.17.25
         version: 4.17.25
       '@types/minio':
-        specifier: ^7.1.0
+        specifier: ^7.1.1
         version: 7.1.1
       '@types/multer':
         specifier: ^2.0.0

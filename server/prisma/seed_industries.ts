@@ -3,12 +3,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 interface IndustryDataItem {
-    行業類別: string;    // code
-    行業名稱: string;    // nameZh
-    發布機關: string;    // issuingAgency
-    機關代碼: string;    // agencyCode
-    版本: string;        // version
-    行業名稱_英文?: string; // nameEn
+    行業大類別: string | null;  // category (A, B, C, etc.)
+    行業別代碼: string;          // code (formerly 行業類別)
+    行業名稱: string;            // nameZh
+    發布機關: string;            // issuingAgency
+    機關代碼: string;            // agencyCode
+    版本: string;                // version
+    行業名稱_英文?: string;       // nameEn
 }
 
 /**
@@ -33,8 +34,9 @@ export async function seedIndustries(prisma: PrismaClient): Promise<number> {
     let count = 0;
     for (const item of industries) {
         await prisma.industry.upsert({
-            where: { code: item.行業類別 },
+            where: { code: item.行業別代碼 },
             update: {
+                category: item.行業大類別,
                 nameZh: item.行業名稱,
                 nameEn: item.行業名稱_英文 || null,
                 issuingAgency: item.發布機關,
@@ -42,13 +44,14 @@ export async function seedIndustries(prisma: PrismaClient): Promise<number> {
                 version: item.版本,
             },
             create: {
-                code: item.行業類別,
+                code: item.行業別代碼,
+                category: item.行業大類別,
                 nameZh: item.行業名稱,
                 nameEn: item.行業名稱_英文 || null,
                 issuingAgency: item.發布機關,
                 agencyCode: item.機關代碼,
                 version: item.版本,
-                isOpen: true,
+                isOpen: false,  // Default to NOT open for foreign workers
             },
         });
         count++;

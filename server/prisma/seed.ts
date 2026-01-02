@@ -401,13 +401,14 @@ async function main() {
             fax: '02-23456780',
             emergencyEmail: 'emergency@example.com',
             zipCode: '100',
-            cityCode: '01',
-            addressZh: '台北市中正區中山南路1號',
-            addressEn: 'No.1, Zhongshan S. Rd., Zhongzheng Dist., Taipei City 100, Taiwan (R.O.C.)',
+            city: '台北市',
+            district: '中正區',
+            addressDetail: '中山南路1號',
+            fullAddress: '台北市中正區中山南路1號',
+            fullAddressEn: 'No.1, Zhongshan S. Rd., Zhongzheng Dist., Taipei City 100, Taiwan (R.O.C.)',
             representativeName: '範例負責人',
             representativeNameEn: 'EXAMPLE REPRESENTATIVE',
             representativeIdNo: 'A123456789',
-            // checkPayableTo: '範例負責人',
             taxId: '12345678',
             permitNumber: '0001',
             permitValidFrom: new Date('2025-01-01'),
@@ -611,21 +612,21 @@ async function main() {
             bankName: '玉山銀行',
             bankNameEn: 'E.SUN Bank',
             phone: '02-21821313',
-            address: '台北市松山區民生東路三段115號'
+            fullAddress: '台北市松山區民生東路三段115號'
         },
         {
             code: '0001',
             bankName: '華南銀行',
             bankNameEn: 'Hua Nan Bank',
             phone: '02-23713111',
-            address: '台北市信義區松仁路123號'
+            fullAddress: '台北市信義區松仁路123號'
         },
         {
             code: '0002',
             bankName: '中國信託',
             bankNameEn: 'CTBC Bank',
             phone: '02-33277777',
-            address: '台北市南港區經貿二路168號'
+            fullAddress: '台北市南港區經貿二路168號'
         }
     ];
 
@@ -836,6 +837,73 @@ async function main() {
         });
         console.log('✅ Work Title: Caretaker seeded');
     }
+
+    // 23. Seed Contract End Reasons (合約終止原因)
+    console.log('Seeding contract end reasons...');
+    const contractEndReasons = [
+        { code: '3', nameZh: '逃跑', sortOrder: 1 },
+        { code: '4', nameZh: '轉出', sortOrder: 2 },
+        { code: '411', nameZh: '被看護者-死亡', sortOrder: 3 },
+        { code: '412', nameZh: '被看護者-由家人照顧', sortOrder: 4 },
+        { code: '413', nameZh: '被看護者-已送照護機構', sortOrder: 5 },
+        { code: '414', nameZh: '被看護者-已聘僱本國看護工', sortOrder: 6 },
+        { code: '415', nameZh: '被看護者-康復', sortOrder: 7 },
+        { code: '416', nameZh: '被看護者-移民', sortOrder: 8 },
+        { code: '421', nameZh: '原雇主-死亡', sortOrder: 9 },
+        { code: '422', nameZh: '原雇主-移民', sortOrder: 10 },
+        { code: '43', nameZh: '漁船被扣押、沉沒或修繕無法作業', sortOrder: 11 },
+        { code: '44', nameZh: '關廠歇業或無法依勞動契約給付工作報酬', sortOrder: 12 },
+        { code: '45', nameZh: '經濟因素不佳，無法給付工作報酬', sortOrder: 13 },
+        { code: '46', nameZh: '業務緊縮或已無工作、照顧需求', sortOrder: 14 },
+        { code: '47', nameZh: '家庭外籍看護工經原雇主同意轉換雇主或工作', sortOrder: 15 },
+        { code: '48', nameZh: '其他原因轉出', sortOrder: 16 },
+        { code: '5', nameZh: '終止委任', sortOrder: 17 },
+        { code: '6', nameZh: '轉換仲介', sortOrder: 18 },
+        { code: '8', nameZh: '廢止聘可', sortOrder: 19 },
+        { code: 'H01', nameZh: '違反就業服務法', sortOrder: 20 },
+        { code: 'H02', nameZh: '違反聘僱許可辦法', sortOrder: 21 },
+        { code: 'H03', nameZh: '公司業務緊縮', sortOrder: 22 },
+        { code: 'H04', nameZh: '工廠關廠、歇業', sortOrder: 23 },
+        { code: 'HAA', nameZh: '聘僱期滿', sortOrder: 24 },
+        { code: 'HAA1', nameZh: '聘僱期滿-續聘(未出境)', sortOrder: 25 },
+        { code: 'HAA2', nameZh: '聘僱期滿-轉換(未出境)', sortOrder: 26 },
+        { code: 'HAA3', nameZh: '聘僱期滿-轉中階(未出境)', sortOrder: 27 },
+        { code: 'HAA4', nameZh: '中途轉中階(未出境)', sortOrder: 28 },
+        { code: 'HAC', nameZh: '聘僱關係終止', sortOrder: 29 },
+        { code: 'HB4', nameZh: '定期健檢逾期', sortOrder: 30 },
+        { code: 'HC1', nameZh: '行蹤不明-機場', sortOrder: 31 },
+        { code: 'HC2', nameZh: '行蹤不明-收容處所', sortOrder: 32 },
+        { code: 'HC3', nameZh: '行蹤不明-仲介公司安置處所', sortOrder: 33 },
+        { code: 'HC4', nameZh: '行蹤不明-外國人自行居住處所', sortOrder: 34 },
+        { code: 'HCO', nameZh: '行蹤不明-雇主處所', sortOrder: 35 },
+        { code: 'HCP', nameZh: '無新雇主承接而出國,業經廢止聘僱', sortOrder: 36 },
+        { code: 'HCS', nameZh: '家庭看護工已由新雇主接續聘僱', sortOrder: 37 },
+        { code: 'HCT', nameZh: '無新雇主承接而出國,未經廢止聘僱', sortOrder: 38 },
+        { code: 'HDC', nameZh: '因案在押', sortOrder: 39 },
+        { code: 'HDF', nameZh: '定期健檢不合格', sortOrder: 40 },
+        { code: 'HEA', nameZh: '初入國健檢逾期', sortOrder: 41 },
+        { code: 'HEB', nameZh: '行蹤不明尋獲', sortOrder: 42 },
+        { code: 'HEC', nameZh: '初入國健檢不合格-法定傳染病', sortOrder: 43 },
+        { code: 'HED', nameZh: '初入國健檢不合格-非法定傳染病', sortOrder: 44 },
+        { code: 'HEE', nameZh: '無法勝任', sortOrder: 45 },
+        { code: 'HEI', nameZh: '因外國人違反中華民國其他法令, 情節重大者', sortOrder: 46 },
+        { code: 'HEO', nameZh: '逾期出國', sortOrder: 47 },
+        { code: 'HEP', nameZh: '返鄉未歸', sortOrder: 48 },
+        { code: 'HEQ', nameZh: '原機遣返', sortOrder: 49 },
+        { code: 'HGE', nameZh: '外勞死亡', sortOrder: 50 },
+        { code: 'OTH', nameZh: '其他', sortOrder: 51 },
+        { code: 'OTH1', nameZh: '轉換期間屆滿無新雇主承接', sortOrder: 52 },
+        { code: 'OTH2', nameZh: '外國人放棄轉換雇主或工作', sortOrder: 53 }
+    ];
+
+    for (const reason of contractEndReasons) {
+        await prisma.contractEndReason.upsert({
+            where: { code: reason.code },
+            update: { nameZh: reason.nameZh, sortOrder: reason.sortOrder },
+            create: reason
+        });
+    }
+    console.log(`✅ ${contractEndReasons.length} Contract End Reasons seeded`);
 
 }
 
