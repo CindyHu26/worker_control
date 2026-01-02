@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AgencyForm from '@/components/agencies/AgencyForm';
 import { Loader2 } from 'lucide-react';
+import { apiGet } from '@/lib/api';
 
 interface AgencyData {
     id: string;
@@ -38,20 +39,17 @@ export default function EditAgencyPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+
+
+    // ...
+
     useEffect(() => {
         const fetchAgency = async () => {
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-                const res = await fetch(`${apiUrl}/settings/agency-companies/${id}`);
-
-                if (!res.ok) {
-                    throw new Error('Failed to fetch agency');
-                }
-
-                const data = await res.json();
+                const data = await apiGet<AgencyData>(`/api/settings/agency-companies/${id}`);
                 setAgency(data);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'An error occurred');
+            } catch (err: any) {
+                setError(err.message || 'An error occurred');
             } finally {
                 setLoading(false);
             }

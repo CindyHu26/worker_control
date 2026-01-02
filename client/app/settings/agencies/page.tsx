@@ -48,6 +48,10 @@ interface ForeignAgency {
     phone?: string;
 }
 
+import { apiGet, apiPost, apiPut } from '@/lib/api';
+
+// ... (imports remain)
+
 export default function AgencySettingsPage() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'internal' | 'foreign'>('internal');
@@ -66,14 +70,13 @@ export default function AgencySettingsPage() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-            const [internalRes, foreignRes] = await Promise.all([
-                fetch(`${apiUrl}/settings/agency-companies`),
-                fetch(`${apiUrl}/settings/foreign-agencies`)
+            const [internalData, foreignData] = await Promise.all([
+                apiGet<AgencyCompany[]>('/api/settings/agency-companies'),
+                apiGet<ForeignAgency[]>('/api/settings/foreign-agencies')
             ]);
 
-            if (internalRes.ok) setInternalAgencies(await internalRes.json());
-            if (foreignRes.ok) setForeignAgencies(await foreignRes.json());
+            setInternalAgencies(internalData);
+            setForeignAgencies(foreignData);
         } catch (error) {
             console.error('Failed to fetch agency data', error);
         } finally {
@@ -81,22 +84,13 @@ export default function AgencySettingsPage() {
         }
     };
 
-
-
     const handleCreateForeign = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-            const res = await fetch(`${apiUrl}/settings/foreign-agencies`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(foreignForm)
-            });
-            if (res.ok) {
-                setShowForeignModal(false);
-                setForeignForm({ country: 'VN' });
-                fetchData();
-            }
+            await apiPost('/api/settings/foreign-agencies', foreignForm);
+            setShowForeignModal(false);
+            setForeignForm({ country: 'VN' });
+            fetchData();
         } catch (error) {
             console.error(error);
         }
@@ -104,12 +98,7 @@ export default function AgencySettingsPage() {
 
     const handleSetDefault = async (id: string) => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-            await fetch(`${apiUrl}/settings/agency-companies/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isDefault: true })
-            });
+            await apiPut(`/api/settings/agency-companies/${id}`, { isDefault: true });
             fetchData();
         } catch (error) {
             console.error(error);

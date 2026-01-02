@@ -37,7 +37,7 @@ router.get('/', async (req: AuthRequest, res) => {
                 comment: {
                     include: {
                         author: {
-                            select: { username: true, email: true }
+                            select: { username: true }
                         }
                     }
                 }

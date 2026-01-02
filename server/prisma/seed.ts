@@ -165,7 +165,7 @@ async function main() {
         },
         {
             code: 'DORMITORY_FEE',
-            name: '宿舍費',
+            name: '膳宿費',
             nameEn: 'Dormitory Fee',
             category: 'DORMITORY_FEE' as const,
             isSystem: true,
@@ -186,6 +186,14 @@ async function main() {
             category: 'AIRPORT_PICKUP' as const,
             isSystem: true,
             sortOrder: 7
+        },
+        {
+            code: 'RENT',
+            name: '房租',
+            nameEn: 'Rent',
+            category: 'DORMITORY_FEE' as const,
+            isSystem: true,
+            sortOrder: 8
         }
     ];
 
@@ -791,6 +799,42 @@ async function main() {
             create: emp
         });
         console.log(`✅ Employee ${emp.code} - ${emp.fullName} seeded`);
+    }
+
+
+    // 22. Seed Work Titles (Job Types)
+    console.log('Seeding work titles...');
+    const manufacturingCat = await prisma.applicationCategory.findUnique({ where: { code: 'MANUFACTURING' } });
+    const homeCareCat = await prisma.applicationCategory.findUnique({ where: { code: 'HOME_CARE' } });
+
+    if (manufacturingCat) {
+        await prisma.workTitle.upsert({
+            where: { categoryId_code: { categoryId: manufacturingCat.id, code: 'FACTORY_WORKER' } },
+            update: {},
+            create: {
+                categoryId: manufacturingCat.id,
+                code: 'FACTORY_WORKER',
+                titleZh: '製造工',
+                titleEn: 'Factory Worker',
+                isIntermediate: false
+            }
+        });
+        console.log('✅ Work Title: Factory Worker seeded');
+    }
+
+    if (homeCareCat) {
+        await prisma.workTitle.upsert({
+            where: { categoryId_code: { categoryId: homeCareCat.id, code: 'CARETAKER' } },
+            update: {},
+            create: {
+                categoryId: homeCareCat.id,
+                code: 'CARETAKER',
+                titleZh: '家庭看護工',
+                titleEn: 'Caretaker',
+                isIntermediate: false
+            }
+        });
+        console.log('✅ Work Title: Caretaker seeded');
     }
 
 }

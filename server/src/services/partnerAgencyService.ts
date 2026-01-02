@@ -66,9 +66,8 @@ export const updatePartnerAgency = async (id: string, data: Prisma.PartnerAgency
 };
 
 export const deletePartnerAgency = async (id: string) => {
-    // Soft delete
-    return prisma.partnerAgency.update({
+    // Hard delete to prevent unique constraint issues on Code
+    return prisma.partnerAgency.delete({
         where: { id },
-        data: { isActive: false },
     });
 };

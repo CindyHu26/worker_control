@@ -67,25 +67,28 @@ router.post('/agency-companies', async (req, res) => {
                 licenseNo,
                 taxId,
                 responsiblePerson,
-                address,
+                fullAddress: address,
                 phone,
                 fax,
                 email,
-                // New Fields
-                bankName, bankCode, bankBranch, bankAccountNo, bankAccountName,
-                sealLargeUrl, sealSmallUrl, logoUrl,
-                agencyCode,
-                licenseExpiryDate: licenseExpiryDate ? new Date(licenseExpiryDate) : null,
+                // New Fields - NOT IN SCHEMA
+                // bankName, bankCode, bankBranch, bankAccountNo, bankAccountName,
+                // sealLargeUrl, sealSmallUrl, logoUrl,
+                // agencyCode,
+                // licenseExpiryDate: licenseExpiryDate ? new Date(licenseExpiryDate) : null,
                 // Bilingual
-                nameEn, addressEn, representativeEn,
+                fullAddressEn: addressEn,
+                // representativeEn, // Not in schema based on view_file (only representativeNameEn in DomesticAgency, not AgencyCompany?)
+                // AgencyCompany has responsiblePerson. No responsiblePersonEn?
+                // Schema has fullAddressEn? Yes.
                 isDefault: !!isDefault
             } as any
         });
 
         res.status(201).json(company);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating agency company:', error);
-        res.status(500).json({ error: 'Failed to create agency company' });
+        res.status(500).json({ error: 'Failed to create agency company', details: error.message || String(error) });
     }
 });
 

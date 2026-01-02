@@ -97,7 +97,7 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ errors: error.issues });
         }
         console.error(error);
-        res.status(500).json({ error: 'Failed to create partner agency' });
+        res.status(500).json({ error: 'Failed to create partner agency', details: (error as any).message || String(error) });
     }
 });
 

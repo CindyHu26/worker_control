@@ -16,7 +16,7 @@ Feature: Billing Plan Generation
     Then 應產生 2000 元 的費用
     And 備註應提示 "護照效期限制"
 
-  Scenario: 宿舍費用關聯 (Dormitory Linkage)
+  Scenario: 房租關聯 (Dormitory Linkage)
     Given 宿舍 A 租金 2000，宿舍 B 租金 1500
     When 移工住 "宿舍 B" 並生成計畫
-    Then 每月應產生 1500 元的宿舍費
+    Then 每月應產生 1500 元的房租

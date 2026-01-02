@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { apiPost, apiPatch } from '@/lib/api';
 
 // Schema Definition (Must match Backend partially but strictly strict for UI)
 const formSchema = z.object({
@@ -103,31 +104,33 @@ export default function PartnerAgencyForm({ initialData, isEdit = false }: Partn
         defaultValues,
     });
 
+
+
+    // ... (imports remain)
+
     const onSubmit = async (values: FormValues) => {
         setIsSubmitting(true);
         try {
+            // Force country code to uppercase
+            if (values.country) {
+                values.country = values.country.toUpperCase();
+            }
+
             const url = isEdit
                 ? `/api/partner-agencies/${initialData.id}`
                 : '/api/partner-agencies';
 
-            const method = isEdit ? 'PATCH' : 'POST';
-
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(values),
-            });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.error || '儲存失敗');
+            if (isEdit) {
+                await apiPatch(url, values);
+            } else {
+                await apiPost(url, values);
             }
 
             toast.success(isEdit ? '更新成功' : '建立成功');
             router.push('/partner-agencies');
             router.refresh();
         } catch (error: any) {
-            toast.error(error.message);
+            toast.error(error.message || '儲存失敗');
         } finally {
             setIsSubmitting(false);
         }

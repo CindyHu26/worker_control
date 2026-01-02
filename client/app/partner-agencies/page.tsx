@@ -17,18 +17,20 @@ interface PartnerAgency {
     isActive: boolean;
 }
 
+import { apiGet, apiDelete } from '@/lib/api';
+
+// ...
+
 export default function PartnerAgencyListPage() {
     const [data, setData] = useState<PartnerAgency[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
         try {
-            const res = await fetch('/api/partner-agencies');
-            if (!res.ok) throw new Error('Failed to fetch');
-            const result = await res.json();
+            const result = await apiGet<{ data: PartnerAgency[] }>('/api/partner-agencies');
             setData(result.data);
         } catch (error) {
-            toast.error('無法載入資料');
+            // Error toast handled globally
         } finally {
             setLoading(false);
         }
@@ -39,16 +41,14 @@ export default function PartnerAgencyListPage() {
     }, []);
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`確定要刪除 "${name}" 嗎?`)) return;
+        // if (!confirm(`確定要刪除 "${name}" 嗎?`)) return;
 
         try {
-            const res = await fetch(`/api/partner-agencies/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('刪除失敗');
-
+            await apiDelete(`/api/partner-agencies/${id}`);
             toast.success('已刪除');
             fetchData();
         } catch (error) {
-            toast.error('刪除失敗');
+            // Error toast handled globally
         }
     };
 

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface BillingItemDefinition {
     id: string;
@@ -18,7 +20,7 @@ const categoryLabels: Record<string, string> = {
     SERVICE_FEE: '服務費',
     ARC_FEE: '居留證費',
     HEALTH_CHECK_FEE: '體檢費',
-    DORMITORY_FEE: '宿舍費',
+    DORMITORY_FEE: '膳宿費',
     MEDICAL_FEE: '醫療費',
     INSURANCE_FEE: '保險費',
     AIRPORT_PICKUP: '接機費',
@@ -47,13 +49,11 @@ export default function BillingItemDefinitionsPage() {
 
     const fetchItems = async () => {
         try {
-            const res = await fetch('/api/billing-item-definitions');
-            if (res.ok) {
-                const data = await res.json();
-                setItems(data);
-            }
+            const data = await apiGet<BillingItemDefinition[]>('/api/billing-item-definitions');
+            setItems(data);
         } catch (error) {
             console.error('Failed to fetch billing item definitions:', error);
+            // Error toast handled globally by apiRequest
         } finally {
             setLoading(false);
         }
@@ -69,29 +69,25 @@ export default function BillingItemDefinitionsPage() {
                 ? `/api/billing-item-definitions/${editingId}`
                 : '/api/billing-item-definitions';
 
-            const method = editingId ? 'PUT' : 'POST';
+            const payload = {
+                ...data,
+                sortOrder: parseInt(data.sortOrder) || 0
+            };
 
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...data,
-                    sortOrder: parseInt(data.sortOrder) || 0
-                })
-            });
-
-            if (res.ok) {
-                await fetchItems();
-                reset();
-                setShowForm(false);
-                setEditingId(null);
+            if (editingId) {
+                await apiPut(url, payload);
             } else {
-                const error = await res.json();
-                alert(error.error || '操作失敗');
+                await apiPost(url, payload);
             }
+
+            toast.success(editingId ? '更新成功' : '新增成功');
+            await fetchItems();
+            reset();
+            setShowForm(false);
+            setEditingId(null);
         } catch (error) {
             console.error('Failed to save:', error);
-            alert('操作失敗');
+            // Error toast handled globally
         }
     };
 
@@ -109,35 +105,23 @@ export default function BillingItemDefinitionsPage() {
         if (!confirm('確定要刪除此帳款科目嗎？')) return;
 
         try {
-            const res = await fetch(`/api/billing-item-definitions/${id}`, {
-                method: 'DELETE'
-            });
-
-            if (res.ok) {
-                await fetchItems();
-            } else {
-                const error = await res.json();
-                alert(error.error || '刪除失敗');
-            }
+            await apiDelete(`/api/billing-item-definitions/${id}`);
+            toast.success('刪除成功');
+            await fetchItems();
         } catch (error) {
             console.error('Failed to delete:', error);
-            alert('刪除失敗');
+            // Error toast handled globally
         }
     };
 
     const handleToggleActive = async (item: BillingItemDefinition) => {
         try {
-            const res = await fetch(`/api/billing-item-definitions/${item.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isActive: !item.isActive })
-            });
-
-            if (res.ok) {
-                await fetchItems();
-            }
+            await apiPut(`/api/billing-item-definitions/${item.id}`, { isActive: !item.isActive });
+            toast.success(item.isActive ? '已停用' : '已啟用');
+            await fetchItems();
         } catch (error) {
             console.error('Failed to toggle:', error);
+            // Error toast handled globally
         }
     };
 
@@ -281,8 +265,8 @@ export default function BillingItemDefinitionsPage() {
                                     <button
                                         onClick={() => handleToggleActive(item)}
                                         className={`px-2 py-1 text-xs rounded ${item.isActive
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-gray-200 text-gray-500'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-gray-200 text-gray-500'
                                             }`}
                                     >
                                         {item.isActive ? '啟用中' : '已停用'}

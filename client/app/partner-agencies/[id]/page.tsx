@@ -4,17 +4,20 @@ import React, { useEffect, useState } from 'react';
 import PageContainer from '@/components/layout/PageContainer';
 import PartnerAgencyForm from '@/components/partner-agencies/PartnerAgencyForm';
 import { toast } from 'sonner';
+import { apiGet } from '@/lib/api';
 
 export default function EditPartnerAgencyPage({ params }: { params: { id: string } }) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
+
+
+    // ...
+
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch(`/api/partner-agencies/${params.id}`);
-                if (!res.ok) throw new Error('Failed to fetch data');
-                const result = await res.json();
+                const result = await apiGet<any>(`/api/partner-agencies/${params.id}`);
                 setData(result);
             } catch (error) {
                 toast.error('無法載入資料');

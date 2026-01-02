@@ -36,6 +36,10 @@ interface AgencyFormProps {
     mode: 'create' | 'edit';
 }
 
+import { apiPost, apiPut } from '@/lib/api';
+
+// ... (imports remain)
+
 export default function AgencyForm({ initialData, mode }: AgencyFormProps) {
     const router = useRouter();
     const [formData, setFormData] = useState<AgencyFormData>({
@@ -55,25 +59,20 @@ export default function AgencyForm({ initialData, mode }: AgencyFormProps) {
         setError(null);
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
             const url = mode === 'create'
-                ? `${apiUrl}/settings/agency-companies`
-                : `${apiUrl}/settings/agency-companies/${formData.id}`;
+                ? '/api/settings/agency-companies'
+                : `/api/settings/agency-companies/${formData.id}`;
 
-            const res = await fetch(url, {
-                method: mode === 'create' ? 'POST' : 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-
-            if (!res.ok) {
-                throw new Error('Failed to save agency');
+            if (mode === 'create') {
+                await apiPost(url, formData);
+            } else {
+                await apiPut(url, formData);
             }
 
             router.push('/settings/agencies');
             router.refresh();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred');
+        } catch (err: any) {
+            setError(err.message || 'An error occurred');
         } finally {
             setLoading(false);
         }
@@ -81,18 +80,7 @@ export default function AgencyForm({ initialData, mode }: AgencyFormProps) {
 
     const handleTranslateAddress = async (chineseAddress: string): Promise<string> => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-            const res = await fetch(`${apiUrl}/address/translate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ address: chineseAddress })
-            });
-
-            if (!res.ok) {
-                throw new Error('Translation failed');
-            }
-
-            const data = await res.json();
+            const data = await apiPost<{ english: string }>('/api/address/translate', { address: chineseAddress });
             if (data.english) {
                 setFormData(prev => ({ ...prev, addressEn: data.english }));
                 return data.english;
