@@ -267,3 +267,15 @@ enum BillToParty {
 
   @@map("bill_to_party")
 }
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  PAGE_VIEW
+  LOGIN
+  LOGOUT
+
+  @@map("audit_action")
+}

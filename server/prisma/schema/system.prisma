@@ -226,3 +226,43 @@ model OfficialAgencyPerson {
 
   @@map("official_agency_personnel")
 }
+
+// ==========================================
+// Audit Log System
+// ==========================================
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  // User Info
+  userId String       @map("user_id") @db.Uuid
+  user   InternalUser @relation("AuditLogs", fields: [userId], references: [id])
+
+  // Operation Details
+  action     AuditAction @map("action")
+  entityType String      @map("entity_type") @db.VarChar(50) // e.g., "worker", "employer", "page"
+  entityId   String?     @map("entity_id") @db.Uuid // Null for PAGE_VIEW and non-entity operations
+
+  // Change Tracking (for UPDATE operations)
+  changes Json? @db.JsonB // { field: { old: X, new: Y } }
+
+  // Request Context
+  requestPath   String  @map("request_path") @db.VarChar(255)
+  requestMethod String  @map("request_method") @db.VarChar(10) // GET, POST, PUT, DELETE
+  ipAddress     String? @map("ip_address") @db.VarChar(45) // IPv4 or IPv6
+  userAgent     String? @map("user_agent") @db.Text
+
+  // Page View Specific (for analyzing time spent)
+  pageViewDuration Int? @map("page_view_duration") // Duration in milliseconds
+
+  // Metadata (additional context as needed)
+  metadata Json? @db.JsonB
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

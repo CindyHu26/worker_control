@@ -1,57 +1,232 @@
 'use client';
 
-import React from 'react';
-import { History, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { apiGet } from '@/lib/api';
+import { formatDistanceToNow } from 'date-fns';
+import { zhTW } from 'date-fns/locale';
+
+interface AuditLog {
+    id: string;
+    action: string;
+    entityType: string;
+    entityId: string | null;
+    requestPath: string;
+    requestMethod: string;
+    ipAddress: string | null;
+    pageViewDuration: number | null;
+    changes: any;
+    metadata: any;
+    createdAt: string;
+    user: {
+        id: string;
+        username: string;
+        name: string;
+    };
+}
 
 export default function AuditLogsPage() {
+    const [logs, setLogs] = useState<AuditLog[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filters, setFilters] = useState({
+        action: '',
+        entityType: '',
+        search: '',
+    });
+
+    const fetchLogs = async () => {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (filters.action) params.append('action', filters.action);
+            if (filters.entityType) params.append('entityType', filters.entityType);
+
+            const data = await apiGet<AuditLog[]>(`/api/audit-logs?${params.toString()}`);
+            setLogs(data);
+        } catch (error) {
+            console.error('Failed to fetch audit logs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    const filteredLogs = logs.filter(log => {
+        if (filters.search) {
+            const searchLower = filters.search.toLowerCase();
+            return (
+                log.user.name.toLowerCase().includes(searchLower) ||
+                log.user.username.toLowerCase().includes(searchLower) ||
+                log.entityType.toLowerCase().includes(searchLower) ||
+                log.requestPath.toLowerCase().includes(searchLower)
+            );
+        }
+        return true;
+    });
+
+    const getActionBadgeColor = (action: string) => {
+        switch (action) {
+            case 'CREATE': return 'bg-green-100 text-green-800';
+            case 'READ': return 'bg-blue-100 text-blue-800';
+            case 'UPDATE': return 'bg-yellow-100 text-yellow-800';
+            case 'DELETE': return 'bg-red-100 text-red-800';
+            case 'PAGE_VIEW': return 'bg-purple-100 text-purple-800';
+            case 'LOGIN': return 'bg-indigo-100 text-indigo-800';
+            case 'LOGOUT': return 'bg-gray-100 text-gray-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const formatDuration = (ms: number | null) => {
+        if (!ms) return '-';
+        const seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(seconds / 60);
+        if (minutes > 0) {
+            return `${minutes}分${seconds % 60}秒`;
+        }
+        return `${seconds}秒`;
+    };
+
     return (
-        <div className="min-h-screen bg-slate-50">
-            <div className="bg-white border-b border-slate-200 px-6 py-4">
-                <div className="max-w-7xl mx-auto">
-                    <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
-                        <Link href="/portal" className="hover:text-blue-600 transition-colors">功能導覽</Link>
-                        <span>/</span>
-                        <span className="text-slate-900 font-medium">操作歷程</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Link href="/portal" className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                                <ArrowLeft size={20} className="text-slate-600" />
-                            </Link>
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-slate-100 rounded-lg">
-                                    <History className="text-slate-600" size={24} />
-                                </div>
-                                <div>
-                                    <h1 className="text-2xl font-bold text-slate-900">系統操作歷程</h1>
-                                    <p className="text-sm text-slate-500">Audit Logs & History</p>
-                                </div>
-                            </div>
+        <StandardPageLayout
+            title="系統稽核日誌"
+            description="查看所有用戶操作記錄與系統活動"
+            actions={
+                <Button onClick={fetchLogs} disabled={loading}>
+                    {loading ? '載入中...' : '重新整理'}
+                </Button>
+            }
+        >
+            <Card className="mb-6">
+                <CardHeader>
+                    <CardTitle>篩選條件</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">操作類型</label>
+                            <Select value={filters.action} onValueChange={(value) => {
+                                setFilters({ ...filters, action: value });
+                                setTimeout(fetchLogs, 100);
+                            }}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="全部" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">全部</SelectItem>
+                                    <SelectItem value="CREATE">新增</SelectItem>
+                                    <SelectItem value="READ">讀取</SelectItem>
+                                    <SelectItem value="UPDATE">更新</SelectItem>
+                                    <SelectItem value="DELETE">刪除</SelectItem>
+                                    <SelectItem value="PAGE_VIEW">頁面瀏覽</SelectItem>
+                                    <SelectItem value="LOGIN">登入</SelectItem>
+                                    <SelectItem value="LOGOUT">登出</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">實體類型</label>
+                            <Input
+                                placeholder="例如: worker, employer"
+                                value={filters.entityType}
+                                onChange={(e) => {
+                                    setFilters({ ...filters, entityType: e.target.value });
+                                }}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">搜尋</label>
+                            <Input
+                                placeholder="用戶、路徑..."
+                                value={filters.search}
+                                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                            />
                         </div>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <History className="text-slate-600" size={32} />
+            <Card>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">時間</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">用戶</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">實體</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">路徑</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">停留時間</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                                            載入中...
+                                        </td>
+                                    </tr>
+                                ) : filteredLogs.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                                            無符合條件的記錄
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredLogs.map((log) => (
+                                        <tr key={log.id} className="hover:bg-gray-50">
+                                            <td className="px-4 py-3 text-sm text-gray-500">
+                                                {formatDistanceToNow(new Date(log.createdAt), {
+                                                    addSuffix: true,
+                                                    locale: zhTW,
+                                                })}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm">
+                                                <div className="font-medium text-gray-900">{log.user.name}</div>
+                                                <div className="text-gray-500">@{log.user.username}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getActionBadgeColor(log.action)}`}>
+                                                    {log.action}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm">
+                                                <div className="font-mono text-xs">{log.entityType}</div>
+                                                {log.entityId && (
+                                                    <div className="text-gray-400 text-xs truncate max-w-[100px]">
+                                                        {log.entityId}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm font-mono text-xs">
+                                                <span className="text-blue-600">{log.requestMethod}</span>{' '}
+                                                {log.requestPath}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-500">
+                                                {formatDuration(log.pageViewDuration)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-500 font-mono text-xs">
+                                                {log.ipAddress || '-'}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">系統存取與修改紀錄</h2>
-                    <p className="text-slate-600 mb-6">追蹤所有使用者的系統操作行為與資料變更歷程</p>
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-2xl mx-auto">
-                        <p className="text-sm text-amber-800">
-                            <span className="font-bold">🚧 功能開發中</span><br />
-                            此頁面將提供以下功能：<br />
-                            • 關鍵資料修改紀錄查詢<br />
-                            • 登入/登出紀錄<br />
-                            • 權限變更歷程<br />
-                            • 異常操作行為警示
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                </CardContent>
+            </Card>
+        </StandardPageLayout>
     );
 }

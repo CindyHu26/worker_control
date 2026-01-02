@@ -188,5 +188,9 @@ model InternalUser {
 
   assignedLeads Lead[] @relation("LeadAssignedUser")
 
+  // Audit Logs
+
+  auditLogs AuditLog[] @relation("AuditLogs")
+
   @@map("internal_users")
 }

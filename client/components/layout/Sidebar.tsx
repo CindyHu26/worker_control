@@ -34,7 +34,7 @@ export default function Sidebar() {
     }
 
     const navItems = [
-        { href: '/', label: '儀表板', subLabel: 'Dashboard', icon: LayoutDashboard },
+        { href: '/dashboard', label: '儀表板', subLabel: 'Dashboard', icon: LayoutDashboard },
         { href: '/portal', label: '功能導覽', subLabel: 'Portal', icon: Grid },
         { href: '/alerts', label: '異常監控', subLabel: 'Alerts', icon: AlertTriangle },
         { href: '/health', label: '體檢管理', subLabel: 'Health Checks', icon: FileText },

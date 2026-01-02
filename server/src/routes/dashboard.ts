@@ -41,25 +41,7 @@ router.get('/stats', async (req, res) => {
             console.error('[Stats] Error counting new entries:', err);
         }
 
-        // Query 3: Birthday count
-        try {
-            const currentMonth = now.getMonth() + 1;
-            const birthdaysResult = await prisma.$queryRaw<[{ count: bigint }]>`
-                SELECT COUNT(*) as count
-                FROM workers w
-                WHERE EXTRACT(MONTH FROM w.dob) = ${currentMonth}
-                AND EXISTS (
-                    SELECT 1 FROM deployments d 
-                    WHERE d.worker_id = w.id 
-                    AND d.status = 'active'
-                )
-            `;
-            birthdaysThisMonth = Number(birthdaysResult[0].count);
-        } catch (err) {
-            console.error('[Stats] Error counting birthdays:', err);
-        }
-
-        // Query 4: Active recruitment letters
+        // Query 3: Active recruitment letters
         try {
             const activeRecruitmentResult = await prisma.$queryRaw<[{ count: bigint }]>`
                 SELECT COUNT(*) as count
@@ -84,42 +66,6 @@ router.get('/stats', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
 });
-
-// GET /api/dashboard/birthdays
-router.get('/birthdays', async (req, res) => {
-    try {
-        const now = getTaiwanToday();
-        const currentMonth = now.getMonth() + 1;
-
-        const birthdays = await prisma.$queryRaw<Array<{
-            id: string;
-            englishName: string;
-            chineseName: string | null;
-            dob: Date;
-            companyName: string;
-        }>>`
-            SELECT 
-                w.id,
-                w.english_name as "englishName",
-                w.chinese_name as "chineseName",
-                w.dob,
-                e.company_name as "companyName"
-            FROM workers w
-            INNER JOIN deployments d ON d.worker_id = w.id
-            INNER JOIN employers e ON e.id = d.employer_id
-            WHERE EXTRACT(MONTH FROM w.dob) = ${currentMonth}
-            AND d.status = 'active'
-            ORDER BY EXTRACT(DAY FROM w.dob) ASC
-            LIMIT 50
-        `;
-
-        res.json(birthdays);
-    } catch (error) {
-        console.error('Birthdays Error:', error);
-        res.status(500).json({ error: 'Failed to fetch birthdays' });
-    }
-});
-
 
 // GET /api/dashboard/alerts
 router.get('/alerts', async (req, res) => {

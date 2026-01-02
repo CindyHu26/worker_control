@@ -57,6 +57,7 @@ import applicationCategoryRoutes from './applicationCategories';
 import workTitleRoutes from './workTitles';
 
 import addressRouter from './address';
+import auditLogsRoutes from './auditLogs';
 
 const router = Router();
 
@@ -104,6 +105,7 @@ router.use('/quota', quotaRoutes); // Assuming quota routes might be separate or
 router.use('/tax', taxRoutes);
 router.use('/tax-config', taxConfigRoutes);
 router.use('/search', searchRoutes);
+router.use('/audit-logs', auditLogsRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/leads', leadsRoutes);
 // router.use('/utils', utilsRoutes); // Moved up
