@@ -65,10 +65,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const logout = () => {
+        // Clear all auth-related cookies
         Cookies.remove('token');
         Cookies.remove('user');
-        localStorage.removeItem('token'); // Sync to localStorage
+        // Clear all auth-related localStorage keys
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Reset user state
         setUser(null);
+        // Redirect to login
         router.push('/login');
     };
 

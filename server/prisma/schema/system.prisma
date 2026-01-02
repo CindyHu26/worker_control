@@ -2,6 +2,30 @@
 // System Features (Alerts, Comments, Compliance)
 // ==========================================
 
+// ==========================================
+// Universal Entity Architecture - Schema Definitions
+// ==========================================
+
+model EntitySchema {
+  id          String   @id @default(uuid()) @db.Uuid
+  entityCode  String   @map("entity_code") @db.VarChar(50) // e.g., "worker", "employer", "dormitory"
+  fieldName   String   @map("field_name") @db.VarChar(100) // e.g., "phoneNumber"
+  label       String   @db.VarChar(100) // Display name for UI
+  fieldType   String   @map("field_type") @db.VarChar(50) // 'text', 'number', 'date', 'select', 'boolean'
+  isCore      Boolean  @default(false) @map("is_core") // TRUE = maps to physical SQL column; FALSE = maps to 'attributes' JSONB
+  options     Json?    @db.JsonB // Store options for select lists (e.g., [{"label": "Option A", "value": "a"}])
+  validation  Json?    @db.JsonB // Store Zod validation rules (e.g., { "required": true })
+  fieldOrder  Int      @default(0) @map("field_order") // For UI sorting
+  fieldGroup  String?  @map("field_group") @db.VarChar(50) // For logical grouping (e.g., "basic", "personal")
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([entityCode, fieldName])
+  @@index([entityCode])
+  @@map("entity_schemas")
+}
+
 model SystemComment {
   id String @id @default(uuid()) @db.Uuid
 

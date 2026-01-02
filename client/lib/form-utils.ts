@@ -39,3 +39,39 @@ export function transformSubmission(data: Record<string, any>, config: FieldConf
 
     return result;
 }
+
+/**
+ * Flattens entity data from hybrid structure (core + attributes JSONB) to flat object.
+ * This is the inverse of transformSubmission.
+ * 
+ * @param data - The hybrid entity data from API
+ * @returns Flat object with all fields at root level for form consumption
+ */
+export function flattenEntityData(data: Record<string, any> | null | undefined): Record<string, any> {
+    if (!data) return {};
+
+    const { attributes, ...coreFields } = data;
+
+    // Merge attributes into core fields at root level
+    return {
+        ...coreFields,
+        ...(attributes && typeof attributes === 'object' ? attributes : {}),
+    };
+}
+
+/**
+ * Gets a value from a hybrid entity object using field config.
+ * Handles both core fields (at root) and dynamic fields (in attributes).
+ * 
+ * @param row - The hybrid entity data
+ * @param fieldName - The field name to access
+ * @param isCore - Whether the field is a core field
+ * @returns The field value
+ */
+export function getFieldValue(row: Record<string, any>, fieldName: string, isCore: boolean): any {
+    if (isCore) {
+        return row[fieldName];
+    }
+    return row.attributes?.[fieldName];
+}
+

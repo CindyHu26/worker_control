@@ -2,8 +2,16 @@ import { PrismaClient } from '@prisma/client';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-const prismaClient = new PrismaClient();
-console.log('LOADING src/prisma.ts with generated client');
+// Global Singleton Pattern to prevent multiple PrismaClient instances in development
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+const prismaClient = globalForPrisma.prisma || new PrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = prismaClient;
+}
+
+console.log('LOADING src/prisma.ts with generated client (singleton)');
 
 const SOFT_DELETE_MODELS = [
     'Employer',

@@ -1,13 +1,16 @@
 import Cookies from 'js-cookie';
+import { toast } from 'sonner';
 
 /**
  * Centralized API utility that automatically attaches Authorization headers
+ * with global error handling and user-friendly toast notifications
  */
 
 const API_BASE_URL = 'http://localhost:3001';
 
 interface FetchOptions extends RequestInit {
     skipAuth?: boolean;
+    skipErrorToast?: boolean; // Allow individual requests to suppress toasts
 }
 
 
@@ -18,7 +21,7 @@ interface FetchOptions extends RequestInit {
  * @returns Response object
  */
 export async function apiFetch(url: string, options: FetchOptions = {}): Promise<Response> {
-    const { skipAuth = false, headers = {}, ...restOptions } = options;
+    const { skipAuth = false, skipErrorToast = false, headers = {}, ...restOptions } = options;
 
     // Use relative path to leverage Next.js proxy (avoids CORS and port issues)
     const fullUrl = url;
@@ -37,39 +40,86 @@ export async function apiFetch(url: string, options: FetchOptions = {}): Promise
         requestHeaders['Authorization'] = `Bearer ${token}`;
     }
 
-    // Make request
-    const response = await fetch(fullUrl, {
-        ...restOptions,
-        headers: requestHeaders,
-    });
-
-    return response;
+    // Make request with network error handling
+    try {
+        const response = await fetch(fullUrl, {
+            ...restOptions,
+            headers: requestHeaders,
+        });
+        return response;
+    } catch (networkError) {
+        // Case D: Network Error (Backend down or no internet)
+        console.error('Network Error:', networkError);
+        if (!skipErrorToast) {
+            toast.error('無法連線至伺服器，請檢查網路 (Cannot connect to server)');
+        }
+        throw networkError;
+    }
 }
 
 /**
  * Make an authenticated API request and parse JSON response
- * Throws error with message if response is not ok
+ * Handles errors globally with user-friendly toast notifications
  */
 export async function apiRequest<T = any>(url: string, options: FetchOptions = {}): Promise<T> {
-    const response = await apiFetch(url, options);
+    const { skipErrorToast = false, ...restOptions } = options;
+    const response = await apiFetch(url, { ...restOptions, skipErrorToast });
 
     if (!response.ok) {
-        if (response.status === 401) {
-            Cookies.remove('token');
-            Cookies.remove('user');
-            if (typeof window !== 'undefined') {
-                window.location.href = '/login';
-            }
-        }
         // Try to parse error message from JSON
         let errorMessage = `Request failed with status ${response.status}`;
         try {
             const errorData = await response.json();
-            errorMessage = errorData.message || errorMessage;
+            errorMessage = errorData.message || errorData.error || errorMessage;
         } catch {
             // If parsing fails, use status text
             errorMessage = response.statusText || errorMessage;
         }
+
+        // Handle different error status codes with appropriate UI feedback
+        switch (response.status) {
+            case 401:
+                // Case A: 401 Unauthorized (Invalid/Expired Token)
+                console.error('Auth Error: Token invalid or expired');
+                if (!skipErrorToast) {
+                    toast.error('登入憑證已過期，請重新登入 (Session expired, please login again)');
+                }
+                // Clear all auth data
+                Cookies.remove('token');
+                Cookies.remove('user');
+                if (typeof window !== 'undefined') {
+                    localStorage.removeItem('token');
+                    // Small delay to allow toast to show before redirect
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1500);
+                }
+                break;
+
+            case 403:
+                // Case B: 403 Forbidden (No Permission)
+                console.error('Permission Error:', errorMessage);
+                if (!skipErrorToast) {
+                    toast.error('您沒有權限執行此動作 (Permission Denied)');
+                }
+                break;
+
+            case 500:
+                // Case C: 500 Internal Server Error
+                console.error('Server Error:', errorMessage);
+                if (!skipErrorToast) {
+                    toast.error('系統發生內部錯誤，工程師已收到通知 (Internal System Error)');
+                }
+                break;
+
+            default:
+                // Other errors (400, 404, etc.)
+                console.error(`API Error (${response.status}):`, errorMessage);
+                if (!skipErrorToast) {
+                    toast.error(errorMessage);
+                }
+        }
+
         throw new Error(errorMessage);
     }
 

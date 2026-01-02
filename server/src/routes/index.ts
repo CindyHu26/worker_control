@@ -169,4 +169,8 @@ router.use('/runaways', runawayRoutes);
 import schemaRoutes from './schemas';
 router.use('/schemas', schemaRoutes);
 
+// Universal Entity Architecture - Generic Data API
+import dataRoutes from './data';
+router.use('/data', dataRoutes);
+
 export default router;
