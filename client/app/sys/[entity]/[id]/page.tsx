@@ -5,10 +5,14 @@
  * 
  * Dynamic form view for creating or editing any entity.
  * Handles both 'new' (Create) and UUID (Edit) routes.
+ * 
+ * URL Strategy:
+ * - Default (/sys/worker/123): View Mode (read-only)
+ * - Edit (/sys/worker/123?mode=edit): Edit Mode (editable)
  */
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import SmartForm from '@/components/form/SmartForm';
@@ -16,7 +20,7 @@ import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import { FieldConfig } from '@/types/form-config';
 import { apiGet, apiPost, apiPut } from '@/lib/api';
 import { flattenEntityData } from '@/lib/form-utils';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Save, Eye } from 'lucide-react';
 
 interface SchemaResponse {
     entityCode: string;
@@ -39,10 +43,15 @@ const ENTITY_DISPLAY_NAMES: Record<string, string> = {
 export default function EntityDetailPage() {
     const router = useRouter();
     const params = useParams();
+    const searchParams = useSearchParams();
+
     const entity = params.entity as string;
     const id = params.id as string;
-
     const isNew = id === 'new';
+
+    // Mode: 'view' (default) or 'edit'
+    const mode = searchParams.get('mode') === 'edit' ? 'edit' : 'view';
+    const isEditMode = mode === 'edit' || isNew; // New records are always in edit mode
 
     const [schema, setSchema] = useState<FieldConfig[]>([]);
     const [defaultValues, setDefaultValues] = useState<Record<string, any>>({});
@@ -87,12 +96,13 @@ export default function EntityDetailPage() {
 
             if (isNew) {
                 await apiPost(`/api/data/${entity}`, data);
+                // Navigate back to list page after creation
+                router.push(`/sys/${entity}`);
             } else {
                 await apiPut(`/api/data/${entity}/${id}`, data);
+                // Return to View mode after save
+                router.push(`/sys/${entity}/${id}`);
             }
-
-            // Navigate back to list page
-            router.push(`/sys/${entity}`);
         } catch (err: any) {
             console.error('Failed to save:', err);
             setError(err.message || 'Failed to save');
@@ -103,6 +113,65 @@ export default function EntityDetailPage() {
 
     const handleBack = () => {
         router.push(`/sys/${entity}`);
+    };
+
+    const handleEdit = () => {
+        router.push(`/sys/${entity}/${id}?mode=edit`);
+    };
+
+    const handleCancelEdit = () => {
+        router.push(`/sys/${entity}/${id}`);
+    };
+
+    // Determine page title based on mode
+    const getPageTitle = () => {
+        if (isNew) return `新增 ${displayName}`;
+        if (isEditMode) return `編輯 ${displayName}`;
+        return `檢視 ${displayName}`;
+    };
+
+    // Determine page description
+    const getPageDescription = () => {
+        if (isNew) return `Create a new ${displayName.toLowerCase()} record`;
+        if (isEditMode) return `Editing record: ${id.substring(0, 8)}...`;
+        return `Viewing record details`;
+    };
+
+    // Render action buttons based on mode
+    const renderActions = () => {
+        if (isNew) {
+            return (
+                <Button variant="outline" onClick={handleBack}>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    取消
+                </Button>
+            );
+        }
+
+        if (isEditMode) {
+            return (
+                <>
+                    <Button variant="outline" onClick={handleCancelEdit}>
+                        <X className="h-4 w-4 mr-2" />
+                        取消編輯
+                    </Button>
+                </>
+            );
+        }
+
+        // View mode
+        return (
+            <>
+                <Button variant="outline" onClick={handleBack}>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    返回列表
+                </Button>
+                <Button onClick={handleEdit}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    編輯
+                </Button>
+            </>
+        );
     };
 
     if (loading) {
@@ -148,20 +217,33 @@ export default function EntityDetailPage() {
 
     return (
         <StandardPageLayout
-            title={isNew ? `New ${displayName}` : `Edit ${displayName}`}
-            description={
-                isNew
-                    ? `Create a new ${displayName.toLowerCase()} record`
-                    : `Editing record: ${id.substring(0, 8)}...`
-            }
-            actions={
-                <Button variant="outline" onClick={handleBack}>
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                </Button>
-            }
+            title={getPageTitle()}
+            description={getPageDescription()}
+            actions={renderActions()}
         >
             <div className="space-y-4">
+                {/* Mode Indicator */}
+                {!isNew && (
+                    <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${isEditMode
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                            {isEditMode ? (
+                                <>
+                                    <Pencil className="h-3 w-3 mr-1.5" />
+                                    編輯模式
+                                </>
+                            ) : (
+                                <>
+                                    <Eye className="h-3 w-3 mr-1.5" />
+                                    檢視模式
+                                </>
+                            )}
+                        </span>
+                    </div>
+                )}
+
                 {/* Error Display */}
                 {error && (
                     <div className="rounded-md bg-destructive/15 p-4 text-destructive">
@@ -174,7 +256,10 @@ export default function EntityDetailPage() {
                     <CardHeader>
                         <CardTitle>Details</CardTitle>
                         <CardDescription>
-                            Fill in the fields below. Fields marked with ● are core database columns.
+                            {isEditMode
+                                ? 'Fill in the fields below. Fields marked with ● are core database columns.'
+                                : 'View record details. Click "編輯" to make changes.'
+                            }
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -184,12 +269,13 @@ export default function EntityDetailPage() {
                             onSubmit={handleSubmit}
                             submitLabel={
                                 saving
-                                    ? 'Saving...'
+                                    ? '儲存中...'
                                     : isNew
-                                        ? 'Create'
-                                        : 'Save Changes'
+                                        ? '建立'
+                                        : '儲存變更'
                             }
                             className="max-w-2xl"
+                            readonly={!isEditMode}
                         />
                     </CardContent>
                 </Card>
@@ -199,7 +285,7 @@ export default function EntityDetailPage() {
                     <details className="text-xs text-muted-foreground">
                         <summary className="cursor-pointer">Debug: Schema Info</summary>
                         <pre className="mt-2 p-2 bg-muted rounded overflow-auto max-h-48">
-                            {JSON.stringify({ entity, id, isNew, schemaCount: schema.length }, null, 2)}
+                            {JSON.stringify({ entity, id, isNew, mode, isEditMode, schemaCount: schema.length }, null, 2)}
                         </pre>
                     </details>
                 )}

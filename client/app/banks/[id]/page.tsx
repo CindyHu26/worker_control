@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import BankForm from '@/components/bank/BankForm';
 import { apiGet } from '@/lib/api';
 import { BankResponse } from '@worker-control/shared';
@@ -40,16 +40,16 @@ export default function EditBankPage() {
 
     if (error) {
         return (
-            <PageContainer title="Error" showBack>
+            <StandardPageLayout title="Error" showBack>
                 <div className="bg-red-50 text-red-600 p-4 rounded-md">
                     {error}
                 </div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="編輯銀行 (Edit Bank)"
             subtitle={`${bank?.bankName} (${bank?.code})`}
             breadcrumbs={[
@@ -62,6 +62,6 @@ export default function EditBankPage() {
             card={false}
         >
             {bank && <BankForm initialData={bank} isEdit />}
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

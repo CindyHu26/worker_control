@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import EmployerForm from '@/components/employers/EmployerForm';
 import { getEmployerBreadcrumbs } from '@/lib/breadcrumbs';
 import { apiGet, apiPut } from '@/lib/api';
@@ -46,7 +46,7 @@ export default function EditEmployerPage() {
     if (!employer) return <div className="p-10 text-center">找不到雇主</div>;
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title={`編輯雇主 - ${employer.companyName}`}
             subtitle="完善雇主詳細資料，以利後續申請作業"
             showBack
@@ -58,6 +58,6 @@ export default function EditEmployerPage() {
                 onCancel={() => router.push(`/employers/${id}`)}
                 isEdit
             />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

@@ -8,7 +8,7 @@ import { Save, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import EmployerSelector from '@/components/employers/EmployerSelector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,7 +86,7 @@ export default function RecruitmentProofForm({ initialData, isEdit = false }: Re
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title={isEdit ? "編輯求才證明書" : "新增求才證明書"}
             subtitle="國內招募與求才登記 (Domestic Recruitment)"
             actions={
@@ -244,6 +244,6 @@ export default function RecruitmentProofForm({ initialData, isEdit = false }: Re
                     </Button>
                 </div>
             </form>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

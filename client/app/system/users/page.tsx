@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import PageContainer, { TableWrapper } from '@/components/layout/PageContainer';
+import StandardPageLayout, { TableWrapper } from '@/components/layout/StandardPageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -150,7 +150,7 @@ export default function UserManagementPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="帳號與權限管理"
             subtitle="管理系統使用者帳號、角色指派與存取權限"
             breadcrumbs={[
@@ -327,6 +327,6 @@ export default function UserManagementPage() {
                     </form>
                 </DialogContent>
             </Dialog>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

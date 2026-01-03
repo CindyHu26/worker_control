@@ -6,7 +6,7 @@ import {
     Stethoscope, Search, ChevronLeft, ChevronRight,
     AlertTriangle, CheckCircle2, Clock, Phone
 } from 'lucide-react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 
 interface MedicalExceptionItem {
     id: string;
@@ -31,19 +31,19 @@ interface PaginationInfo {
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-    PENDING: { label: '待處理', color: 'bg-yellow-100 text-yellow-800' },
-    IN_TREATMENT: { label: '治療中', color: 'bg-blue-100 text-blue-800' },
-    RECOVERED: { label: '已痊癒', color: 'bg-green-100 text-green-800' },
-    DEPORTED: { label: '已遣返', color: 'bg-gray-100 text-gray-800' },
+    PENDING: { label: '待�???, color: 'bg-yellow-100 text-yellow-800' },
+    IN_TREATMENT: { label: '治�?�?, color: 'bg-blue-100 text-blue-800' },
+    RECOVERED: { label: '已�???, color: 'bg-green-100 text-green-800' },
+    DEPORTED: { label: '已遣�?, color: 'bg-gray-100 text-gray-800' },
 };
 
 const DISEASE_LABELS: Record<string, string> = {
-    TB: '肺結核',
-    AMOEBIASIS: '阿米巴痢疾',
-    SYPHILIS: '梅毒',
-    HIV: 'HIV/愛滋病',
-    HEPATITIS_B: 'B型肝炎',
-    OTHER: '其他',
+    TB: '?��???,
+    AMOEBIASIS: '?�米巴痢??,
+    SYPHILIS: '梅�?',
+    HIV: 'HIV/?��???,
+    HEPATITIS_B: 'B?��???,
+    OTHER: '?��?',
 };
 
 export default function MedicalExceptionsPage() {
@@ -104,12 +104,12 @@ export default function MedicalExceptionsPage() {
     };
 
     return (
-        <PageContainer
-            title="衛政通報管理"
-            subtitle="法定傳染病異常通報與處理追蹤"
+        <StandardPageLayout
+            title="衛政?�報管�?"
+            subtitle="法�??��??�異常通報?��??�追�?
             breadcrumbs={[
-                { label: '首頁', href: '/portal' },
-                { label: '衛政通報管理' },
+                { label: '首�?', href: '/portal' },
+                { label: '衛政?�報管�?' },
             ]}
             actions={
                 <Link
@@ -117,7 +117,7 @@ export default function MedicalExceptionsPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                 >
                     <AlertTriangle size={16} />
-                    新增通報
+                    ?��??�報
                 </Link>
             }
         >
@@ -125,23 +125,23 @@ export default function MedicalExceptionsPage() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 <div className="bg-white rounded-lg border p-4">
                     <div className="text-2xl font-bold text-gray-900">{dashboard.total}</div>
-                    <div className="text-sm text-gray-500">總通報數</div>
+                    <div className="text-sm text-gray-500">總通報??/div>
                 </div>
                 <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-4">
                     <div className="text-2xl font-bold text-yellow-700">{dashboard.pending}</div>
-                    <div className="text-sm text-yellow-600">待處理</div>
+                    <div className="text-sm text-yellow-600">待�???/div>
                 </div>
                 <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
                     <div className="text-2xl font-bold text-blue-700">{dashboard.inTreatment}</div>
-                    <div className="text-sm text-blue-600">治療中</div>
+                    <div className="text-sm text-blue-600">治�?�?/div>
                 </div>
                 <div className="bg-green-50 rounded-lg border border-green-200 p-4">
                     <div className="text-2xl font-bold text-green-700">{dashboard.recovered}</div>
-                    <div className="text-sm text-green-600">已痊癒</div>
+                    <div className="text-sm text-green-600">已�???/div>
                 </div>
                 <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
                     <div className="text-2xl font-bold text-gray-700">{dashboard.deported}</div>
-                    <div className="text-sm text-gray-600">已遣返</div>
+                    <div className="text-sm text-gray-600">已遣�?/div>
                 </div>
             </div>
 
@@ -154,7 +154,7 @@ export default function MedicalExceptionsPage() {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="搜尋移工姓名..."
+                            placeholder="?��?移工姓�?..."
                             className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
@@ -167,11 +167,11 @@ export default function MedicalExceptionsPage() {
                     }}
                     className="px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
                 >
-                    <option value="">所有狀態</option>
-                    <option value="PENDING">待處理</option>
-                    <option value="IN_TREATMENT">治療中</option>
-                    <option value="RECOVERED">已痊癒</option>
-                    <option value="DEPORTED">已遣返</option>
+                    <option value="">?�?��???/option>
+                    <option value="PENDING">待�???/option>
+                    <option value="IN_TREATMENT">治�?�?/option>
+                    <option value="RECOVERED">已�???/option>
+                    <option value="DEPORTED">已遣�?/option>
                 </select>
             </div>
 
@@ -181,22 +181,22 @@ export default function MedicalExceptionsPage() {
                     <thead className="bg-gray-50 border-b">
                         <tr>
                             <th className="px-4 py-3 text-left font-medium text-gray-700">移工</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-700">確診日期</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-700">疾病類型</th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">衛生局通報</th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">雇主通知</th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">處理狀態</th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">操作</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-700">確診?��?</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-700">?��?類�?</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">衛�?局?�報</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">?�主?�知</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��??�??/th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��?</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y">
                         {loading ? (
                             <tr>
-                                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">載入中...</td>
+                                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">載入�?..</td>
                             </tr>
                         ) : data.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">尚無異常通報記錄</td>
+                                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">尚無?�常?�報記�?</td>
                             </tr>
                         ) : (
                             data.map((item) => (
@@ -220,7 +220,7 @@ export default function MedicalExceptionsPage() {
                                                 onClick={() => handleNotify(item.id, 'health-dept')}
                                                 className="text-blue-600 hover:underline text-xs"
                                             >
-                                                標記已通報
+                                                標�?已通報
                                             </button>
                                         )}
                                     </td>
@@ -232,7 +232,7 @@ export default function MedicalExceptionsPage() {
                                                 onClick={() => handleNotify(item.id, 'employer')}
                                                 className="text-blue-600 hover:underline text-xs"
                                             >
-                                                標記已通知
+                                                標�?已通知
                                             </button>
                                         )}
                                     </td>
@@ -260,7 +260,7 @@ export default function MedicalExceptionsPage() {
             {pagination.totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                     <p className="text-sm text-gray-600">
-                        共 {pagination.total} 筆，第 {pagination.page} / {pagination.totalPages} 頁
+                        ??{pagination.total} 筆�?�?{pagination.page} / {pagination.totalPages} ??
                     </p>
                     <div className="flex gap-2">
                         <button
@@ -280,6 +280,6 @@ export default function MedicalExceptionsPage() {
                     </div>
                 </div>
             )}
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

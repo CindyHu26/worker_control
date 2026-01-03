@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import LoanBankForm from '@/components/loan-banks/LoanBankForm';
 import { toast } from 'sonner';
 
@@ -29,7 +29,7 @@ export default function EditLoanBankPage({ params }: { params: { id: string } })
     if (!data) return <div>找不到資料</div>;
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="編輯貸款銀行 (Edit Loan Bank)"
             breadcrumbs={[
                 { label: '首頁', href: '/' },
@@ -40,6 +40,6 @@ export default function EditLoanBankPage({ params }: { params: { id: string } })
             maxWidth="2xl"
         >
             <LoanBankForm initialData={data} isEdit />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

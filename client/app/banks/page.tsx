@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Plus, Building2, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiGet } from '@/lib/api';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import { TableWrapper } from '@/components/ui/table-wrapper';
 import { BankResponse, PaginationMeta } from '@worker-control/shared';
 import SearchToolbar from '@/components/SearchToolbar'; // Reusing existing if possible, or build simple input
@@ -51,7 +51,7 @@ export default function BanksPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="銀行管理 (Bank Management)"
             subtitle="維護銀行代碼與帳戶關聯資訊 (Manage bank codes and references)"
             actions={
@@ -151,6 +151,6 @@ export default function BanksPage() {
                     </div>
                 </div>
             )}
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

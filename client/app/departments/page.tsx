@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import PageContainer, { TableWrapper } from '@/components/layout/PageContainer';
+import StandardPageLayout, { TableWrapper } from '@/components/layout/StandardPageLayout';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -60,7 +60,7 @@ export default function DepartmentsPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="部門管理 (Departments)"
             breadcrumbs={[
                 { label: '首頁', href: '/' },
@@ -135,6 +135,6 @@ export default function DepartmentsPage() {
                     </Table>
                 </TableWrapper>
             )}
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

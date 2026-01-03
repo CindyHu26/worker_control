@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import JobOrderForm from '@/components/job-orders/JobOrderForm';
 
 export default function EditJobOrderPage() {
@@ -34,26 +34,26 @@ export default function EditJobOrderPage() {
 
     if (loading) {
         return (
-            <PageContainer title="載入中...">
+            <StandardPageLayout title="載入中...">
                 <div className="flex items-center justify-center py-20">
                     <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
                 </div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     if (!jobOrder) {
         return (
-            <PageContainer title="找不到招募訂單">
+            <StandardPageLayout title="找不到招募訂單">
                 <div className="text-center py-20 text-slate-500">
                     招募訂單不存在或已刪除
                 </div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title={`編輯：${jobOrder.title}`}
             subtitle="修改招募訂單資訊 (Edit Job Order)"
             breadcrumbs={[
@@ -65,6 +65,6 @@ export default function EditJobOrderPage() {
             <div className="bg-white rounded-lg border shadow-sm p-6">
                 <JobOrderForm initialData={jobOrder} isEdit />
             </div>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

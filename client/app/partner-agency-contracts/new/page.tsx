@@ -1,21 +1,21 @@
 'use client';
 
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import PartnerAgencyContractForm from '@/components/partner-agency-contracts/PartnerAgencyContractForm';
 
 export default function NewPartnerAgencyContractPage() {
     return (
-        <PageContainer
-            title="新增互貿合約 (New Contract)"
+        <StandardPageLayout
+            title="?��?互貿?��? (New Contract)"
             breadcrumbs={[
-                { label: '首頁', href: '/' },
-                { label: '互貿合約管理', href: '/partner-agency-contracts' },
-                { label: '新增' }
+                { label: '首�?', href: '/' },
+                { label: '互貿?��?管�?', href: '/partner-agency-contracts' },
+                { label: '?��?' }
             ]}
             showBack
             maxWidth="2xl"
         >
             <PartnerAgencyContractForm />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

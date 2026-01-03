@@ -1,21 +1,21 @@
 'use client';
 
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import DepartmentForm from '@/components/departments/DepartmentForm';
 
 export default function NewDepartmentPage() {
     return (
-        <PageContainer
-            title="æ–°å¢žéƒ¨é–€ (New Department)"
+        <StandardPageLayout
+            title="?°å??¨é? (New Department)"
             breadcrumbs={[
-                { label: 'é¦–é ', href: '/' },
-                { label: 'éƒ¨é–€ç®¡ç†', href: '/departments' },
-                { label: 'æ–°å¢ž' }
+                { label: 'é¦–é?', href: '/' },
+                { label: '?¨é?ç®¡ç?', href: '/departments' },
+                { label: '?°å?' }
             ]}
             showBack
             maxWidth="2xl"
         >
             <DepartmentForm />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

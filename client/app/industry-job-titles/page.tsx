@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -44,7 +44,7 @@ export default function IndustryJobTitlesPage() {
             setJobTitles(data.data);
         } catch (error) {
             console.error(error);
-            toast.error("載入資料失敗");
+            toast.error("載入資�?失�?");
         } finally {
             setLoading(false);
         }
@@ -55,31 +55,31 @@ export default function IndustryJobTitlesPage() {
     }, [searchTerm]);
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`確定要刪除職稱 "${name}" 嗎？`)) return;
+        if (!confirm(`確�?要刪?�職�?"${name}" ?��?`)) return;
 
         try {
             await apiDelete(`http://localhost:3001/api/industry-job-titles/${id}`);
-            toast.success("職稱刪除成功");
+            toast.success("?�稱?�除?��?");
             fetchJobTitles();
         } catch (error) {
             console.error(error);
-            toast.error("刪除失敗，請稍後再試");
+            toast.error("?�除失�?，�?稍�??�試");
         }
     };
 
     return (
-        <PageContainer
-            title="行業職稱管理"
-            subtitle="管理各行業別下的標準職稱"
+        <StandardPageLayout
+            title="行業?�稱管�?"
+            subtitle="管�??��?業別下�?標�??�稱"
             breadcrumbs={[
-                { label: '首頁', href: '/' },
-                { label: '行業職稱', href: '/industry-job-titles' },
+                { label: '首�?', href: '/' },
+                { label: '行業?�稱', href: '/industry-job-titles' },
             ]}
             actions={
                 <Link href="/industry-job-titles/new">
                     <Button className="flex items-center gap-2">
                         <Plus size={16} />
-                        新增職稱
+                        ?��??�稱
                     </Button>
                 </Link>
             }
@@ -88,7 +88,7 @@ export default function IndustryJobTitlesPage() {
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <Input
-                        placeholder="搜尋職稱或行業..."
+                        placeholder="?��??�稱?��?�?.."
                         className="pl-10 bg-white"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -100,24 +100,24 @@ export default function IndustryJobTitlesPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>所屬行業</TableHead>
-                            <TableHead>職稱 (中文)</TableHead>
-                            <TableHead>職稱 (英文)</TableHead>
-                            <TableHead>狀態</TableHead>
-                            <TableHead className="text-right">操作</TableHead>
+                            <TableHead>?�屬�?�?/TableHead>
+                            <TableHead>?�稱 (中�?)</TableHead>
+                            <TableHead>?�稱 (?��?)</TableHead>
+                            <TableHead>?�??/TableHead>
+                            <TableHead className="text-right">?��?</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                                    載入中...
+                                    載入�?..
                                 </TableCell>
                             </TableRow>
                         ) : jobTitles.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                                    尚無資料
+                                    尚無資�?
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -134,7 +134,7 @@ export default function IndustryJobTitlesPage() {
                                                 ? 'bg-green-100 text-green-700'
                                                 : 'bg-gray-100 text-gray-700'
                                             }`}>
-                                            {item.isActive ? '啟用' : '停用'}
+                                            {item.isActive ? '?�用' : '?�用'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -160,6 +160,6 @@ export default function IndustryJobTitlesPage() {
                     </TableBody>
                 </Table>
             </TableWrapper>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

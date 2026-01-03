@@ -35,6 +35,20 @@ router.post('/login', async (req, res) => {
             { expiresIn: '8h' }
         );
 
+        // Record Audit Log asynchronously
+        const { createAuditLog } = require('../services/auditLogService');
+        createAuditLog({
+            userId: user.id,
+            action: 'LOGIN',
+            entityType: 'auth',
+            entityId: user.id,
+            requestPath: req.path,
+            requestMethod: req.method,
+            ipAddress: req.ip || req.socket.remoteAddress,
+            userAgent: req.get('user-agent'),
+            metadata: { username: user.username }
+        }).catch((err: any) => console.error('Login audit log failed:', err));
+
         res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
     } catch (error) {
         console.error('Login error:', error);

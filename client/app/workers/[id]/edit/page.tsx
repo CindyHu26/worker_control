@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import WorkerForm from '@/components/workers/WorkerForm';
 import { useRouter } from 'next/navigation';
 import { getWorkerBreadcrumbs } from '@/lib/breadcrumbs';
@@ -52,22 +52,22 @@ export default function EditWorkerPage({ params }: { params: { id: string } }) {
 
     if (loading) {
         return (
-            <PageContainer title="載入中...">
+            <StandardPageLayout title="載入中...">
                 <div className="text-center py-12 text-gray-500">載入外勞資料中...</div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     if (!worker) {
         return (
-            <PageContainer title="錯誤">
+            <StandardPageLayout title="錯誤">
                 <div className="text-center py-12 text-red-600">找不到該外勞資料</div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title={`編輯外勞：${worker.englishName || worker.chineseName || '未命名'}`}
             showBack
             breadcrumbs={getWorkerBreadcrumbs(worker.id, worker.englishName || worker.chineseName)}
@@ -92,6 +92,6 @@ export default function EditWorkerPage({ params }: { params: { id: string } }) {
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
             />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

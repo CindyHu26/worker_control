@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import RocDateInput from "@/components/common/RocDateInput";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -210,10 +211,9 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                     </div>
                     <div className="space-y-2">
                         <Label>核定函發文日</Label>
-                        <Input
-                            type="date"
+                        <RocDateInput
                             value={formData.industrialBureauDate}
-                            onChange={e => setFormData({ ...formData, industrialBureauDate: e.target.value })}
+                            onChange={v => setFormData({ ...formData, industrialBureauDate: v })}
                             readOnly={!!selectedIndRec}
                             className={selectedIndRec ? "bg-gray-100" : ""}
                         />
@@ -269,10 +269,9 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                     </div>
                     <div className="space-y-2">
                         <Label>求才登記日期</Label>
-                        <Input
-                            type="date"
+                        <RocDateInput
                             value={formData.domesticRecruitmentDate}
-                            onChange={e => setFormData({ ...formData, domesticRecruitmentDate: e.target.value })}
+                            onChange={v => setFormData({ ...formData, domesticRecruitmentDate: v })}
                             readOnly={!!selectedProof}
                             className={selectedProof ? "bg-gray-100" : ""}
                         />
@@ -298,10 +297,9 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
                     </div>
                     <div className="space-y-2">
                         <Label>繳費日期</Label>
-                        <Input
-                            type="date"
+                        <RocDateInput
                             value={formData.reviewFeePayDate}
-                            onChange={e => setFormData({ ...formData, reviewFeePayDate: e.target.value })}
+                            onChange={v => setFormData({ ...formData, reviewFeePayDate: v })}
                         />
                     </div>
                     <div className="space-y-2">
@@ -353,20 +351,18 @@ export function RecruitmentLetterForm({ employerId, employer, initialData, onSuc
 
                     <div className="space-y-2">
                         <Label>發文日期</Label>
-                        <Input
-                            type="date"
+                        <RocDateInput
                             value={formData.issueDate}
-                            onChange={e => setFormData({ ...formData, issueDate: e.target.value })}
+                            onChange={v => setFormData({ ...formData, issueDate: v })}
                             required
                         />
                     </div>
 
                     <div className="space-y-2">
                         <Label>招募效期 (通常發文日+1年)</Label>
-                        <Input
-                            type="date"
+                        <RocDateInput
                             value={formData.validUntil}
-                            onChange={e => setFormData({ ...formData, validUntil: e.target.value })}
+                            onChange={v => setFormData({ ...formData, validUntil: v })}
                             required
                         />
                     </div>

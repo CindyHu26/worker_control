@@ -1,11 +1,11 @@
 'use client';
 
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import LoanBankForm from '@/components/loan-banks/LoanBankForm';
 
 export default function NewLoanBankPage() {
     return (
-        <PageContainer
+        <StandardPageLayout
             title="新增貸款銀行 (New Loan Bank)"
             breadcrumbs={[
                 { label: '首頁', href: '/' },
@@ -16,6 +16,6 @@ export default function NewLoanBankPage() {
             maxWidth="2xl"
         >
             <LoanBankForm />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

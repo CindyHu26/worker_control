@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus, Briefcase } from 'lucide-react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import { Button } from '@/components/ui/button';
 
 interface JobOrder {
@@ -53,7 +53,7 @@ export default function JobOrderListPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="招募訂單管理"
             subtitle="職缺媒合與面試追蹤 (Job Order & Interview Management)"
             actions={
@@ -135,6 +135,6 @@ export default function JobOrderListPage() {
                     </tbody>
                 </table>
             </div>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

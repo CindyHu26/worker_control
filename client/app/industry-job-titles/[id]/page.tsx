@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import IndustryJobTitleForm from '@/components/industry-job-titles/IndustryJobTitleForm';
 import { useParams } from 'next/navigation';
 import { apiGet } from '@/lib/api';
@@ -32,22 +32,22 @@ export default function EditIndustryJobTitlePage() {
 
     if (loading) {
         return (
-            <PageContainer title="載入中..." showBack={true}>
+            <StandardPageLayout title="載入中..." showBack={true}>
                 <div className="p-8 text-center text-gray-500">資料載入中...</div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     if (!data) {
         return (
-            <PageContainer title="找不到資料" showBack={true}>
+            <StandardPageLayout title="找不到資料" showBack={true}>
                 <div className="p-8 text-center text-red-500">無法找到該筆資料</div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="編輯行業職稱"
             subtitle="修改現有的行業職稱資料"
             breadcrumbs={[
@@ -58,6 +58,6 @@ export default function EditIndustryJobTitlePage() {
             showBack={true}
         >
             <IndustryJobTitleForm initialData={data} isEdit={true} />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

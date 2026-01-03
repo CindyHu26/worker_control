@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import PartnerAgencyContractForm from '@/components/partner-agency-contracts/PartnerAgencyContractForm';
 import { toast } from 'sonner';
 
@@ -29,7 +29,7 @@ export default function EditPartnerAgencyContractPage({ params }: { params: { id
     if (!data) return <div>找不到資料</div>;
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="編輯互貿合約 (Edit Contract)"
             breadcrumbs={[
                 { label: '首頁', href: '/' },
@@ -40,6 +40,6 @@ export default function EditPartnerAgencyContractPage({ params }: { params: { id
             maxWidth="2xl"
         >
             <PartnerAgencyContractForm initialData={data} isEdit />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

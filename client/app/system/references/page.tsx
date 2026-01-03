@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import PageContainer, { TableWrapper } from '@/components/layout/PageContainer';
+import StandardPageLayout, { TableWrapper } from '@/components/layout/StandardPageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -170,7 +170,7 @@ export default function ReferencesPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="主檔資料管理 (Master Data Management)"
             breadcrumbs={[
                 { label: '首頁', href: '/' },
@@ -343,6 +343,6 @@ export default function ReferencesPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

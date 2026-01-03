@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AttachmentManager from '../common/AttachmentManager';
+import RocDateInput from '../common/RocDateInput';
 
 interface Employer {
     id: string;
@@ -188,22 +189,18 @@ export default function JobOrderForm({ onSuccess }: JobOrderFormProps) {
                 {/* Row 2: Dates & Quota */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">發文日期 (Issue Date)</label>
-                    <input
-                        type="date"
-                        className="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"
+                    <RocDateInput
                         value={formData.issueDate}
-                        onChange={e => setFormData({ ...formData, issueDate: e.target.value })}
+                        onChange={v => setFormData({ ...formData, issueDate: v })}
                         required
                     />
                 </div>
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">有效期限 (Valid Until)</label>
-                    <input
-                        type="date"
-                        className="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"
+                    <RocDateInput
                         value={formData.validUntil}
-                        onChange={e => setFormData({ ...formData, validUntil: e.target.value })}
+                        onChange={v => setFormData({ ...formData, validUntil: v })}
                         required
                     />
                 </div>

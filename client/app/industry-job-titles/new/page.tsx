@@ -1,21 +1,21 @@
 'use client';
 
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import IndustryJobTitleForm from '@/components/industry-job-titles/IndustryJobTitleForm';
 
 export default function NewIndustryJobTitlePage() {
     return (
-        <PageContainer
-            title="新增行業職稱"
-            subtitle="建立新的行業職稱資料"
+        <StandardPageLayout
+            title="?��?行業?�稱"
+            subtitle="建�??��?行業?�稱資�?"
             breadcrumbs={[
-                { label: '首頁', href: '/' },
-                { label: '行業職稱', href: '/industry-job-titles' },
-                { label: '新增', href: '#' },
+                { label: '首�?', href: '/' },
+                { label: '行業?�稱', href: '/industry-job-titles' },
+                { label: '?��?', href: '#' },
             ]}
             showBack={true}
         >
             <IndustryJobTitleForm />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

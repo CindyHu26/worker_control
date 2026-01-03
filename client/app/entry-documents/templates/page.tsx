@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, TestTube, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 
 interface Template {
     id: string;
@@ -36,7 +36,7 @@ export default function TemplatesListPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('確定要刪除此範本嗎？')) return;
+        if (!confirm('確�?要刪?�此範本?��?')) return;
 
         try {
             const response = await fetch(`/api/templates/${id}`, {
@@ -46,11 +46,11 @@ export default function TemplatesListPage() {
             if (response.ok) {
                 fetchTemplates();
             } else {
-                alert('刪除失敗');
+                alert('?�除失�?');
             }
         } catch (error) {
             console.error(error);
-            alert('刪除時發生錯誤');
+            alert('?�除?�發?�錯�?);
         }
     };
 
@@ -59,30 +59,30 @@ export default function TemplatesListPage() {
             return (
                 <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
                     <CheckCircle size={12} />
-                    已啟用
+                    已�???
                 </span>
             );
         } else if (template.isTested) {
             return (
                 <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
                     <TestTube size={12} />
-                    已測試未啟用
+                    已測試未?�用
                 </span>
             );
         } else {
             return (
                 <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
                     <XCircle size={12} />
-                    未測試
+                    ?�測�?
                 </span>
             );
         }
     };
 
     return (
-        <PageContainer
-            title="入境文件範本管理"
-            subtitle="管理入國通報與證照申辦文件範本"
+        <StandardPageLayout
+            title="?��??�件範本管�?"
+            subtitle="管�??��??�報?��??�申辦�?件�???
         >
             <div className="mb-6 flex justify-between items-center">
                 <div className="flex gap-3">
@@ -90,7 +90,7 @@ export default function TemplatesListPage() {
                         href="/entry-documents"
                         className="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg hover:bg-gray-50"
                     >
-                        ← 返回文件產生
+                        ??返�??�件?��?
                     </Link>
                 </div>
                 <Link
@@ -98,7 +98,7 @@ export default function TemplatesListPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                     <Plus size={18} />
-                    上傳新範本
+                    上傳?��???
                 </Link>
             </div>
 
@@ -107,19 +107,19 @@ export default function TemplatesListPage() {
                     <thead className="bg-gray-50 border-b">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                範本名稱
+                                範本?�稱
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                檔案格式
+                                檔�??��?
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                狀態
+                                ?�??
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                建立時間
+                                建�??��?
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                操作
+                                ?��?
                             </th>
                         </tr>
                     </thead>
@@ -127,13 +127,13 @@ export default function TemplatesListPage() {
                         {loading ? (
                             <tr>
                                 <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                    載入中...
+                                    載入�?..
                                 </td>
                             </tr>
                         ) : templates.length === 0 ? (
                             <tr>
                                 <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                    尚無範本，請先上傳範本檔案
+                                    尚無範本，�??��??��??��?�?
                                 </td>
                             </tr>
                         ) : (
@@ -164,7 +164,7 @@ export default function TemplatesListPage() {
                                                 onClick={() => handleDelete(template.id)}
                                                 className="text-red-600 hover:text-red-800"
                                             >
-                                                刪除
+                                                ?�除
                                             </button>
                                         </div>
                                     </td>
@@ -174,6 +174,6 @@ export default function TemplatesListPage() {
                     </tbody>
                 </table>
             </div>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

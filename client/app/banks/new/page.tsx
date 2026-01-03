@@ -1,24 +1,24 @@
 "use client";
 
 import React from 'react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import BankForm from '@/components/bank/BankForm';
 
 export default function CreateBankPage() {
     return (
-        <PageContainer
-            title="æ–°å¢žéŠ€è¡Œ (Create Bank)"
-            subtitle="å»ºç«‹æ–°çš„éŠ€è¡Œè³‡æ–™"
+        <StandardPageLayout
+            title="?°å??€è¡?(Create Bank)"
+            subtitle="å»ºç??°ç??€è¡Œè???
             breadcrumbs={[
-                { label: 'é¦–é ', href: '/' },
-                { label: 'éŠ€è¡Œç®¡ç†', href: '/banks' },
-                { label: 'æ–°å¢ž', href: '#' },
+                { label: 'é¦–é?', href: '/' },
+                { label: '?€è¡Œç®¡??, href: '/banks' },
+                { label: '?°å?', href: '#' },
             ]}
             showBack={true}
             maxWidth="xl" // Limit width for form readability
             card={false} // BankForm has its own card
         >
             <BankForm />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

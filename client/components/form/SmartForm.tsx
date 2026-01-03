@@ -17,6 +17,8 @@ interface SmartFormProps {
     onSubmit: (data: any) => void;
     submitLabel?: string;
     className?: string;
+    /** When true, all fields are disabled and submit button is hidden */
+    readonly?: boolean;
 }
 
 export default function SmartForm({
@@ -24,7 +26,8 @@ export default function SmartForm({
     defaultValues = {},
     onSubmit,
     submitLabel = 'Submit',
-    className
+    className,
+    readonly = false
 }: SmartFormProps) {
     // 1. Dynamic Zod Schema Generation
     const formSchema = useMemo(() => {
@@ -88,21 +91,29 @@ export default function SmartForm({
         <FormProvider {...methods}>
             <Form {...methods}>
                 <form onSubmit={handleSubmit(onFormSubmit)} className={`space-y-6 ${className}`}>
-                    {config.map((field) => (
-                        <SmartField
-                            key={field.name}
-                            name={field.name}
-                            label={field.label}
-                            type={field.type as any} // Cast because FieldType vs SmartField type might slightly differ
-                            required={field.validation?.required}
-                            options={field.options}
-                            core={field.isCore}
-                            placeholder={`Enter ${field.label}`}
-                            group={field.group}
-                        />
-                    ))}
+                    {/* Form Fields */}
+                    <fieldset disabled={readonly} className={readonly ? 'opacity-80' : ''}>
+                        <div className="space-y-6">
+                            {config.map((field) => (
+                                <SmartField
+                                    key={field.name}
+                                    name={field.name}
+                                    label={field.label}
+                                    type={field.type as any} // Cast because FieldType vs SmartField type might slightly differ
+                                    required={field.validation?.required}
+                                    options={field.options}
+                                    core={field.isCore}
+                                    placeholder={readonly ? undefined : `Enter ${field.label}`}
+                                    group={field.group}
+                                />
+                            ))}
+                        </div>
+                    </fieldset>
 
-                    <Button type="submit">{submitLabel}</Button>
+                    {/* Submit Button - Hidden in readonly mode */}
+                    {!readonly && (
+                        <Button type="submit">{submitLabel}</Button>
+                    )}
                 </form>
             </Form>
         </FormProvider>

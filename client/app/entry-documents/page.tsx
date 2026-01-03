@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FileText, Download, FileDown, PackageOpen, CheckCircle2, Loader2 } from 'lucide-react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 
 interface GeneratedDocument {
     filename: string;
@@ -145,7 +145,7 @@ export default function EntryDocumentsPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="入境文件準備"
             subtitle="產生移工入國通報與證照申辦所需文件"
         >
@@ -306,6 +306,6 @@ export default function EntryDocumentsPage() {
                     )}
                 </div>
             </div>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

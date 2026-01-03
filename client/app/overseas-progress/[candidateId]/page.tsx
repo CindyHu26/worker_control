@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, FileText, AlertTriangle } from 'lucide-react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 
 interface FormData {
     // 海外體檢
@@ -143,16 +143,16 @@ export default function OverseasProgressEditPage() {
 
     if (loading) {
         return (
-            <PageContainer title="載入中...">
+            <StandardPageLayout title="載入中...">
                 <div className="flex items-center justify-center py-20">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="編輯海外進度"
             subtitle={candidate ? `${candidate.nameZh} (${candidate.passportNo})` : ''}
             breadcrumbs={[
@@ -366,6 +366,6 @@ export default function OverseasProgressEditPage() {
                     </button>
                 </div>
             </form>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import PageContainer, { TableWrapper } from '@/components/layout/PageContainer';
+import StandardPageLayout, { TableWrapper } from '@/components/layout/StandardPageLayout';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, AlertCircle, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
@@ -60,7 +60,7 @@ export default function RunawayListPage() {
     };
 
     return (
-        <PageContainer title="失聯/逃跑管理 (Runaway Management)">
+        <StandardPageLayout title="失聯/逃跑管理 (Runaway Management)">
             <div className="mb-6 flex justify-between items-center">
                 <div className="flex gap-2">
                     <input
@@ -133,6 +133,6 @@ export default function RunawayListPage() {
                     </tbody>
                 </table>
             </TableWrapper>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, Trash2, Plus, Users, Building2, MapPin, CheckCircle2, AlertTriangle } from 'lucide-react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import { Button } from '@/components/ui/button';
 
 interface JobOrder {
@@ -126,28 +126,28 @@ export default function JobOrderDetailPage() {
 
     if (loading) {
         return (
-            <PageContainer title="載入中...">
+            <StandardPageLayout title="載入中...">
                 <div className="flex items-center justify-center py-20">
                     <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
                 </div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     if (!jobOrder) {
         return (
-            <PageContainer title="找不到招募訂單">
+            <StandardPageLayout title="找不到招募訂單">
                 <div className="text-center py-20 text-slate-500">
                     招募訂單不存在或已刪除
                 </div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 
     const status = statusLabels[jobOrder.status] || { label: jobOrder.status, color: 'bg-slate-100 text-slate-700' };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title={jobOrder.title}
             subtitle={`訂單詳情 (Job Order #${id.slice(0, 8)})`}
             breadcrumbs={[
@@ -321,6 +321,6 @@ export default function JobOrderDetailPage() {
                     )}
                 </div>
             </div>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

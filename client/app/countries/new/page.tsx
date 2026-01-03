@@ -1,21 +1,21 @@
 'use client';
 
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import CountryForm from '@/components/countries/CountryForm';
 
 export default function NewCountryPage() {
     return (
-        <PageContainer
-            title="新增國別 (New Country)"
+        <StandardPageLayout
+            title="?��??�別 (New Country)"
             breadcrumbs={[
-                { label: '首頁', href: '/' },
-                { label: '國別管理', href: '/countries' },
-                { label: '新增' }
+                { label: '首�?', href: '/' },
+                { label: '?�別管�?', href: '/countries' },
+                { label: '?��?' }
             ]}
             showBack
             maxWidth="2xl"
         >
             <CountryForm />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

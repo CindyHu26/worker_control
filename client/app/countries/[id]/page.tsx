@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import CountryForm from '@/components/countries/CountryForm';
 import { toast } from 'sonner';
 
@@ -29,7 +29,7 @@ export default function EditCountryPage({ params }: { params: { id: string } }) 
     if (!data) return <div>找不到資料</div>;
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="編輯國別 (Edit Country)"
             breadcrumbs={[
                 { label: '首頁', href: '/' },
@@ -40,6 +40,6 @@ export default function EditCountryPage({ params }: { params: { id: string } }) 
             maxWidth="2xl"
         >
             <CountryForm initialData={data} isEdit />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

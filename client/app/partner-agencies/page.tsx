@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import PageContainer, { TableWrapper } from '@/components/layout/PageContainer';
+import StandardPageLayout, { TableWrapper } from '@/components/layout/StandardPageLayout';
 import { Button } from '@/components/ui/button';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -53,7 +53,7 @@ export default function PartnerAgencyListPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="國外仲介管理 (Partner Agencies)"
             subtitle="管理合作的國外仲介公司資料"
             breadcrumbs={[
@@ -122,6 +122,6 @@ export default function PartnerAgencyListPage() {
                     </tbody>
                 </table>
             </TableWrapper>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

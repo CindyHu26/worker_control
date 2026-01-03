@@ -1,4 +1,5 @@
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, Controller } from 'react-hook-form';
+import RocDateInput from '@/components/common/RocDateInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FileText } from 'lucide-react';
@@ -12,7 +13,7 @@ import type { EmployerFormData } from '../EmployerFormSchema';
  * 注意：行業別代碼和名稱已移至工業局認定函管理
  */
 export default function LicenseSection() {
-    const { register } = useFormContext<EmployerFormData>();
+    const { register, control } = useFormContext<EmployerFormData>();
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -40,7 +41,17 @@ export default function LicenseSection() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="licenseExpiryDate">執照效期</Label>
-                    <Input {...register('licenseExpiryDate')} type="date" />
+                    <Controller
+                        control={control}
+                        name="licenseExpiryDate"
+                        render={({ field }) => (
+                            <RocDateInput
+                                value={field.value as string}
+                                onChange={field.onChange}
+                                ref={field.ref}
+                            />
+                        )}
+                    />
                 </div>
             </div>
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import RecruitmentProofForm from '@/components/recruitment/RecruitmentProofForm';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import { Loader2 } from 'lucide-react';
 
 export default function EditRecruitmentProofPage() {
@@ -46,11 +46,11 @@ export default function EditRecruitmentProofPage() {
 
     if (loading) {
         return (
-            <PageContainer title="載入中...">
+            <StandardPageLayout title="載入中...">
                 <div className="flex justify-center py-12">
                     <Loader2 className="animate-spin text-blue-600" size={32} />
                 </div>
-            </PageContainer>
+            </StandardPageLayout>
         );
     }
 

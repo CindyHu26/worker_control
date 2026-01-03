@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import RocDateInput from '@/components/common/RocDateInput';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -138,11 +139,11 @@ export default function PrePermitManager({ employerId, showIndustryRecognitions 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="grid gap-2">
                                             <Label>發文日期</Label>
-                                            <Input type="date" value={newIdb.issueDate} onChange={e => setNewIdb({ ...newIdb, issueDate: e.target.value })} />
+                                            <RocDateInput value={newIdb.issueDate} onChange={v => setNewIdb({ ...newIdb, issueDate: v })} />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>有效期限 (通常3年)</Label>
-                                            <Input type="date" value={newIdb.expiryDate} onChange={e => setNewIdb({ ...newIdb, expiryDate: e.target.value })} />
+                                            <RocDateInput value={newIdb.expiryDate} onChange={v => setNewIdb({ ...newIdb, expiryDate: v })} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -227,11 +228,11 @@ export default function PrePermitManager({ employerId, showIndustryRecognitions 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">
                                         <Label>求才登記日</Label>
-                                        <Input type="date" value={newProof.registerDate} onChange={e => setNewProof({ ...newProof, registerDate: e.target.value })} />
+                                        <RocDateInput value={newProof.registerDate} onChange={v => setNewProof({ ...newProof, registerDate: v })} />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>證明發文日</Label>
-                                        <Input type="date" value={newProof.issueDate} onChange={e => setNewProof({ ...newProof, issueDate: e.target.value })} />
+                                        <RocDateInput value={newProof.issueDate} onChange={v => setNewProof({ ...newProof, issueDate: v })} />
                                     </div>
                                 </div>
                                 <div className="border-t pt-4 mt-2">
@@ -243,7 +244,7 @@ export default function PrePermitManager({ employerId, showIndustryRecognitions 
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>繳費日期</Label>
-                                            <Input type="date" value={newProof.reviewFeePayDate} onChange={e => setNewProof({ ...newProof, reviewFeePayDate: e.target.value })} />
+                                            <RocDateInput value={newProof.reviewFeePayDate} onChange={v => setNewProof({ ...newProof, reviewFeePayDate: v })} />
                                         </div>
                                     </div>
                                 </div>

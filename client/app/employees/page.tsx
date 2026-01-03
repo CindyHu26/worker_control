@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import PageContainer, { TableWrapper } from '@/components/layout/PageContainer';
+import StandardPageLayout, { TableWrapper } from '@/components/layout/StandardPageLayout';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -70,7 +70,7 @@ export default function EmployeesPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="員工管理"
             subtitle="管理公司內部員工資料與組織架構"
             breadcrumbs={[
@@ -161,6 +161,6 @@ export default function EmployeesPage() {
                     </TableBody>
                 </Table>
             </TableWrapper>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

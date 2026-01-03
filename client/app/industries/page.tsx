@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { apiGet, apiDelete } from '@/lib/api';
 import TableWrapper from '@/components/ui/TableWrapper';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 
 interface Industry {
     id: string;
@@ -66,7 +66,7 @@ export default function IndustriesPage() {
     };
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="行業別管理"
             subtitle="管理行業別代碼與名稱"
             breadcrumbs={[
@@ -148,6 +148,6 @@ export default function IndustriesPage() {
                     </TableBody>
                 </Table>
             </TableWrapper>
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import LeadForm, { LeadFormData } from '@/components/crm/LeadForm';
 import { LEAD_STATUSES, STATUS_COLORS, getIndustryLabel, getStatusLabel, LeadStatusKey } from '@/lib/leadConstants';
 import { Plus, Search, Filter } from 'lucide-react';
@@ -58,7 +58,7 @@ export default function LeadsPage() {
             setLeads(data);
         } catch (error) {
             console.error('Error fetching leads:', error);
-            toast.error('載入潛在客戶列表失敗');
+            toast.error('載入潛在客戶?�表失�?');
         } finally {
             setLoading(false);
         }
@@ -70,7 +70,7 @@ export default function LeadsPage() {
             body: JSON.stringify(formData)
         });
 
-        toast.success('潛在客戶建立成功');
+        toast.success('潛在客戶建�??��?');
         fetchLeads();
     };
 
@@ -85,13 +85,13 @@ export default function LeadsPage() {
     });
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="潛在客戶"
-            subtitle="管理業務開發與客戶轉換漏斗"
+            subtitle="管�?業�??�發?�客?��??��???
             actions={
                 <Button onClick={() => setShowForm(true)} size="lg">
                     <Plus className="mr-2 h-5 w-5" />
-                    新增潛在客戶
+                    ?��?潛在客戶
                 </Button>
             }
         >
@@ -102,7 +102,7 @@ export default function LeadsPage() {
                         <div className="flex-1 relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="搜尋公司名稱、統編或聯絡人..."
+                                placeholder="?��??�司?�稱?�統編�??�絡�?.."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 bg-white"
@@ -111,10 +111,10 @@ export default function LeadsPage() {
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger className="w-[200px] bg-white">
                                 <Filter className="mr-2 h-4 w-4" />
-                                <SelectValue placeholder="狀態篩選" />
+                                <SelectValue placeholder="?�?�篩?? />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ALL">全部狀態</SelectItem>
+                                <SelectItem value="ALL">?�部?�??/SelectItem>
                                 {Object.entries(LEAD_STATUSES).map(([key, label]) => (
                                     <SelectItem key={key} value={key}>
                                         {label}
@@ -129,28 +129,28 @@ export default function LeadsPage() {
             {/* Leads Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>客戶列表 ({filteredLeads.length})</CardTitle>
+                    <CardTitle>客戶?�表 ({filteredLeads.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
-                        <div className="text-center py-12 text-gray-500">載入中...</div>
+                        <div className="text-center py-12 text-gray-500">載入�?..</div>
                     ) : filteredLeads.length === 0 ? (
                         <div className="text-center py-12 text-gray-500">
-                            {searchQuery || statusFilter !== 'ALL' ? '沒有符合條件的客戶' : '尚無潛在客戶，請點擊「新增潛在客戶」開始建檔'}
+                            {searchQuery || statusFilter !== 'ALL' ? '沒�?符�?條件?�客?? : '尚無潛在客戶，�?點�??�新增�??�客?�」�?始建�?}
                         </div>
                     ) : (
                         <div className="w-full overflow-x-auto rounded-md border bg-white">
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr className="text-left border-b">
-                                        <th className="p-3 font-medium">公司名稱</th>
+                                        <th className="p-3 font-medium">?�司?�稱</th>
                                         <th className="p-3 font-medium">統編</th>
-                                        <th className="p-3 font-medium">產業別</th>
-                                        <th className="p-3 font-medium">聯絡人</th>
-                                        <th className="p-3 font-medium">聯絡方式</th>
-                                        <th className="p-3 font-medium">預計人數</th>
-                                        <th className="p-3 font-medium">狀態</th>
-                                        <th className="p-3 font-medium">負責業務</th>
+                                        <th className="p-3 font-medium">?�業??/th>
+                                        <th className="p-3 font-medium">?�絡�?/th>
+                                        <th className="p-3 font-medium">?�絡?��?</th>
+                                        <th className="p-3 font-medium">?��?人數</th>
+                                        <th className="p-3 font-medium">?�??/th>
+                                        <th className="p-3 font-medium">負責業�?</th>
                                         <th className="p-3 font-medium">下次追蹤</th>
                                     </tr>
                                 </thead>
@@ -176,7 +176,7 @@ export default function LeadsPage() {
                                                     {getStatusLabel(lead.status)}
                                                 </Badge>
                                             </td>
-                                            <td className="p-3 text-sm">{lead.assignedUser?.name || '未分配'}</td>
+                                            <td className="p-3 text-sm">{lead.assignedUser?.name || '?��???}</td>
                                             <td className="p-3 text-sm text-gray-600">
                                                 {lead.nextFollowUpDate
                                                     ? new Date(lead.nextFollowUpDate).toLocaleDateString('zh-TW')
@@ -198,6 +198,6 @@ export default function LeadsPage() {
                 onSubmit={handleCreateLead}
                 mode="create"
             />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

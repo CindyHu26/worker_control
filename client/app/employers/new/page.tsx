@@ -1,6 +1,6 @@
 'use client';
 
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import EmployerForm from '@/components/employers/EmployerForm';
 import { useRouter } from 'next/navigation';
 import { getEmployerBreadcrumbs } from '@/lib/breadcrumbs';
@@ -8,11 +8,11 @@ import { toast } from 'sonner';
 import { apiPost } from '@/lib/api';
 
 /**
- * NewEmployerPage - 新增雇主頁面
+ * NewEmployerPage - ?��??�主?�面
  * 
- * 簡化版：移除類別選擇步驟
- * 雇主類型由統編/身分證字號格式自動判斷
- * 申請類別在招募函管理時設定
+ * 簡�??��?移除類別?��?步�?
+ * ?�主類�??�統�?身�?證�??�格式自?�判??
+ * ?��?類別?��??�函管�??�設�?
  */
 export default function NewEmployerPage() {
     const router = useRouter();
@@ -26,18 +26,18 @@ export default function NewEmployerPage() {
                 const health = await apiPost(`/api/compliance/employers/${newEmp.id}/analyze`, {});
 
                 if (!health.isReady) {
-                    toast.warning(`系統成功儲存！但請注意以下缺漏：\n${health.alerts.join('\n')}`);
+                    toast.warning(`系統?��??��?！�?請注?�以下缺漏�?\n${health.alerts.join('\n')}`);
                 } else {
-                    toast.success('新增成功');
+                    toast.success('?��??��?');
                 }
             } catch (e) {
                 console.error('Analysis failed', e);
-                toast.success('新增成功');
+                toast.success('?��??��?');
             }
 
             router.push(`/employers/${newEmp.id}`);
         } catch (error: any) {
-            toast.error(error.message || '系統錯誤');
+            toast.error(error.message || '系統?�誤');
             throw error;
         }
     };
@@ -47,9 +47,9 @@ export default function NewEmployerPage() {
     };
 
     return (
-        <PageContainer
-            title="新增雇主"
-            subtitle="請填寫完整的雇主資訊"
+        <StandardPageLayout
+            title="?��??�主"
+            subtitle="請填寫�??��??�主資�?"
             showBack
             breadcrumbs={getEmployerBreadcrumbs()}
         >
@@ -57,6 +57,6 @@ export default function NewEmployerPage() {
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
             />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

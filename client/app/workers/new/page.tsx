@@ -1,6 +1,6 @@
 'use client';
 
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import WorkerForm from '@/components/workers/WorkerForm';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -17,11 +17,11 @@ export default function NewWorkerPage() {
 
         if (!res.ok) {
             const error = await res.json();
-            throw new Error(error.error || '建立失敗');
+            throw new Error(error.error || '建�?失�?');
         }
 
         const worker = await res.json();
-        toast.success('外勞建檔成功');
+        toast.success('外�?建�??��?');
         router.push(`/workers/${worker.id}`);
     };
 
@@ -30,17 +30,17 @@ export default function NewWorkerPage() {
     };
 
     return (
-        <PageContainer
-            title="新增移工"
-            subtitle="建立新的外籍勞工檔案或新增派遣記錄"
+        <StandardPageLayout
+            title="?��?移工"
+            subtitle="建�??��?外�??�工檔�??�新增派?????
             showBack
             breadcrumbs={[
-                { label: '首頁', href: '/' },
-                { label: '外勞管理', href: '/workers' },
-                { label: '新增移工' }
+                { label: '首�?', href: '/' },
+                { label: '外�?管�?', href: '/workers' },
+                { label: '?��?移工' }
             ]}
         >
             <WorkerForm onSubmit={handleSubmit} onCancel={handleCancel} />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import PageContainer from '@/components/layout/PageContainer';
+import StandardPageLayout from '@/components/layout/StandardPageLayout';
 import PartnerAgencyForm from '@/components/partner-agencies/PartnerAgencyForm';
 import { toast } from 'sonner';
 import { apiGet } from '@/lib/api';
@@ -32,7 +32,7 @@ export default function EditPartnerAgencyPage({ params }: { params: { id: string
     if (!data) return <div>找不到資料</div>;
 
     return (
-        <PageContainer
+        <StandardPageLayout
             title="編輯國外仲介 (Edit Agency)"
             breadcrumbs={[
                 { label: '首頁', href: '/' },
@@ -43,6 +43,6 @@ export default function EditPartnerAgencyPage({ params }: { params: { id: string
             maxWidth="2xl"
         >
             <PartnerAgencyForm initialData={data} isEdit />
-        </PageContainer>
+        </StandardPageLayout>
     );
 }
