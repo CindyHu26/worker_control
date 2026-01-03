@@ -21,32 +21,32 @@ interface SettingItem {
 
 const settingsItems: SettingItem[] = [
     {
-        title: '主�?資�?管�?',
-        description: '管�?下�??�單資�?：�?約�??�、�??��??�、�?籍�?',
+        title: '主檔資料管理',
+        description: '管理下拉選單資料：合約範本、產業類別、國籍等',
         href: '/system/references',
         icon: <Database className="h-6 w-6 text-blue-500" />
     },
     {
-        title: '仲�??�司設�?',
-        description: '管�??�內仲�??�司?�本資�?',
+        title: '仲介公司設定',
+        description: '管理國內仲介公司基本資料',
         href: '/settings/agencies',
         icon: <Building2 className="h-6 w-6 text-green-500" />
     },
     {
-        title: '費用?�目定義',
-        description: '設�?帳�?計費?�目',
+        title: '費用項目定義',
+        description: '設定帳務計費項目',
         href: '/settings/billing-item-definitions',
         icon: <Receipt className="h-6 w-6 text-amber-500" />
     },
     {
-        title: '?�件範本管�?',
-        description: '管�??��??�件範本?��?位設�?,
+        title: '文件範本管理',
+        description: '管理入國文件範本與欄位設定',
         href: '/settings/templates',
         icon: <FileText className="h-6 w-6 text-purple-500" />
     },
     {
-        title: '?�次?��?',
-        description: '?�次作業設�?',
+        title: '批次作業',
+        description: '批次作業設定',
         href: '/settings/batch',
         icon: <Settings2 className="h-6 w-6 text-gray-500" />
     },
@@ -55,10 +55,10 @@ const settingsItems: SettingItem[] = [
 export default function SettingsPage() {
     return (
         <StandardPageLayout
-            title="系統設�? (Settings)"
+            title="系統設定 (Settings)"
             breadcrumbs={[
-                { label: '首�?', href: '/' },
-                { label: '系統設�?' }
+                { label: '首頁', href: '/' },
+                { label: '系統設定' }
             ]}
         >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

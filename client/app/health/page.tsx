@@ -91,7 +91,7 @@ export default function HealthCheckPage() {
 
     const handleBatchNotify = async () => {
         if (selectedIds.size === 0) return;
-        if (!confirm(`確�?要�??�並?�知 ${selectedIds.size} 位移工�??�主?��?`)) return;
+        if (!confirm(`確定要產生並通知 ${selectedIds.size} 位移工與雇主嗎？`)) return;
 
         try {
             const res = await fetch('http://localhost:3001/api/health-checks/batch-notify', {
@@ -102,14 +102,14 @@ export default function HealthCheckPage() {
             });
 
             if (res.ok) {
-                alert('已�??�通知?�並?�新?�?��?(Mock PDF Download)');
+                alert('已排程健檢通知並更新排程健檢(Mock PDF Download)');
                 fetchChecks();
             } else {
-                alert('?��?失�?');
+                alert('排程健檢失敗');
             }
         } catch (err) {
             console.error(err);
-            alert('系統?�誤');
+            alert('系統誤');
         }
     };
 
@@ -143,8 +143,8 @@ export default function HealthCheckPage() {
 
     return (
         <StandardPageLayout
-            title="體檢追蹤管�?"
-            subtitle={`追蹤?��??��??�異常�?複檢?�移�?(${filterMode === 'upcoming' ? `${daysRange}?�內` : filterMode === 'overdue' ? '?��??�檢' : '?�部'})`}
+            title="體檢追蹤管理"
+            subtitle={`追蹤排程健檢異常複檢移工(${filterMode === 'upcoming' ? `${daysRange}天內` : filterMode === 'overdue' ? '逾期未檢' : '全部'})`}
             actions={
                 <div className="flex gap-2">
                     <button onClick={fetchChecks} className="p-2 text-slate-500 hover:bg-slate-100 rounded-full">
@@ -156,7 +156,7 @@ export default function HealthCheckPage() {
                             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm"
                         >
                             <Printer size={18} />
-                            ?�印?�知??({selectedIds.size})
+                            列印通知單({selectedIds.size})
                         </button>
                     )}
                 </div>
@@ -168,20 +168,20 @@ export default function HealthCheckPage() {
                 {/* Period Mode */}
                 <div className="flex bg-slate-100 p-1 rounded-lg">
                     <button onClick={() => setFilterMode('upcoming')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${filterMode === 'upcoming' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
-                        ?��??��?
+                        排程健檢
                     </button>
                     <button onClick={() => setFilterMode('overdue')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${filterMode === 'overdue' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
-                        ?��??�檢
+                        排程健檢檢
                     </button>
                     <button onClick={() => setFilterMode('all')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${filterMode === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
-                        ?�部
+                        全部
                     </button>
                 </div>
 
                 {/* Days Slider (Only for upcoming) */}
                 {filterMode === 'upcoming' && (
                     <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
-                        <span className="text-sm font-medium text-slate-700">?�詢?�??</span>
+                        <span className="text-sm font-medium text-slate-700">查詢排程健檢</span>
                         <input
                             type="range"
                             min="30" max="180" step="30"
@@ -197,7 +197,7 @@ export default function HealthCheckPage() {
 
                 {/* Type Filter */}
                 <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
-                    <span className="text-sm font-medium text-slate-700">類�?:</span>
+                    <span className="text-sm font-medium text-slate-700">類別:</span>
                     {['entry', '6mo', '18mo', '30mo', 'recheck'].map(type => (
                         <label key={type} className="flex items-center gap-1.5 text-sm cursor-pointer">
                             <input
@@ -219,18 +219,18 @@ export default function HealthCheckPage() {
                         <tr>
                             <th className="p-4 w-12"><input type="checkbox" onChange={e => handleSelectAll(e.target.checked)} className="rounded" /></th>
                             <th className="p-4 text-sm font-semibold text-slate-600">移工 (Worker)</th>
-                            <th className="p-4 text-sm font-semibold text-slate-600">?�主 (Employer)</th>
-                            <th className="p-4 text-sm font-semibold text-slate-600 text-center">類�?</th>
-                            <th className="p-4 text-sm font-semibold text-slate-600">?�辦?�??/th>
-                            <th className="p-4 text-sm font-semibold text-slate-600">?�??/th>
-                            <th className="p-4 text-sm font-semibold text-slate-600 text-center">管�?</th>
+                            <th className="p-4 text-sm font-semibold text-slate-600">雇主 (Employer)</th>
+                            <th className="p-4 text-sm font-semibold text-slate-600 text-center">類別</th>
+                            <th className="p-4 text-sm font-semibold text-slate-600">待辦排程健檢</th>
+                            <th className="p-4 text-sm font-semibold text-slate-600">排程健檢/th>
+                            <th className="p-4 text-sm font-semibold text-slate-600 text-center">管理</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {loading ? (
                             <tr><td colSpan={7} className="p-12 text-center text-slate-500">Loading...</td></tr>
                         ) : checks.length === 0 ? (
-                            <tr><td colSpan={7} className="p-12 text-center text-slate-500">?��??�符?��?件�?體檢紀??/td></tr>
+                            <tr><td colSpan={7} className="p-12 text-center text-slate-500">排程健檢符排程健檢件定期體檢紀??/td></tr>
                         ) : (
                             checks.map(check => (
                                 <tr
@@ -257,37 +257,37 @@ export default function HealthCheckPage() {
                                         <div className="text-sm font-medium text-slate-700">
                                             {format(new Date(check.checkDate), 'yyyy-MM-dd')}
                                         </div>
-                                        <div className="text-xs text-slate-500">?��??��?</div>
+                                        <div className="text-xs text-slate-500">排程健檢</div>
                                     </td>
                                     <td className="p-4">
                                         {check.status === 'completed' ? (
                                             check.result === 'pass' ?
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
-                                                    <CheckCircle2 size={14} /> ?�格
+                                                    <CheckCircle2 size={14} /> 合格
                                                 </span> :
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
-                                                    <AlertCircle size={14} /> ?�常 (追蹤�?
+                                                    <AlertCircle size={14} /> 異常 (追蹤中)
                                                 </span>
                                         ) : check.status === 'scheduled' ? (
                                             <div className="flex flex-col">
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold w-fit">
-                                                    已�???
+                                                    已排程健檢
                                                 </span>
                                                 <span className="text-[10px] text-slate-500 mt-1 pl-1">{check.hospitalName}</span>
                                             </div>
                                         ) : (
                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
-                                                待�???
+                                                待排程健檢
                                             </span>
                                         )}
                                     </td>
                                     <td className="p-4 text-center">
                                         <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                                            管�?
+                                            管理
                                         </button>
                                         <div className="flex gap-2 justify-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={(e) => handleOpenSchedule(check, e)} className="p-1.5 bg-white border rounded hover:bg-slate-50 text-slate-600" title="?��?"><Calendar size={14} /></button>
-                                            <button onClick={(e) => handleOpenResult(check, e)} className="p-1.5 bg-white border rounded hover:bg-slate-50 text-slate-600" title="結�?"><FileEdit size={14} /></button>
+                                            <button onClick={(e) => handleOpenSchedule(check, e)} className="p-1.5 bg-white border rounded hover:bg-slate-50 text-slate-600" title="排程健檢"><Calendar size={14} /></button>
+                                            <button onClick={(e) => handleOpenResult(check, e)} className="p-1.5 bg-white border rounded hover:bg-slate-50 text-slate-600" title="結果"><FileEdit size={14} /></button>
                                         </div>
                                     </td>
                                 </tr>

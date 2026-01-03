@@ -6,11 +6,11 @@ import PartnerAgencyForm from '@/components/partner-agencies/PartnerAgencyForm';
 export default function NewPartnerAgencyPage() {
     return (
         <StandardPageLayout
-            title="?°å??‹å?ä»²ä? (New Agency)"
+            title="æ–°å¢žåˆä½œä»²ä»‹ (New Agency)"
             breadcrumbs={[
-                { label: 'é¦–é?', href: '/' },
-                { label: '?‹å?ä»²ä?ç®¡ç?', href: '/partner-agencies' },
-                { label: '?°å?' }
+                { label: 'é¦–é ', href: '/' },
+                { label: 'åˆä½œä»²ä»‹ç®¡ç†', href: '/partner-agencies' },
+                { label: 'æ–°å¢ž' }
             ]}
             showBack
             maxWidth="2xl"

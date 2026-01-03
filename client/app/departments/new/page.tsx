@@ -6,11 +6,11 @@ import DepartmentForm from '@/components/departments/DepartmentForm';
 export default function NewDepartmentPage() {
     return (
         <StandardPageLayout
-            title="?°å??¨é? (New Department)"
+            title="æ–°å¢žéƒ¨é–€ (New Department)"
             breadcrumbs={[
-                { label: 'é¦–é?', href: '/' },
-                { label: '?¨é?ç®¡ç?', href: '/departments' },
-                { label: '?°å?' }
+                { label: 'é¦–é ', href: '/' },
+                { label: 'éƒ¨é–€ç®¡ç†', href: '/departments' },
+                { label: 'æ–°å¢ž' }
             ]}
             showBack
             maxWidth="2xl"

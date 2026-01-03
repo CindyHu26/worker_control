@@ -7,12 +7,12 @@ import BankForm from '@/components/bank/BankForm';
 export default function CreateBankPage() {
     return (
         <StandardPageLayout
-            title="?°å??€è¡?(Create Bank)"
-            subtitle="å»ºç??°ç??€è¡Œè???
+            title="æ–°å¢žéŠ€è¡Œ (Create Bank)"
+            subtitle="å»ºç«‹è¡Œåº«è³‡æ–™"
             breadcrumbs={[
-                { label: 'é¦–é?', href: '/' },
-                { label: '?€è¡Œç®¡??, href: '/banks' },
-                { label: '?°å?', href: '#' },
+                { label: 'é¦–é ', href: '/' },
+                { label: 'éŠ€è¡Œç®¡ç†', href: '/banks' },
+                { label: 'æ–°å¢ž', href: '#' },
             ]}
             showBack={true}
             maxWidth="xl" // Limit width for form readability

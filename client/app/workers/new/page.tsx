@@ -17,11 +17,11 @@ export default function NewWorkerPage() {
 
         if (!res.ok) {
             const error = await res.json();
-            throw new Error(error.error || '建�?失�?');
+            throw new Error(error.error || '移工建立失敗');
         }
 
         const worker = await res.json();
-        toast.success('外�?建�??��?');
+        toast.success('移工建立成功');
         router.push(`/workers/${worker.id}`);
     };
 
@@ -31,13 +31,13 @@ export default function NewWorkerPage() {
 
     return (
         <StandardPageLayout
-            title="?��?移工"
-            subtitle="建�??��?外�??�工檔�??�新增派?????
+            title="新增移工"
+            subtitle="請填寫移工資料"
             showBack
             breadcrumbs={[
-                { label: '首�?', href: '/' },
-                { label: '外�?管�?', href: '/workers' },
-                { label: '?��?移工' }
+                { label: '首頁', href: '/' },
+                { label: '移工管理', href: '/workers' },
+                { label: '新增移工' }
             ]}
         >
             <WorkerForm onSubmit={handleSubmit} onCancel={handleCancel} />

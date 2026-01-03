@@ -41,7 +41,7 @@ export default function DomesticAgenciesPage() {
             setAgencies(data.data);
         } catch (error) {
             console.error(error);
-            toast.error("載入資�?失�?");
+            toast.error('系統錯誤');
         } finally {
             setLoading(false);
         }
@@ -55,30 +55,30 @@ export default function DomesticAgenciesPage() {
     }, [searchTerm]);
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`確�?要刪?��??�仲介公??"${name}" ?��?`)) return;
+        if (!confirm(`確定要刪除國內仲介公司 "${name}" 嗎？`)) return;
 
         try {
             await apiDelete(`http://localhost:3001/api/domestic-agencies/${id}`);
-            toast.success("?�內仲�??�司?�除?��?");
+            toast.success('操作成功');
             fetchAgencies();
         } catch (error) {
             console.error(error);
-            toast.error("?�除失�?，�?稍�??�試");
+            toast.error('系統錯誤');
         }
     };
 
     return (
         <StandardPageLayout
-            title="?�內仲�??�司管�?"
-            subtitle="管�??�內仲�??�司資�?"
+            title="國內仲介公司管理"
+            subtitle="管理國內仲介公司資料"
             breadcrumbs={[
-                { label: '首�?', href: '/' },
-                { label: '?�內仲�??�司', href: '/domestic-agencies' },
+                { label: '首頁', href: '/' },
+                { label: '國內仲介公司', href: '/domestic-agencies' },
             ]}
             actions={
                 <Link href="/domestic-agencies/new">
                     <Button>
-                        <Plus className="mr-2 h-4 w-4" /> ?��??�司
+                        <Plus className="mr-2 h-4 w-4" /> 新增公司
                     </Button>
                 </Link>
             }
@@ -86,7 +86,7 @@ export default function DomesticAgenciesPage() {
             <div className="flex items-center space-x-2 max-w-sm mb-6">
                 <Search className="h-4 w-4 text-gray-500" />
                 <Input
-                    placeholder="?��??�司?�稱?�代?��?統編..."
+                    placeholder="搜尋公司名稱、代碼、統編..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="bg-white"
@@ -97,24 +97,24 @@ export default function DomesticAgenciesPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>�??</TableHead>
-                            <TableHead>?�司?�稱</TableHead>
+                            <TableHead>操作</TableHead>
+                            <TableHead>公司名稱</TableHead>
                             <TableHead>簡稱</TableHead>
-                            <TableHead>統�?編�?</TableHead>
-                            <TableHead>?�話</TableHead>
-                            <TableHead>負責�?/TableHead>
-                            <TableHead>?�??/TableHead>
-                            <TableHead className="text-right">?��?</TableHead>
+                            <TableHead>統編/代碼</TableHead>
+                            <TableHead>電話</TableHead>
+                            <TableHead>負責人</TableHead>
+                            <TableHead>狀態</TableHead>
+                            <TableHead className="text-right">操作</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center h-24">載入�?..</TableCell>
+                                <TableCell colSpan={8} className="text-center h-24">載入中..</TableCell>
                             </TableRow>
                         ) : agencies.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center h-24">?��???/TableCell>
+                                <TableCell colSpan={8} className="text-center h-24">尚無資料</TableCell>
                             </TableRow>
                         ) : (
                             agencies.map((agency) => (
@@ -127,7 +127,7 @@ export default function DomesticAgenciesPage() {
                                     <TableCell>{agency.representativeName || '-'}</TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded-full text-xs ${agency.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                            {agency.isActive ? '?�用' : '?�用'}
+                                            {agency.isActive ? '啟用' : '停用'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -141,7 +141,7 @@ export default function DomesticAgenciesPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                title="?�除"
+                                                title="刪除"
                                                 onClick={() => handleDelete(agency.id, agency.agencyNameZh)}
                                             >
                                                 <Trash2 className="h-4 w-4 text-red-600" />

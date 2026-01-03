@@ -62,7 +62,7 @@ export default function AlertsPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                alert(`已產??${data.count} ?�新警示`);
+                alert(`已產生 ${data.count} 筆新警示`);
                 fetchAlerts();
             }
         } catch (error) {
@@ -107,11 +107,11 @@ export default function AlertsPage() {
 
     return (
         <StandardPageLayout
-            title="?�常?�表板"
-            subtitle="跨部?�?�常??��?�追�?
+            title="異常列表看板"
+            subtitle="跨部門異常通報追蹤"
             breadcrumbs={[
-                { label: '首�?', href: '/' },
-                { label: '?�常?�表板' },
+                { label: '首頁', href: '/' },
+                { label: '返回列表' },
             ]}
             actions={
                 <div className="flex gap-2">
@@ -121,7 +121,7 @@ export default function AlertsPage() {
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                     >
                         <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-                        {generating ? '?��?�?..' : '?�新?��?'}
+                        {generating ? '產生中..' : '重新產生'}
                     </button>
                 </div>
             }
@@ -135,7 +135,7 @@ export default function AlertsPage() {
                 >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">?�部待�???/p>
+                            <p className="text-sm text-gray-500">全部待處理</p>
                             <p className="text-2xl font-bold text-gray-900">{summary.total}</p>
                         </div>
                         <Filter className="w-8 h-8 text-gray-400" />
@@ -149,7 +149,7 @@ export default function AlertsPage() {
                 >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-red-600">?�� 緊�?/p>
+                            <p className="text-sm text-red-600">🔴 緊急/p>
                             <p className="text-2xl font-bold text-red-700">{summary.critical}</p>
                         </div>
                         <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -163,7 +163,7 @@ export default function AlertsPage() {
                 >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-yellow-600">?�� 警�?</p>
+                            <p className="text-sm text-yellow-600">🟡 警示</p>
                             <p className="text-2xl font-bold text-yellow-700">{summary.warning}</p>
                         </div>
                         <AlertCircle className="w-8 h-8 text-yellow-400" />
@@ -177,7 +177,7 @@ export default function AlertsPage() {
                 >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-blue-600">?�� 資�?</p>
+                            <p className="text-sm text-blue-600">🔵 資訊</p>
                             <p className="text-2xl font-bold text-blue-700">{summary.info}</p>
                         </div>
                         <Info className="w-8 h-8 text-blue-400" />
@@ -194,7 +194,7 @@ export default function AlertsPage() {
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                 >
-                    待�???
+                    待處理
                 </button>
                 <button
                     onClick={() => setStatusFilter('ALL')}
@@ -202,9 +202,7 @@ export default function AlertsPage() {
                             ? 'bg-gray-900 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
-                >
-                    ?�部
-                </button>
+                > 全部 </button>
             </div>
 
             {/* Alerts Grid */}
@@ -215,8 +213,8 @@ export default function AlertsPage() {
             ) : filteredAlerts.length === 0 ? (
                 <div className="text-center py-20 text-gray-500">
                     <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-lg">?��?沒�??�常警示</p>
-                    <p className="text-sm">點�??��??��??�」�?檢查系統?�常</p>
+                    <p className="text-lg">目前沒有異常警示</p>
+                    <p className="text-sm">點擊「重新產生」以檢查系統異常</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -225,7 +223,7 @@ export default function AlertsPage() {
                         <div>
                             <h2 className="text-lg font-bold text-red-700 flex items-center gap-2 mb-4">
                                 <AlertTriangle className="w-5 h-5" />
-                                ?�� 緊�?({criticalAlerts.length})
+                                🔴 緊急({criticalAlerts.length})
                             </h2>
                             <div className="space-y-3">
                                 {criticalAlerts.map(alert => (
@@ -237,7 +235,7 @@ export default function AlertsPage() {
                                     />
                                 ))}
                                 {criticalAlerts.length === 0 && (
-                                    <p className="text-center py-8 text-gray-400 text-sm">?��??�警�?/p>
+                                    <p className="text-center py-8 text-gray-400 text-sm">暫無警示/p>
                                 )}
                             </div>
                         </div>
@@ -248,7 +246,7 @@ export default function AlertsPage() {
                         <div>
                             <h2 className="text-lg font-bold text-yellow-700 flex items-center gap-2 mb-4">
                                 <AlertCircle className="w-5 h-5" />
-                                ?�� 警�? ({warningAlerts.length})
+                                🟡 警示 ({warningAlerts.length})
                             </h2>
                             <div className="space-y-3">
                                 {warningAlerts.map(alert => (
@@ -260,7 +258,7 @@ export default function AlertsPage() {
                                     />
                                 ))}
                                 {warningAlerts.length === 0 && (
-                                    <p className="text-center py-8 text-gray-400 text-sm">?�警?��???/p>
+                                    <p className="text-center py-8 text-gray-400 text-sm">無警示事項/p>
                                 )}
                             </div>
                         </div>
@@ -271,7 +269,7 @@ export default function AlertsPage() {
                         <div>
                             <h2 className="text-lg font-bold text-blue-700 flex items-center gap-2 mb-4">
                                 <Info className="w-5 h-5" />
-                                ?�� 資�? ({infoAlerts.length})
+                                🔵 資訊 ({infoAlerts.length})
                             </h2>
                             <div className="space-y-3">
                                 {infoAlerts.map(alert => (
@@ -283,7 +281,7 @@ export default function AlertsPage() {
                                     />
                                 ))}
                                 {infoAlerts.length === 0 && (
-                                    <p className="text-center py-8 text-gray-400 text-sm">?��?辦�?�?/p>
+                                    <p className="text-center py-8 text-gray-400 text-sm">無待辦事項/p>
                                 )}
                             </div>
                         </div>

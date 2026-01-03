@@ -33,9 +33,9 @@ interface PaginationInfo {
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
     PENDING: { label: '待辦??, color: 'bg-yellow-100 text-yellow-800', icon: <Clock size={14} /> },
-    COMPLIANT: { label: '?��?', color: 'bg-green-100 text-green-800', icon: <CheckCircle2 size={14} /> },
-    OVERDUE: { label: '?��?', color: 'bg-red-100 text-red-800', icon: <XCircle size={14} /> },
-    WARNING: { label: '?��??��?', color: 'bg-orange-100 text-orange-800', icon: <AlertTriangle size={14} /> },
+    COMPLIANT: { label: '合規', color: 'bg-green-100 text-green-800', icon: <CheckCircle2 size={14} /> },
+    OVERDUE: { label: '逾期', color: 'bg-red-100 text-red-800', icon: <XCircle size={14} /> },
+    WARNING: { label: '即將到期', color: 'bg-orange-100 text-orange-800', icon: <AlertTriangle size={14} /> },
     SUBMITTED: { label: '已送件', color: 'bg-blue-100 text-blue-800', icon: <Clock size={14} /> },
 };
 
@@ -86,30 +86,30 @@ export default function EntryFilingsPage() {
 
     return (
         <StandardPageLayout
-            title="?��??�報管�?"
-            subtitle="追蹤?��?後�?定申?��???(3??15?��???"
+            title="入國通報管理"
+            subtitle="追蹤入國後法定申報事項 (3日/15日申報)"
             breadcrumbs={[
-                { label: '首�?', href: '/portal' },
-                { label: '?��??�報管�?' },
+                { label: '首頁', href: '/portal' },
+                { label: '入國通報管理' },
             ]}
         >
             {/* Dashboard Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-lg border p-4">
                     <div className="text-2xl font-bold text-gray-900">{dashboard.total}</div>
-                    <div className="text-sm text-gray-500">總�?件數</div>
+                    <div className="text-sm text-gray-500">總件數</div>
                 </div>
                 <div className="bg-green-50 rounded-lg border border-green-200 p-4">
                     <div className="text-2xl font-bold text-green-700">{dashboard.compliant}</div>
-                    <div className="text-sm text-green-600">?��?</div>
+                    <div className="text-sm text-green-600">合規</div>
                 </div>
                 <div className="bg-red-50 rounded-lg border border-red-200 p-4">
                     <div className="text-2xl font-bold text-red-700">{dashboard.overdue}</div>
-                    <div className="text-sm text-red-600">?��?</div>
+                    <div className="text-sm text-red-600">合規</div>
                 </div>
                 <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
                     <div className="text-2xl font-bold text-blue-700">{dashboard.complianceRate}%</div>
-                    <div className="text-sm text-blue-600">?��???/div>
+                    <div className="text-sm text-blue-600">未申報</div>
                 </div>
             </div>
 
@@ -122,7 +122,7 @@ export default function EntryFilingsPage() {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="?��?移工姓�?..."
+                            placeholder="搜尋移工姓名..."
                             className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
@@ -135,11 +135,11 @@ export default function EntryFilingsPage() {
                     }}
                     className="px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
                 >
-                    <option value="">?�?��???/option>
+                    <option value="">全部狀態</option>
                     <option value="PENDING">待辦??/option>
-                    <option value="COMPLIANT">?��?</option>
-                    <option value="OVERDUE">?��?</option>
-                    <option value="WARNING">?��??��?</option>
+                    <option value="COMPLIANT">篩選狀態</option>
+                    <option value="OVERDUE">篩選狀態</option>
+                    <option value="WARNING">篩選狀態</option>
                 </select>
             </div>
 
@@ -149,23 +149,23 @@ export default function EntryFilingsPage() {
                     <thead className="bg-gray-50 border-b">
                         <tr>
                             <th className="px-4 py-3 text-left font-medium text-gray-700">移工</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-700">?��??��?</th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��??�報<br /><span className="text-xs text-gray-400">(3??</span></th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��??�檢<br /><span className="text-xs text-gray-400">(3??</span></th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">居�?�?br /><span className="text-xs text-gray-400">(15??</span></th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?�僱許可<br /><span className="text-xs text-gray-400">(15??</span></th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��??�??/th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��?</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-700">移工姓名</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">入國通報<br /><span className="text-xs text-gray-400">(3??</span></th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">入國健檢<br /><span className="text-xs text-gray-400">(3??</span></th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">居留證號<br /><span className="text-xs text-gray-400">(15??</span></th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">聘僱許可<br /><span className="text-xs text-gray-400">(15??</span></th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">狀態</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">移工姓名</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y">
                         {loading ? (
                             <tr>
-                                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">載入�?..</td>
+                                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">載入中..</td>
                             </tr>
                         ) : data.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">尚無?��??�報記�?</td>
+                                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">尚無入國通報記錄</td>
                             </tr>
                         ) : (
                             data.map((item) => (
@@ -216,7 +216,7 @@ export default function EntryFilingsPage() {
             {pagination.totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                     <p className="text-sm text-gray-600">
-                        ??{pagination.total} 筆�?�?{pagination.page} / {pagination.totalPages} ??
+                        共 {.total} 筆資料{pagination.page} / {pagination.totalPages} 頁
                     </p>
                     <div className="flex gap-2">
                         <button

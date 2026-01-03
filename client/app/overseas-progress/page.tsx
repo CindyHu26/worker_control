@@ -35,9 +35,9 @@ interface PaginationInfo {
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    IN_PROGRESS: { label: '?��?�?, color: 'bg-yellow-100 text-yellow-800', icon: <Clock size={14} /> },
-    COMPLETED: { label: '已�???, color: 'bg-green-100 text-green-800', icon: <CheckCircle2 size={14} /> },
-    BLOCKED: { label: '?�阻??, color: 'bg-red-100 text-red-800', icon: <XCircle size={14} /> },
+    IN_PROGRESS: { label: '進行中', color: 'bg-yellow-100 text-yellow-800', icon: <Clock size={14} /> },
+    COMPLETED: { label: '已完成', color: 'bg-green-100 text-green-800', icon: <CheckCircle2 size={14} /> },
+    BLOCKED: { label: '受阻', color: 'bg-red-100 text-red-800', icon: <XCircle size={14} /> },
 };
 
 export default function OverseasProgressPage() {
@@ -82,11 +82,11 @@ export default function OverseasProgressPage() {
 
     return (
         <StandardPageLayout
-            title="海�??�度追蹤"
-            subtitle="追蹤?�選人�??��??�入境�??��??�檢?��??�度"
+            title="海外進度追蹤"
+            subtitle="追蹤候選人從入境前到體檢進度"
             breadcrumbs={[
-                { label: '首�?', href: '/portal' },
-                { label: '海�??�度追蹤' },
+                { label: '首頁', href: '/portal' },
+                { label: '海外進度追蹤' },
             ]}
         >
             {/* Filters */}
@@ -98,7 +98,7 @@ export default function OverseasProgressPage() {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="?��?姓�??�護?��?�?.."
+                            placeholder="搜尋姓名或護照號碼.."
                             className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
@@ -111,10 +111,10 @@ export default function OverseasProgressPage() {
                     }}
                     className="px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
                 >
-                    <option value="">?�?��???/option>
-                    <option value="IN_PROGRESS">?��?�?/option>
-                    <option value="COMPLETED">已�???/option>
-                    <option value="BLOCKED">?�阻??/option>
+                    <option value="">全部狀態</option>
+                    <option value="IN_PROGRESS">進行中</option>
+                    <option value="COMPLETED">已完成</option>
+                    <option value="BLOCKED">受阻</option>
                 </select>
             </div>
 
@@ -123,28 +123,28 @@ export default function OverseasProgressPage() {
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b">
                         <tr>
-                            <th className="px-4 py-3 text-left font-medium text-gray-700">?�選�?/th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-700">護照?�碼</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-700">?��?</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-700">候選人</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-700">護照號碼</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-700">姓名</th>
                             <th className="px-4 py-3 text-center font-medium text-gray-700">體檢</th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��?�?/th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">護照?��?</th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?�ARC</th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��??�??/th>
-                            <th className="px-4 py-3 text-center font-medium text-gray-700">?��?</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">狀態</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">護照號碼</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">居留證</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">狀態</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-700">姓名</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y">
                         {loading ? (
                             <tr>
                                 <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
-                                    載入�?..
+                                    載入中..
                                 </td>
                             </tr>
                         ) : data.length === 0 ? (
                             <tr>
                                 <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
-                                    尚無海�??�度記�?
+                                    尚無海外進度記錄
                                 </td>
                             </tr>
                         ) : (
@@ -165,10 +165,10 @@ export default function OverseasProgressPage() {
                                         <StatusBadge value={item.policeClrStatus} type="police" />
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                        <BooleanBadge value={item.passportExpiryOk} trueLabel="?�格" falseLabel="不�??? />
+                                        <BooleanBadge value={item.passportExpiryOk} trueLabel="合格" falseLabel="不合格" />
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                        <BooleanBadge value={!item.arcHasIssues} trueLabel="?��?�? falseLabel="?��?�? />
+                                        <BooleanBadge value={!item.arcHasIssues} trueLabel="有異常" falseLabel="無異常" />
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${STATUS_MAP[item.overallStatus]?.color || 'bg-gray-100 text-gray-600'}`}>
@@ -195,7 +195,7 @@ export default function OverseasProgressPage() {
             {pagination.totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                     <p className="text-sm text-gray-600">
-                        ??{pagination.total} 筆�?�?{pagination.page} / {pagination.totalPages} ??
+                        共 {pagination.total} 筆資料{pagination.page} / {pagination.totalPages} ??
                     </p>
                     <div className="flex gap-2">
                         <button
@@ -231,10 +231,10 @@ function StatusBadge({ value, type }: { value: string | null; type: 'medical' | 
     };
 
     const labels: Record<string, string> = {
-        PASS: '?�格',
+        PASS: '合格',
         ISSUED: '已核??,
-        FAIL: '不�???,
-        REJECTED: '駁�?',
+        FAIL: '不合格',
+        REJECTED: '駁回',
         PENDING: '待審',
     };
 

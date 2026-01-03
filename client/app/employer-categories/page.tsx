@@ -39,7 +39,7 @@ export default function EmployerCategoriesPage() {
             setCategories(data.data);
         } catch (error) {
             console.error(error);
-            toast.error("載入資�?失�?");
+            toast.error('系統錯誤');
         } finally {
             setLoading(false);
         }
@@ -53,30 +53,30 @@ export default function EmployerCategoriesPage() {
     }, [searchTerm]);
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`確�?要刪?��???"${name}" ?��?`)) return;
+        if (!confirm(`確定要刪除類別 "${name}" 嗎？`)) return;
 
         try {
             await apiDelete(`http://localhost:3001/api/employer-categories/${id}`);
-            toast.success("類別?�除?��???);
+            toast.success('操作成功');
             fetchCategories();
         } catch (error) {
             console.error(error);
-            toast.error("?�除失�?，�?稍�??�試??);
+            toast.error("刪除失敗，請稍後再試");
         }
     };
 
     return (
         <StandardPageLayout
-            title="?�主類別管�?"
-            subtitle="管�??�主?��?�?��?��?�?
+            title="雇主類別管理"
+            subtitle="管理雇主分類類別"
             breadcrumbs={[
-                { label: '首�?', href: '/' },
-                { label: '?�主類別', href: '/employer-categories' },
+                { label: '首頁', href: '/' },
+                { label: '雇主類別', href: '/employer-categories' },
             ]}
             actions={
                 <Link href="/employer-categories/new">
                     <Button>
-                        <Plus className="mr-2 h-4 w-4" /> ?��?類別
+                        <Plus className="mr-2 h-4 w-4" /> 新增類別
                     </Button>
                 </Link>
             }
@@ -84,7 +84,7 @@ export default function EmployerCategoriesPage() {
             <div className="flex items-center space-x-2 max-w-sm mb-6">
                 <Search className="h-4 w-4 text-gray-500" />
                 <Input
-                    placeholder="?��?類別..."
+                    placeholder="搜尋類別..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="bg-white"
@@ -95,22 +95,22 @@ export default function EmployerCategoriesPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>�?��</TableHead>
-                            <TableHead>中�??�稱</TableHead>
-                            <TableHead>?��??�稱</TableHead>
-                            <TableHead>?��?</TableHead>
-                            <TableHead>?�??/TableHead>
-                            <TableHead className="text-right">?��?</TableHead>
+                            <TableHead>代碼</TableHead>
+                            <TableHead>中名稱</TableHead>
+                            <TableHead>類別名稱</TableHead>
+                            <TableHead>代碼</TableHead>
+                            <TableHead>狀態</TableHead>
+                            <TableHead className="text-right">操作</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center h-24">載入�?..</TableCell>
+                                <TableCell colSpan={6} className="text-center h-24">載入中..</TableCell>
                             </TableRow>
                         ) : categories.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center h-24">?��???/TableCell>
+                                <TableCell colSpan={6} className="text-center h-24">尚無資料</TableCell>
                             </TableRow>
                         ) : (
                             categories.map((cat) => (
@@ -121,7 +121,7 @@ export default function EmployerCategoriesPage() {
                                     <TableCell>{cat.sortOrder}</TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded-full text-xs ${cat.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                            {cat.isActive ? '?�用' : '?�用'}
+                                            {cat.isActive ? '啟用' : '停用'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">

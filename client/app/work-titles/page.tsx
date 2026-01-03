@@ -48,7 +48,7 @@ export default function WorkTitlesPage() {
             setWorkTitles(data.data);
         } catch (error) {
             console.error(error);
-            toast.error("載入資�?失�?");
+            toast.error('系統錯誤');
         } finally {
             setLoading(false);
         }
@@ -62,30 +62,30 @@ export default function WorkTitlesPage() {
     }, [searchTerm]);
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`確�?要刪?�工�?"${name}" ?��?`)) return;
+        if (!confirm(`確定要刪除工種 "${name}" 嗎？`)) return;
 
         try {
             await apiDelete(`http://localhost:3001/api/work-titles/${id}`);
-            toast.success("工種?�除?��?");
+            toast.success('操作成功');
             fetchWorkTitles();
         } catch (error) {
             console.error(error);
-            toast.error("?�除失�?，�?稍�??�試");
+            toast.error('系統錯誤');
         }
     };
 
     return (
         <StandardPageLayout
-            title="工種管�?"
-            subtitle="管�?工種資�??�費?�設�?(從�?工�??�目)"
+            title="工種管理"
+            subtitle="管理移工工種資料與費用設定(從移工項目)"
             breadcrumbs={[
-                { label: '首�?', href: '/' },
-                { label: '工種管�?', href: '/work-titles' },
+                { label: '首頁', href: '/' },
+                { label: '工種管理', href: '/work-titles' },
             ]}
             actions={
                 <Link href="/work-titles/new">
                     <Button>
-                        <Plus className="mr-2 h-4 w-4" /> ?��?工種
+                        <Plus className="mr-2 h-4 w-4" /> 新增工種
                     </Button>
                 </Link>
             }
@@ -93,7 +93,7 @@ export default function WorkTitlesPage() {
             <div className="flex items-center space-x-2 max-w-sm mb-6">
                 <Search className="h-4 w-4 text-gray-500" />
                 <Input
-                    placeholder="?��?工種..."
+                    placeholder="搜尋工種..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="bg-white"
@@ -104,24 +104,24 @@ export default function WorkTitlesPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>�?��</TableHead>
-                            <TableHead>中�??�稱</TableHead>
-                            <TableHead>?�屬申請�???/TableHead>
+                            <TableHead>工種代碼</TableHead>
+                            <TableHead>中名稱</TableHead>
+                            <TableHead>歸屬申請類別</TableHead>
                             <TableHead>標籤</TableHead>
-                            <TableHead className="text-right">一?�就安費</TableHead>
-                            <TableHead className="text-right">?��?就�?�?/TableHead>
-                            <TableHead>?�??/TableHead>
-                            <TableHead className="text-right">?��?</TableHead>
+                            <TableHead className="text-right">一就安費</TableHead>
+                            <TableHead className="text-right">許可就業中</TableHead>
+                            <TableHead>狀態</TableHead>
+                            <TableHead className="text-right">操作</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center h-24">載入�?..</TableCell>
+                                <TableCell colSpan={8} className="text-center h-24">載入中..</TableCell>
                             </TableRow>
                         ) : workTitles.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center h-24">?��???/TableCell>
+                                <TableCell colSpan={8} className="text-center h-24">尚無資料</TableCell>
                             </TableRow>
                         ) : (
                             workTitles.map((wt) => (
@@ -132,19 +132,19 @@ export default function WorkTitlesPage() {
                                         {wt.category ? (
                                             <span className="text-blue-600">{wt.category.nameZh}</span>
                                         ) : (
-                                            <span className="text-gray-400">?�用</span>
+                                            <span className="text-gray-400">停用</span>
                                         )}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex gap-1">
                                             {wt.isDefault && (
                                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                                    <Star className="w-3 h-3 mr-1" /> ?�設
+                                                    <Star className="w-3 h-3 mr-1" /> 預設
                                                 </span>
                                             )}
                                             {wt.isIntermediate && (
                                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                                                    <Zap className="w-3 h-3 mr-1" /> 中�?
+                                                    <Zap className="w-3 h-3 mr-1" /> 中階
                                                 </span>
                                             )}
                                         </div>
@@ -153,7 +153,7 @@ export default function WorkTitlesPage() {
                                     <TableCell className="text-right">{wt.reentrySecurityFee.toLocaleString()}</TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded-full text-xs ${wt.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                            {wt.isActive ? '?�用' : '?�用'}
+                                            {wt.isActive ? '啟用' : '停用'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -167,7 +167,7 @@ export default function WorkTitlesPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                title="?�除"
+                                                title="刪除"
                                                 onClick={() => handleDelete(wt.id, wt.titleZh)}
                                             >
                                                 <Trash2 className="h-4 w-4 text-red-600" />

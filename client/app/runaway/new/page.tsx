@@ -11,8 +11,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 // Schema
 const reportSchema = z.object({
-    deploymentId: z.string().uuid({ message: '請選?�移�?(Please select a worker)' }),
-    missingDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: '請輸?��??�日?? }),
+    deploymentId: z.string().uuid({ message: '請選擇移工(Please select a worker)' }),
+    missingDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: '請輸入有效日期' }),
     notes: z.string().optional()
 });
 
@@ -46,11 +46,11 @@ function DeploymentSearch({ onSelect }: { onSelect: (id: string, name: string) =
 
     return (
         <div className="space-y-2">
-            <label className="block text-sm font-medium text-slate-700">?��?移工 (Search Worker)</label>
+            <label className="block text-sm font-medium text-slate-700">失聯移工 (Search Worker)</label>
             <div className="flex gap-2">
                 <input
                     className="flex-1 bg-white border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="輸入姓�??�護?��?�?.."
+                    placeholder="輸入姓名或護照號碼.."
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                 />
@@ -69,12 +69,12 @@ function DeploymentSearch({ onSelect }: { onSelect: (id: string, name: string) =
                                     onSelect(item.currentDeployment.id, `${item.nameZh} (${item.employerName})`);
                                     setResults([]);
                                 } else {
-                                    alert('此移工無?��?派工 (No active deployment)');
+                                    alert('此移工無有效派工 (No active deployment)');
                                 }
                             }}
                         >
                             <span className="font-bold">{item.nameZh}</span> <span className="text-slate-500">{item.nameEn}</span>
-                            <div className="text-xs text-slate-400">?�主: {item.employerName}</div>
+                            <div className="text-xs text-slate-400">雇主: {item.employerName}</div>
                         </div>
                     ))}
                 </div>
@@ -107,13 +107,13 @@ export default function NewRunawayPage() {
             router.push('/runaway');
         } catch (error) {
             console.error(error);
-            alert('?�報失�? (Failed to report)');
+            alert('通報失敗 (Failed to report)');
         }
     };
 
     return (
         <StandardPageLayout
-            title="?�報失聯 (Report Missing Worker)"
+            title="通報失聯 (Report Missing Worker)"
             showBack
             onBack={() => router.back()}
             maxWidth="lg" // Limit width for form
@@ -127,13 +127,13 @@ export default function NewRunawayPage() {
                             {selectedWorkerName ? (
                                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-md flex justify-between items-center">
                                     <div>
-                                        <div className="text-sm text-blue-600 font-bold mb-1">已選?�移�?(Selected):</div>
+                                        <div className="text-sm text-blue-600 font-bold mb-1">已選移工(Selected):</div>
                                         <div className="font-medium text-slate-900">{selectedWorkerName}</div>
                                     </div>
                                     <Button type="button" variant="ghost" size="sm" onClick={() => {
                                         setValue('deploymentId', '');
                                         setSelectedWorkerName('');
-                                    }}>?�選</Button>
+                                    }}>重選</Button>
                                 </div>
                             ) : (
                                 <DeploymentSearch onSelect={(id, name) => {
@@ -146,7 +146,7 @@ export default function NewRunawayPage() {
 
                         {/* Missing Date */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-slate-700">失聯?��? (Missing Date)</label>
+                            <label className="block text-sm font-medium text-slate-700">失聯日期 (Missing Date)</label>
                             <input
                                 type="date"
                                 {...register('missingDate')}
@@ -157,27 +157,27 @@ export default function NewRunawayPage() {
 
                         {/* Three Day Countdown Note */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-slate-700">3?�通報?�數 (Countdown Start)</label>
+                            <label className="block text-sm font-medium text-slate-700">3異常通報數 (Countdown Start)</label>
                             <div className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-md text-slate-500 text-sm">
-                                系統將自?��?失聯?��??��?計�??�報?��? (System auto-calculates from Missing Date)
+                                系統將自動依失聯日期計算通報期限 (System auto-calculates from Missing Date)
                             </div>
                         </div>
 
                         {/* Notes */}
                         <div className="col-span-1 md:col-span-2 space-y-2">
-                            <label className="block text-sm font-medium text-slate-700">?�註 (Notes)</label>
+                            <label className="block text-sm font-medium text-slate-700">備註 (Notes)</label>
                             <textarea
                                 {...register('notes')}
                                 className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none h-32"
-                                placeholder="請輸?�相?��?況�?�?.."
+                                placeholder="請輸入相關情況說明.."
                             />
                         </div>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                        <Button type="button" variant="outline" onClick={() => router.back()}>?��? (Cancel)</Button>
+                        <Button type="button" variant="outline" onClick={() => router.back()}>取消 (Cancel)</Button>
                         <Button type="submit" disabled={isSubmitting} className="bg-red-600 hover:bg-red-700 text-white">
-                            確�??�報 (Confirm Report)
+                            確認通報 (Confirm Report)
                         </Button>
                     </div>
                 </div>

@@ -161,13 +161,13 @@ export default function DormAssignPage() {
     };
 
     return (
-        <StandardPageLayout title="床�??��?管�? (Bed Assignment)" showBack onBack={() => window.location.href = '/portal'}>
+        <StandardPageLayout title="床位分配管理 (Bed Assignment)" showBack onBack={() => window.location.href = '/portal'}>
 
             {/* Control Bar */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-6 flex items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Home className="text-slate-500" size={20} />
-                    <span className="font-medium text-slate-700">?��?宿�?:</span>
+                    <span className="font-medium text-slate-700">選擇宿舍:</span>
                 </div>
                 <select
                     className="border rounded-md px-3 py-2 min-w-[200px]"
@@ -177,28 +177,28 @@ export default function DormAssignPage() {
                     {dorms.map(d => (
                         <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
-                    {dorms.length === 0 && <option>?�宿?��???(No Dorms)</option>}
+                    {dorms.length === 0 && <option>無宿舍(No Dorms)</option>}
                 </select>
 
                 {currentDorm && (
                     <div className="text-sm text-slate-500 ml-auto">
-                        類�?: {currentDorm.accommodationType || '一?�宿??}
+                        類型: {currentDorm.accommodationType || '一般宿舍}
                     </div>
                 )}
             </div>
 
             {loading ? (
-                <div className="text-center py-12 text-slate-500">載入�?..</div>
+                <div className="text-center py-12 text-slate-500">載入中..</div>
             ) : !currentDorm ? (
-                <div className="text-center py-12 text-slate-400">請選?�宿?�以檢�?床�?</div>
+                <div className="text-center py-12 text-slate-400">請選擇宿舍以檢視床位</div>
             ) : (
                 <div className="space-y-6">
                     {currentDorm.rooms.map(room => (
                         <div key={room.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
                             <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
-                                <h3 className="font-semibold text-slate-700">?��?: {room.roomNumber}</h3>
+                                <h3 className="font-semibold text-slate-700">房號: {room.roomNumber}</h3>
                                 <span className="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded">
-                                    {room.beds.filter(b => b.isOccupied).length} / {room.capacity} �?
+                                    {room.beds.filter(b => b.isOccupied).length} / {room.capacity} 床
                                 </span>
                             </div>
                             <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -228,7 +228,7 @@ export default function DormAssignPage() {
                                                 <div className="text-blue-700 truncate w-20">{bed.worker.chineseName}</div>
                                             </div>
                                         ) : (
-                                            <span className="text-xs text-slate-400">主�?空�?</span>
+                                            <span className="text-xs text-slate-400">主空>床</span>
                                         )}
                                     </div>
                                 ))}
@@ -237,7 +237,7 @@ export default function DormAssignPage() {
                         </div>
                     ))}
                     {currentDorm.rooms.length === 0 && (
-                        <div className="text-center py-12 text-slate-500">此宿?��??�房?��???/div>
+                        <div className="text-center py-12 text-slate-500">此宿舍尚無房間資料/div>
                     )}
                 </div>
             )}
@@ -249,10 +249,10 @@ export default function DormAssignPage() {
                         <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                             <div>
                                 <h3 className="font-bold text-lg text-slate-800">
-                                    床�?: {selectedBed.bedCode}
+                                    床位: {selectedBed.bedCode}
                                 </h3>
                                 <p className="text-sm text-slate-500">
-                                    ?�?? {selectedBed.isOccupied ? '已�??? : '空�?'}
+                                    狀態: {selectedBed.isOccupied ? '已分配' : '空床'}
                                 </p>
                             </div>
                             <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -273,7 +273,7 @@ export default function DormAssignPage() {
                                         onClick={handleUnassign}
                                         className="w-full bg-red-50 text-red-600 border border-red-200 py-2 rounded-lg hover:bg-red-100 transition-colors"
                                     >
-                                        ?��??��? (Unassign)
+                                        取消分配 (Unassign)
                                     </button>
                                 </div>
                             ) : (
@@ -282,7 +282,7 @@ export default function DormAssignPage() {
                                         <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
                                         <input
                                             type="text"
-                                            placeholder="?��?移工姓�?..."
+                                            placeholder="搜尋移工姓名..."
                                             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -292,7 +292,7 @@ export default function DormAssignPage() {
 
                                     <div className="max-h-60 overflow-y-auto border rounded-xl divide-y">
                                         {searching ? (
-                                            <div className="p-4 text-center text-slate-500">?��?�?..</div>
+                                            <div className="p-4 text-center text-slate-500">載入中..</div>
                                         ) : searchResults.length > 0 ? (
                                             searchResults.map(worker => (
                                                 <button
@@ -308,9 +308,9 @@ export default function DormAssignPage() {
                                                 </button>
                                             ))
                                         ) : searchQuery ? (
-                                            <div className="p-4 text-center text-slate-500">?��?尋�???/div>
+                                            <div className="p-4 text-center text-slate-500">無搜尋結果</div>
                                         ) : (
-                                            <div className="p-4 text-center text-slate-400 text-sm">請輸?��??��??��?</div>
+                                            <div className="p-4 text-center text-slate-400 text-sm">請輸入關鍵字搜尋</div>
                                         )}
                                     </div>
                                 </div>

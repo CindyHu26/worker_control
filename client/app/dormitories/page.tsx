@@ -72,15 +72,15 @@ export default function DormitoryListPage() {
 
     return (
         <StandardPageLayout
-            title="宿�?管�?"
-            subtitle="管�?宿�??��??�房?��?床�??��?"
+            title="宿舍管理"
+            subtitle="管理宿舍、房間及床位配置"
             actions={
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm hover:shadow"
                 >
                     <Plus size={20} />
-                    <span>?��?宿�?</span>
+                    <span>新增宿舍</span>
                 </button>
             }
         >
@@ -94,8 +94,8 @@ export default function DormitoryListPage() {
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Home size={32} className="text-slate-400" />
                     </div>
-                    <h3 className="text-lg font-medium text-slate-900">尚無宿�?資�?</h3>
-                    <p className="text-slate-500 mt-1">請�??�右上�??��?宿�???/p>
+                    <h3 className="text-lg font-medium text-slate-900">尚無宿舍資料</h3>
+                    <p className="text-slate-500 mt-1">請點擊右上角新增宿舍/p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -113,19 +113,19 @@ export default function DormitoryListPage() {
             {isCreateModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h2 className="text-xl font-bold mb-4">?��?宿�? (New Dormitory)</h2>
+                        <h2 className="text-xl font-bold mb-4">新增宿舍 (New Dormitory)</h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">宿�??�稱 (Name)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">宿舍名稱 (Name)</label>
                                 <input
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={newDorm.name}
                                     onChange={e => setNewDorm({ ...newDorm, name: e.target.value })}
-                                    placeholder="e.g. 中壢一廠宿??
+                                    placeholder="e.g. 中壢一廠宿舍
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">?��? (Address)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">地址 (Address)</label>
                                 <input
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={newDorm.address}
@@ -134,7 +134,7 @@ export default function DormitoryListPage() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">?�東/管�?�?/label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">房東/管理員</label>
                                     <input
                                         className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                         value={newDorm.landlordName}
@@ -142,7 +142,7 @@ export default function DormitoryListPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">?�絡?�話</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">聯絡電話</label>
                                     <input
                                         className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                         value={newDorm.landlordPhone}
@@ -155,15 +155,13 @@ export default function DormitoryListPage() {
                             <button
                                 onClick={() => setIsCreateModalOpen(false)}
                                 className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
-                            >
-                                ?��?
-                            </button>
+                            >新增</button>
                             <button
                                 onClick={handleCreate}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm disabled:opacity-50"
                                 disabled={!newDorm.name}
                             >
-                                建�?宿�?
+                                建立宿舍
                             </button>
                         </div>
                     </div>

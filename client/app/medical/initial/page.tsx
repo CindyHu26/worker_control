@@ -69,7 +69,7 @@ export default function InitialCheckupPage() {
 
     const handleCreateSchedule = async () => {
         if (!selectedDeployment || !scheduleDate || !hospitalName) {
-            alert('請填寫�??��?�?);
+            alert('請填寫必填欄位');
             return;
         }
 
@@ -91,18 +91,18 @@ export default function InitialCheckupPage() {
                 setShowScheduleModal(false);
                 fetchPending(); // Refresh list (item should disappear)
             } else {
-                alert('建�?失�?');
+                alert('建立失敗');
             }
         } catch (error) {
             console.error(error);
-            alert('建�?失�?');
+            alert('建立失敗');
         } finally {
             setSubmitting(false);
         }
     };
 
     return (
-        <StandardPageLayout title="?�次體檢管�? (Initial Checkup)" showBack onBack={() => window.location.href = '/portal'}>
+        <StandardPageLayout title="初次體檢管理 (Initial Checkup)" showBack onBack={() => window.location.href = '/portal'}>
 
             {/* Tabs */}
             <div className="flex border-b border-slate-200 mb-6">
@@ -113,7 +113,7 @@ export default function InitialCheckupPage() {
                             : 'border-transparent text-slate-500 hover:text-slate-700'
                         }`}
                 >
-                    待�?�?(Pending)
+                    待處理(Pending)
                     {pendingEntries.length > 0 && (
                         <span className="ml-2 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">
                             {pendingEntries.length}
@@ -127,26 +127,26 @@ export default function InitialCheckupPage() {
                             : 'border-transparent text-slate-500 hover:text-slate-700'
                         }`}
                 >
-                    已�?�?(Scheduled)
+                    已安排(Scheduled)
                 </button>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
                 {loading ? (
-                    <div className="text-center py-12 text-slate-500">載入�?..</div>
+                    <div className="text-center py-12 text-slate-500">載入中..</div>
                 ) : activeTab === 'pending' ? (
                     /* Pending Table */
                     pendingEntries.length === 0 ? (
-                        <div className="text-center py-12 text-slate-500">?��??��??�目</div>
+                        <div className="text-center py-12 text-slate-500">待檢查項目</div>
                     ) : (
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">移工姓�?</th>
-                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">?�主</th>
-                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">?��??��?</th>
-                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">?��?檢�???(3?�內)</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium text-slate-500">?��?</th>
+                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">移工姓名</th>
+                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">雇主</th>
+                                    <th>檢查項目</th>
+                                    <th>最近檢查 (3個月內)</th>
+                                    <th>檢查項目</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -179,7 +179,7 @@ export default function InitialCheckupPage() {
                                                     onClick={() => handleOpenSchedule(dep)}
                                                     className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-md text-sm transition-colors"
                                                 >
-                                                    安�?體檢
+                                                    安定期體檢
                                                 </button>
                                             </td>
                                         </tr>
@@ -191,15 +191,15 @@ export default function InitialCheckupPage() {
                 ) : (
                     /* Scheduled Table */
                     scheduledChecks.length === 0 ? (
-                        <div className="text-center py-12 text-slate-500">?�已?��??�目</div>
+                        <div className="text-center py-12 text-slate-500">無已待檢查項目</div>
                     ) : (
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">移工姓�?</th>
-                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">安�??��?</th>
-                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">?�院</th>
-                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">?�??/th>
+                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">移工姓名</th>
+                                    <th>安排日期</th>
+                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">醫院</th>
+                                    <th className="px-6 py-3 text-sm font-medium text-slate-500">狀態</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -226,7 +226,7 @@ export default function InitialCheckupPage() {
                                             `}>
                                                 {check.result === 'pass' && <CheckCircle2 size={12} />}
                                                 {check.result === 'pending' && <Clock size={12} />}
-                                                {check.result === 'pending' ? '等�?檢查/?��?' : check.result}
+                                                {check.result === 'pending' ? '等待檢查/結果' : check.result}
                                             </span>
                                         </td>
                                     </tr>
@@ -241,16 +241,16 @@ export default function InitialCheckupPage() {
             {showScheduleModal && selectedDeployment && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                        <h3 className="text-xl font-bold text-slate-800 mb-4">安�??�次體檢</h3>
+                        <h3 className="text-xl font-bold text-slate-800 mb-4">安排初次體檢</h3>
 
                         <div className="space-y-4 mb-6">
                             <div className="bg-slate-50 p-3 rounded-lg text-sm">
                                 <p><span className="text-slate-500">移工:</span> {selectedDeployment.worker.englishName}</p>
-                                <p><span className="text-slate-500">?��???</span> {new Date(selectedDeployment.entryDate).toLocaleDateString()}</p>
+                                <p><span className="text-slate-500">入境日期</span> {new Date(selectedDeployment.entryDate).toLocaleDateString()}</p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">體檢?��?</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">體檢醫院</label>
                                 <input
                                     type="date"
                                     className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
@@ -260,10 +260,10 @@ export default function InitialCheckupPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">?�院</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">醫院</label>
                                 <input
                                     type="text"
-                                    placeholder="例�?: 衛�?福利?��??�醫??
+                                    placeholder="例如: 衛生福利部桃園醫院"
                                     className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                                     value={hospitalName}
                                     onChange={e => setHospitalName(e.target.value)}
@@ -276,14 +276,14 @@ export default function InitialCheckupPage() {
                                 onClick={() => setShowScheduleModal(false)}
                                 className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                             >
-                                ?��?
+                                儲存
                             </button>
                             <button
                                 onClick={handleCreateSchedule}
                                 disabled={submitting}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                             >
-                                {submitting ? '建�?�?..' : '確�?安�?'}
+                                {submitting ? '建立..' : '確認安排'}
                             </button>
                         </div>
                     </div>

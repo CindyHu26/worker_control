@@ -55,7 +55,7 @@ export default function ServiceFeesPage() {
     }, [selectedMonth, serviceFeeDefIds]);
 
     const handleMarkPaid = async (id: string, amount: number) => {
-        if (!confirm('確�?標�??�已?�款?')) return;
+        if (!confirm('確定標記為已收款?')) return;
         try {
             const res = await fetch(`/api/receivables/${id}/payments`, {
                 method: 'POST',
@@ -74,23 +74,23 @@ export default function ServiceFeesPage() {
                 );
                 setReceivables(updatedReceivables);
             } else {
-                alert('?��?失�?');
+                alert('儲存失敗');
             }
         } catch (e) {
             console.error(e);
-            alert('?��?失�?');
+            alert('儲存失敗');
         }
     };
 
     return (
-        <StandardPageLayout title="每�??��?費管??(Service Fees)" showBack onBack={() => window.location.href = '/portal'}>
+        <StandardPageLayout title="每月服務費管理 (Service Fees)" showBack onBack={() => window.location.href = '/portal'}>
 
             {/* Header Controls */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Calendar className="text-slate-400" size={20} />
-                        <span className="font-medium text-slate-700">帳�??�份:</span>
+                        <span className="font-medium text-slate-700">帳單月份:</span>
                         <input
                             type="month"
                             className="border rounded-md px-3 py-1.5 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500"
@@ -103,11 +103,11 @@ export default function ServiceFeesPage() {
                 <div className="flex gap-2">
                     <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
                         <Download size={18} />
-                        ?�出?�表
+                        匯出列表
                     </button>
                     <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         <Plus size={18} />
-                        ?�次?��??��?帳單
+                        批次產生本月帳單
                     </button>
                 </div>
             </div>
@@ -115,15 +115,15 @@ export default function ServiceFeesPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <div className="text-sm text-slate-500 mb-1">?��??�收總�?</div>
+                    <div className="text-sm text-slate-500 mb-1">應收總額</div>
                     <div className="text-2xl font-bold text-slate-900">${stats.total.toLocaleString()}</div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <div className="text-sm text-slate-500 mb-1">已收?��?</div>
+                    <div className="text-sm text-slate-500 mb-1">已收金額</div>
                     <div className="text-2xl font-bold text-emerald-600">${stats.paid.toLocaleString()}</div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <div className="text-sm text-slate-500 mb-1">?�收餘�?</div>
+                    <div className="text-sm text-slate-500 mb-1">未收餘額</div>
                     <div className="text-2xl font-bold text-red-600">${stats.pending.toLocaleString()}</div>
                 </div>
             </div>
@@ -131,19 +131,19 @@ export default function ServiceFeesPage() {
             {/* List */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 {loading ? (
-                    <div className="text-center py-12 text-slate-500">載入�?..</div>
+                    <div className="text-center py-12 text-slate-500">載入中..</div>
                 ) : receivables.length === 0 ? (
-                    <div className="text-center py-12 text-slate-500">?��?尚無?��?費帳??/div>
+                    <div className="text-center py-12 text-slate-500">目前尚無服務費帳單</div>
                 ) : (
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-6 py-3 text-sm font-medium text-slate-500">移工姓�?</th>
-                                <th className="px-6 py-3 text-sm font-medium text-slate-500">?�主</th>
-                                <th className="px-6 py-3 text-sm font-medium text-slate-500">?�目</th>
-                                <th className="px-6 py-3 text-sm font-medium text-slate-500">?��?</th>
-                                <th className="px-6 py-3 text-sm font-medium text-slate-500">?�??/th>
-                                <th className="px-6 py-3 text-center text-sm font-medium text-slate-500">?��?</th>
+                                <th className="px-6 py-3 text-sm font-medium text-slate-500">移工姓名</th>
+                                <th className="px-6 py-3 text-sm font-medium text-slate-500">雇主</th>
+                                <th className="px-6 py-3 text-sm font-medium text-slate-500">項目</th>
+                                
+                                <th className="px-6 py-3 text-sm font-medium text-slate-500">狀態</th>
+                                
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -169,7 +169,7 @@ export default function ServiceFeesPage() {
                                                     'bg-amber-50 text-amber-700 border-amber-200'}
                                         `}>
                                             {r.status === 'PAID' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-                                            {r.status === 'PAID' ? '已收�? : r.status === 'PENDING' ? '?�收�? : r.status}
+                                            {r.status === 'PAID' ? '已收款' : r.status === 'PENDING' ? '未收款' : r.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
@@ -178,7 +178,7 @@ export default function ServiceFeesPage() {
                                                 onClick={() => handleMarkPaid(r.id, Number(r.amount))}
                                                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                             >
-                                                ?�款
+                                                收款
                                             </button>
                                         )}
                                     </td>

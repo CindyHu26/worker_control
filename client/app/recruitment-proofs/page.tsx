@@ -43,13 +43,13 @@ export default function RecruitmentProofListPage() {
 
     return (
         <StandardPageLayout
-            title="?�內求�?證�?管�?"
-            subtitle="管�??�內求�??��??��??�書 (Domestic Recruitment Certificates)"
+            title="國內求才證明書管理"
+            subtitle="管理國內求才證明書 (Domestic Recruitment Certificates)"
             actions={
                 <Link href="/recruitment-proofs/new">
                     <Button className="gap-2">
                         <Plus size={16} />
-                        ?��?證�???
+                        新增證明書
                     </Button>
                 </Link>
             }
@@ -59,20 +59,20 @@ export default function RecruitmentProofListPage() {
                 <table className="w-full text-sm text-left">
                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
                         <tr>
-                            <th className="px-6 py-3">證�??��???/th>
-                            <th className="px-6 py-3">?�主?�稱</th>
-                            <th className="px-6 py-3">求�??��???/th>
-                            <th className="px-6 py-3">?��??��?</th>
-                            <th className="px-6 py-3">?��?機�?</th>
-                            <th className="px-6 py-3">?�??/th>
-                            <th className="px-6 py-3 text-right">?��?</th>
+                            <th className="px-6 py-3">證明書編號</th>
+                            <th className="px-6 py-3">雇主名稱</th>
+                            <th className="px-6 py-3">求才字號</th>
+                            <th>發證日期</th>
+                            <th>發證機構</th>
+                            <th className="px-6 py-3">狀態</th>
+                            <th>發證日期</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {proofs.length === 0 && !loading && (
                             <tr>
                                 <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
-                                    尚無資�?
+                                    尚無資料
                                 </td>
                             </tr>
                         )}
@@ -86,7 +86,7 @@ export default function RecruitmentProofListPage() {
                                 <td className="px-6 py-3">{proof.status}</td>
                                 <td className="px-6 py-3 text-right">
                                     <Link href={`/recruitment-proofs/${proof.id}`} className="text-blue-600 hover:underline">
-                                        檢�?
+                                        檢視
                                     </Link>
                                 </td>
                             </tr>

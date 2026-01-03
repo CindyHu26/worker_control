@@ -214,11 +214,7 @@ export default function EmployerForm({
         <FormProvider {...methods}>
             <form onSubmit={handleSubmit(onSubmitForm)} className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
 
-                <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 sticky top-4 z-10">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">{isEdit ? '編輯雇主資料' : '新增雇主資料'}</h1>
-                        <p className="text-gray-500 text-sm mt-1">請填寫完整的雇主資訊</p>
-                    </div>
+                <div className="flex justify-end items-center mb-6">
                     <div className="flex gap-3">
                         <Button type="button" variant="outline" onClick={onCancel} className="gap-2">
                             <X className="h-4 w-4" /> 取消
