@@ -319,4 +319,34 @@ router.delete('/items/:category/:code', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/reference/minimum-wage
+ * Query params: ?year=2024&processType=SPECIAL_PROCESS
+ */
+router.get('/minimum-wage', async (req, res) => {
+    try {
+        const { year, processType } = req.query;
+
+        if (!year) return res.status(400).json({ error: "Year is required" });
+
+        const config = await prisma.minimumWageConfiguration.findFirst({
+            where: {
+                year: Number(year),
+                processType: processType ? String(processType) : undefined
+            },
+            orderBy: { effectiveDate: 'desc' } // Get latest effective
+        });
+
+        if (!config) {
+            // Fallback logic? Or just return null
+            return res.json({ monthlySalary: null, hourlyWage: null });
+        }
+
+        res.json(config);
+    } catch (error) {
+        console.error("Error fetching min wage:", error);
+        res.status(500).json({ error: "Failed to fetch data" });
+    }
+});
+
 export default router;

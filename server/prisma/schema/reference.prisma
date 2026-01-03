@@ -21,6 +21,25 @@ model ReferenceData {
   @@map("reference_data")
 }
 
+// Government Minimum Wage Settings
+model MinimumWageConfiguration {
+  id        String   @id @default(uuid()) @db.Uuid
+  year      Int      // e.g., 2024
+  effectiveDate DateTime @map("effective_date") @db.Date // When it starts
+  
+  // Scope
+  industryId String? @map("industry_id") @db.Uuid // Optional: link to Industry
+  processType String @map("process_type") @db.VarChar(50) // SPECIAL_PROCESS, NON_SPECIAL_PROCESS, DOMESTIC
+  
+  monthlySalary Int @map("monthly_salary") // The rule
+  hourlyWage Int? @map("hourly_wage") 
+  
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("minimum_wage_configurations")
+}
+
 // Application Category (MOL Permit Type)
 model ApplicationCategory {
   id String @id @default(uuid()) @db.Uuid

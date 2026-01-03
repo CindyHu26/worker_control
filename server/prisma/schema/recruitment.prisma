@@ -27,6 +27,11 @@ model JobOrder {
   // Limits to specific work title (e.g., Caregiver)
   workTitleCode String? @map("work_title_code") @db.VarChar(50)
 
+  // --- Employment Terms (Added for Phase 0.3) ---
+  salaryAmount Int? @map("salary_amount") // Actual offered salary
+  salaryType String? @default("MONTHLY") @map("salary_type") // MONTHLY, HOURLY
+  processType String? @map("process_type") // SPECIAL_PROCESS, NON_SPECIAL_PROCESS
+
   // --- Timeline ---
   issueDate DateTime? @map("issue_date") @db.Date // 發文日期
   validUntil DateTime? @map("valid_until") @db.Date // 招募有效期限

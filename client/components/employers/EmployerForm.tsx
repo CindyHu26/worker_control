@@ -22,6 +22,8 @@ interface EmployerFormProps {
     onCancel: () => void;
     isLoading?: boolean;
     isEdit?: boolean;
+    formId?: string;
+    hideSubmit?: boolean;
 }
 
 // Helper to parse address string into components
@@ -52,7 +54,9 @@ export default function EmployerForm({
     onSubmit,
     onCancel,
     isLoading = false,
-    isEdit = false
+    isEdit = false,
+    formId = 'employer-form',
+    hideSubmit = false
 }: EmployerFormProps) {
     const router = useRouter();
 
@@ -212,19 +216,9 @@ export default function EmployerForm({
 
     return (
         <FormProvider {...methods}>
-            <form onSubmit={handleSubmit(onSubmitForm)} className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
+            <form id={formId} onSubmit={handleSubmit(onSubmitForm)} className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
 
-                <div className="flex justify-end items-center mb-6">
-                    <div className="flex gap-3">
-                        <Button type="button" variant="outline" onClick={onCancel} className="gap-2">
-                            <X className="h-4 w-4" /> 取消
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting || isLoading} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md">
-                            <Save className="h-4 w-4" />
-                            {isSubmitting ? '儲存中...' : '儲存資料'}
-                        </Button>
-                    </div>
-                </div>
+
 
                 {/* Form Errors Summary */}
                 {Object.keys(errors).length > 0 && (
@@ -268,6 +262,19 @@ export default function EmployerForm({
                     <TabsContent value="management" className="space-y-6">
                         <InternalManagementSection />
                     </TabsContent>
+                    {/* Sticky Bottom Actions */}
+                    {/* Sticky Bottom Actions - Only show if not hidden */}
+                    {!hideSubmit && (
+                        <div className="sticky bottom-0 flex justify-end gap-3 py-4 mt-6 border-t bg-white/80 backdrop-blur-sm z-10 transition-all duration-200">
+                            <Button type="button" variant="outline" onClick={onCancel} className="gap-2 shadow-sm hover:bg-white" disabled={isSubmitting || isLoading}>
+                                <X className="h-4 w-4" /> 取消
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting || isLoading} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all">
+                                <Save className="h-4 w-4" />
+                                {isSubmitting ? '儲存中...' : '儲存資料'}
+                            </Button>
+                        </div>
+                    )}
                 </Tabs>
             </form>
         </FormProvider>

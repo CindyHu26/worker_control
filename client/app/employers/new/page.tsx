@@ -7,6 +7,9 @@ import { getEmployerBreadcrumbs } from '@/lib/breadcrumbs';
 import { toast } from 'sonner';
 import { apiPost } from '@/lib/api';
 
+import { Button } from '@/components/ui/button';
+import { Save } from 'lucide-react';
+
 /**
  * NewEmployerPage - 新增雇主主面
  */
@@ -42,16 +45,26 @@ export default function NewEmployerPage() {
         router.push('/employers');
     };
 
+    const FORM_ID = "employer-form";
+
     return (
         <StandardPageLayout
             title="新增雇主"
             subtitle="請填寫雇主資料"
             showBack
             breadcrumbs={getEmployerBreadcrumbs()}
+            actions={
+                <Button type="submit" form={FORM_ID} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md">
+                    <Save className="h-4 w-4" />
+                    儲存變更
+                </Button>
+            }
         >
             <EmployerForm
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
+                formId={FORM_ID}
+                hideSubmit={true}
             />
         </StandardPageLayout>
     );

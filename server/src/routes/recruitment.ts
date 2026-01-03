@@ -5,6 +5,26 @@ import { z } from 'zod';
 
 const router = Router();
 
+// GET /api/recruitment/employers/list
+router.get('/employers/list', async (req, res) => {
+    try {
+        const employers = await prisma.employer.findMany({
+            select: {
+                id: true,
+                companyName: true,
+                taxId: true
+            },
+            orderBy: {
+                companyName: 'asc'
+            }
+        });
+        res.json(employers);
+    } catch (error) {
+        console.error('Failed to fetch employer list:', error);
+        res.status(500).json({ error: 'Failed to fetch employers' });
+    }
+});
+
 // Zod Schema (Creating)
 const createRecruitmentSchema = z.object({
     employerId: z.string().uuid(),
@@ -219,6 +239,55 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
         console.error("Update Recruitment Error:", error);
         res.status(500).json({ message: "Update Failed" });
+    }
+});
+
+// POST /api/recruitment/job-orders
+// Create a new Job Order (Phase 0.2/0.3 Implementation)
+router.post('/job-orders', async (req, res) => {
+    try {
+        const body = req.body;
+
+        // Basic validation
+        if (!body.employerId) return res.status(400).json({ message: "Employer ID required" });
+        if (!body.quota) return res.status(400).json({ message: "Quota required" });
+
+        // Calculate usedQuota? Starts at 0.
+
+        const newJobOrder = await prisma.jobOrder.create({
+            data: {
+                employerId: body.employerId,
+                recruitmentType: body.recruitmentType,
+                letterNumber: body.letterNumber,
+                issueDate: new Date(body.issueDate),
+                validUntil: new Date(body.validUntil),
+                quota: body.quota,
+                countryCode: body.countryCode || null,
+                workTitleCode: body.workTitleCode || null,
+
+                // Job Info
+                jobType: body.jobType,
+
+                // New Phase 0.3 Fields
+                processType: body.processType || null,
+                salaryAmount: body.salaryAmount || null,
+                salaryType: body.salaryType || 'MONTHLY',
+
+                // Parent for Supplementary
+                parentJobOrderId: body.parentJobOrderId || null,
+
+                // Defaults
+                usedQuota: 0,
+                status: 'open',
+                orderDate: new Date(),
+                requiredWorkers: body.quota
+            }
+        });
+
+        res.status(201).json(newJobOrder);
+    } catch (error: any) {
+        console.error("Create JobOrder Error:", error);
+        res.status(500).json({ message: "Failed to create Job Order", error: error.message });
     }
 });
 
