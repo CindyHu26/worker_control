@@ -7,6 +7,7 @@ export interface WorkerSearchParams {
     status?: 'active' | 'inactive';
     nationality?: string;
     filter?: 'expiring_30' | 'arriving_week' | 'missing_docs';
+    employerId?: string; // For relation drill-down filtering
     page?: string | number;
     limit?: string | number;
 }
@@ -70,6 +71,15 @@ export function buildWorkerFilters(params: WorkerSearchParams) {
                 }
             });
         }
+    }
+
+    // 3.5 Employer ID Filter (for relation drill-down)
+    if (params.employerId) {
+        andConditions.push({
+            deployments: {
+                some: { employerId: params.employerId }
+            }
+        });
     }
 
     // 4. Quick Filters

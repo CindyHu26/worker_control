@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
     FileText, Upload, Trash2, Download, Settings2,
-    Plus, Search, FolderOpen, AlertCircle, CheckCircle, Loader2, FileSpreadsheet
+    Plus, Search, FolderOpen, AlertCircle, CheckCircle, Loader2, FileSpreadsheet, BookOpen
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -28,9 +28,25 @@ export default function TemplateSettingsPage() {
         name: '',
         description: '',
         category: CATEGORIES[0].id,
+        scope: 'universal' as 'universal' | 'employer_specific',
+        employerId: null as string | null,
         file: null as File | null
     });
+    const [employers, setEmployers] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+
+    // Fetch employers for selector
+    const fetchEmployers = async () => {
+        try {
+            const res = await fetch('http://localhost:3001/api/recruitment/employers/list');
+            if (res.ok) {
+                const data = await res.json();
+                setEmployers(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch employers:', error);
+        }
+    };
 
     const fetchTemplates = async () => {
         setIsLoading(true);
@@ -52,6 +68,10 @@ export default function TemplateSettingsPage() {
         setUploadForm(prev => ({ ...prev, category: selectedCategory }));
     }, [selectedCategory]);
 
+    useEffect(() => {
+        fetchEmployers();
+    }, []);
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setUploadForm(prev => ({ ...prev, file: e.target.files![0] }));
@@ -60,6 +80,10 @@ export default function TemplateSettingsPage() {
 
     const handleUpload = async () => {
         if (!uploadForm.file || !uploadForm.name) return;
+        if (uploadForm.scope === 'employer_specific' && !uploadForm.employerId) {
+            alert('請選擇雇主');
+            return;
+        }
 
         setIsUploading(true);
         const formData = new FormData();
@@ -67,6 +91,9 @@ export default function TemplateSettingsPage() {
         formData.append('name', uploadForm.name);
         formData.append('description', uploadForm.description);
         formData.append('category', uploadForm.category);
+        if (uploadForm.scope === 'employer_specific' && uploadForm.employerId) {
+            formData.append('employerId', uploadForm.employerId);
+        }
 
         try {
             const res = await fetch('http://localhost:3001/api/documents/templates', {
@@ -80,6 +107,8 @@ export default function TemplateSettingsPage() {
                     name: '',
                     description: '',
                     category: selectedCategory,
+                    scope: 'universal',
+                    employerId: null,
                     file: null
                 });
                 fetchTemplates(); // Refresh
@@ -122,13 +151,22 @@ export default function TemplateSettingsPage() {
                     <h1 className="text-3xl font-bold text-slate-900">文件範本管理 (Templates)</h1>
                     <p className="text-slate-500 mt-2">管理系統自動生成文件所使用的 Word (.docx) 與 Excel (.xlsx) 範本</p>
                 </div>
-                <button
-                    onClick={() => setIsUploadModalOpen(true)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm hover:shadow"
-                >
-                    <Upload size={20} />
-                    <span>上傳新範本</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/settings/templates/placeholders"
+                        className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 transition shadow-sm hover:shadow"
+                    >
+                        <BookOpen size={20} />
+                        <span>變數對照表</span>
+                    </Link>
+                    <button
+                        onClick={() => setIsUploadModalOpen(true)}
+                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm hover:shadow"
+                    >
+                        <Upload size={20} />
+                        <span>上傳新範本</span>
+                    </button>
+                </div>
             </div>
 
             <div className="flex gap-8 flex-1 overflow-hidden">
@@ -191,9 +229,23 @@ export default function TemplateSettingsPage() {
                                                     ) : (
                                                         <FileText size={18} className="text-blue-600" />
                                                     )}
-                                                    <div>
-                                                        <div className="font-bold text-slate-800">{tmpl.name}</div>
-                                                        <div className="text-xs text-slate-400 font-mono mt-0.5">{tmpl.originalName || tmpl.filename}</div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-slate-800">{tmpl.name}</span>
+                                                            {tmpl.employerId && (
+                                                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-bold">
+                                                                    專用
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 font-mono mt-0.5">
+                                                            {tmpl.originalName || tmpl.filename}
+                                                            {tmpl.employer && (
+                                                                <span className="ml-2 text-purple-600">
+                                                                    • {tmpl.employer.companyName}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -287,6 +339,38 @@ export default function TemplateSettingsPage() {
                                     ))}
                                 </select>
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">範本適用範圍 (Scope)</label>
+                                <select
+                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                    value={uploadForm.scope}
+                                    onChange={e => setUploadForm({ ...uploadForm, scope: e.target.value as 'universal' | 'employer_specific', employerId: null })}
+                                >
+                                    <option value="universal">通用範本 (Universal)</option>
+                                    <option value="employer_specific">指定雇主專用 (Employer-Specific)</option>
+                                </select>
+                            </div>
+
+                            {uploadForm.scope === 'employer_specific' && (
+                                <div className="animate-in slide-in-from-top-2 duration-200">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        選擇雇主 (Employer) <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                        value={uploadForm.employerId || ''}
+                                        onChange={e => setUploadForm({ ...uploadForm, employerId: e.target.value || null })}
+                                    >
+                                        <option value="">-- 請選擇雇主 --</option>
+                                        {employers.map(emp => (
+                                            <option key={emp.id} value={emp.id}>
+                                                {emp.companyName} ({emp.taxId || 'N/A'})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">描述 (Description)</label>

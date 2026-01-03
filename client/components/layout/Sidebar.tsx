@@ -21,10 +21,11 @@ import {
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import { useAuth } from '@/context/AuthContext';
+import { useLayout } from '@/context/LayoutContext';
 
 export default function Sidebar() {
     const { user, logout } = useAuth();
-    const [collapsed, setCollapsed] = useState(false);
+    const { isSidebarCollapsed: collapsed, toggleSidebar, setSidebarCollapsed } = useLayout();
     const [hoveredItem, setHoveredItem] = useState<{ label: string; top: number } | null>(null);
     const pathname = usePathname();
 
@@ -63,7 +64,7 @@ export default function Sidebar() {
             {/* Toggle Button */}
             <button
                 onClick={() => {
-                    setCollapsed(!collapsed);
+                    toggleSidebar();
                     setHoveredItem(null);
                 }}
                 className="absolute -right-3 top-9 bg-blue-600 rounded-full p-1.5 text-white shadow-xl hover:bg-blue-500 transition-transform active:scale-95 z-[60] border-2 border-slate-900"

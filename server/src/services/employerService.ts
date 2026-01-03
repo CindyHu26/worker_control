@@ -305,7 +305,10 @@ export async function searchEmployers(params: EmployerSearchParams): Promise<{
                 corporateInfo: true,
                 individualInfo: true,
                 _count: {
-                    select: { deployments: { where: { status: 'active' } } }
+                    select: {
+                        deployments: { where: { status: 'active' } },
+                        recruitmentLetters: true
+                    }
                 }
             },
             skip,

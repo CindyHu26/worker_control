@@ -5,6 +5,7 @@ import Docxtemplater from 'docxtemplater';
 import ExcelJS from 'exceljs';
 import prisma from '../prisma';
 import { getDocumentContext, buildWorkerDocumentContext, getTemplateKeys } from '../utils/documentContext';
+import { getPlaceholderByCategory, PLACEHOLDERS } from '../config/placeholders';
 
 // 設定模板儲存目錄
 const TEMPLATE_DIR = path.join(__dirname, '../../storage/templates');
@@ -43,6 +44,7 @@ export interface TemplateUploadMeta {
     nationalityId?: string;
     language?: string;
     version?: string;
+    employerId?: string;  // For employer-specific templates
 }
 
 export const templateService = {
@@ -87,6 +89,7 @@ export const templateService = {
                 nationalityId: meta.nationalityId,
                 language: meta.language,
                 version: meta.version,
+                employerId: meta.employerId,
                 placeholderSchema: detectedPlaceholders as any,
             } as any
         } as any);
@@ -287,13 +290,34 @@ export const templateService = {
     },
 
     /**
-     * 7. 列表所有模板
+     * 7. 列表所有模板 (支援 Employer Scoping)
      */
-    async listTemplates(category?: string) {
+    async listTemplates(category?: string, employerId?: string) {
+        const whereCondition: any = {
+            isActive: true,
+            ...(category ? { category } : {})
+        };
+
+        // If employerId is provided, return universal templates + employer-specific templates
+        if (employerId) {
+            whereCondition.OR = [
+                { employerId: null },           // Universal templates
+                { employerId: employerId }      // Employer-specific templates
+            ];
+        } else {
+            // If no employerId, only return universal templates
+            whereCondition.employerId = null;
+        }
+
         return await prisma.documentTemplate.findMany({
-            where: {
-                isActive: true,
-                ...(category ? { category } : {})
+            where: whereCondition,
+            include: {
+                employer: {
+                    select: {
+                        id: true,
+                        companyName: true
+                    }
+                }
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -303,51 +327,18 @@ export const templateService = {
      * 8. 取得系統可用欄位列表
      */
     getAvailableFields(): { key: string; description: string; category: string }[] {
-        return [
-            // Worker 相關
-            { key: 'worker_name_en', description: '移工英文姓名', category: '移工資料' },
-            { key: 'worker_name_cn', description: '移工中文姓名', category: '移工資料' },
-            { key: 'worker_nationality', description: '移工國籍', category: '移工資料' },
-            { key: 'worker_gender', description: '移工性別', category: '移工資料' },
-            { key: 'worker_dob', description: '移工出生日期', category: '移工資料' },
-            { key: 'worker_mobile', description: '移工手機', category: '移工資料' },
+        return PLACEHOLDERS.map(p => ({
+            key: p.key,
+            description: p.label,
+            category: p.category
+        }));
+    },
 
-            // 證件相關
-            { key: 'passport_no', description: '護照號碼', category: '證件資料' },
-            { key: 'passport_issue_date', description: '護照核發日', category: '證件資料' },
-            { key: 'passport_expiry_date', description: '護照效期', category: '證件資料' },
-            { key: 'arc_no', description: '居留證號碼', category: '證件資料' },
-            { key: 'visa_no', description: '簽證號碼', category: '證件資料' },
-
-            // 雇主相關
-            { key: 'employer_name', description: '雇主名稱', category: '雇主資料' },
-            { key: 'employer_tax_id', description: '雇主統一編號', category: '雇主資料' },
-            { key: 'employer_phone', description: '雇主電話', category: '雇主資料' },
-            { key: 'employer_address', description: '雇主地址', category: '雇主資料' },
-            { key: 'employer_rep', description: '雇主負責人', category: '雇主資料' },
-
-            // 仲介相關
-            { key: 'agency_name', description: '仲介公司名稱', category: '仲介資料' },
-            { key: 'agency_license_no', description: '仲介許可證號', category: '仲介資料' },
-            { key: 'agency_tax_id', description: '仲介統一編號', category: '仲介資料' },
-            { key: 'agency_address', description: '仲介地址', category: '仲介資料' },
-            { key: 'agency_phone', description: '仲介電話', category: '仲介資料' },
-
-            // 聘僱相關
-            { key: 'contract_start_date', description: '合約起始日', category: '聘僱資料' },
-            { key: 'contract_end_date', description: '合約到期日', category: '聘僱資料' },
-            { key: 'entry_date', description: '入境日期', category: '聘僱資料' },
-            { key: 'basic_salary', description: '基本薪資', category: '聘僱資料' },
-
-            // 宿舍相關
-            { key: 'dorm_name', description: '宿舍名稱', category: '宿舍資料' },
-            { key: 'dorm_address', description: '宿舍地址', category: '宿舍資料' },
-
-            // 系統欄位
-            { key: 'today', description: '今日日期', category: '系統欄位' },
-            { key: 'current_year', description: '當年度', category: '系統欄位' },
-            { key: 'current_month', description: '當月份', category: '系統欄位' },
-        ];
+    /**
+     * 9. 取得完整的 Placeholder Dictionary (用於前端對照表)
+     */
+    getPlaceholderDictionary() {
+        return getPlaceholderByCategory();
     },
 
     /**

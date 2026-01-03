@@ -149,7 +149,7 @@ export default function AlertsPage() {
                 >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-red-600">🔴 緊急/p>
+                            <p className="text-sm text-red-600">🔴 緊急</p>
                             <p className="text-2xl font-bold text-red-700">{summary.critical}</p>
                         </div>
                         <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -190,8 +190,8 @@ export default function AlertsPage() {
                 <button
                     onClick={() => setStatusFilter('OPEN')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === 'OPEN'
-                            ? 'bg-gray-900 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                 >
                     待處理
@@ -199,8 +199,8 @@ export default function AlertsPage() {
                 <button
                     onClick={() => setStatusFilter('ALL')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === 'ALL'
-                            ? 'bg-gray-900 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                 > 全部 </button>
             </div>
@@ -235,7 +235,7 @@ export default function AlertsPage() {
                                     />
                                 ))}
                                 {criticalAlerts.length === 0 && (
-                                    <p className="text-center py-8 text-gray-400 text-sm">暫無警示/p>
+                                    <p className="text-center py-8 text-gray-400 text-sm">暫無警示</p>
                                 )}
                             </div>
                         </div>
@@ -258,7 +258,7 @@ export default function AlertsPage() {
                                     />
                                 ))}
                                 {warningAlerts.length === 0 && (
-                                    <p className="text-center py-8 text-gray-400 text-sm">無警示事項/p>
+                                    <p className="text-center py-8 text-gray-400 text-sm">無警示事項</p>
                                 )}
                             </div>
                         </div>
@@ -281,7 +281,7 @@ export default function AlertsPage() {
                                     />
                                 ))}
                                 {infoAlerts.length === 0 && (
-                                    <p className="text-center py-8 text-gray-400 text-sm">無待辦事項/p>
+                                    <p className="text-center py-8 text-gray-400 text-sm">無待辦事項</p>
                                 )}
                             </div>
                         </div>

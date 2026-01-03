@@ -126,6 +126,9 @@ model Employer {
   billingAliases EmployerBillingAlias[]
   receivables    Receivable[]
 
+  // Document Templates (Employer-Specific)
+  documentTemplates DocumentTemplate[]
+
   // Soft Delete
 
   isDeleted Boolean @default(false) @map("is_deleted")

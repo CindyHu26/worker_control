@@ -171,7 +171,7 @@ export default function HealthCheckPage() {
                         排程健檢
                     </button>
                     <button onClick={() => setFilterMode('overdue')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${filterMode === 'overdue' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
-                        排程健檢檢
+                        逾期未檢
                     </button>
                     <button onClick={() => setFilterMode('all')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${filterMode === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
                         全部
@@ -222,7 +222,7 @@ export default function HealthCheckPage() {
                             <th className="p-4 text-sm font-semibold text-slate-600">雇主 (Employer)</th>
                             <th className="p-4 text-sm font-semibold text-slate-600 text-center">類別</th>
                             <th className="p-4 text-sm font-semibold text-slate-600">待辦排程健檢</th>
-                            <th className="p-4 text-sm font-semibold text-slate-600">排程健檢/th>
+                            <th className="p-4 text-sm font-semibold text-slate-600">排程健檢</th>
                             <th className="p-4 text-sm font-semibold text-slate-600 text-center">管理</th>
                         </tr>
                     </thead>
@@ -230,7 +230,7 @@ export default function HealthCheckPage() {
                         {loading ? (
                             <tr><td colSpan={7} className="p-12 text-center text-slate-500">Loading...</td></tr>
                         ) : checks.length === 0 ? (
-                            <tr><td colSpan={7} className="p-12 text-center text-slate-500">排程健檢符排程健檢件定期體檢紀??/td></tr>
+                            <tr><td colSpan={7} className="p-12 text-center text-slate-500">查無排程健檢紀錄</td></tr>
                         ) : (
                             checks.map(check => (
                                 <tr

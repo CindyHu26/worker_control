@@ -5,36 +5,49 @@ import { templateService } from '../services/templateService';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() }); // 暫存記憶體，由 Service 寫入磁碟
 
-// GET /api/templates - 列出所有模板
+// GET /api/templates - 列出所有模板 (支援 Employer Scoping)
 router.get('/', async (req, res) => {
     try {
         const category = req.query.category as string;
-        const list = await templateService.listTemplates(category);
+        const employerId = req.query.employerId as string;
+        const list = await templateService.listTemplates(category, employerId);
         res.json(list);
     } catch (error) {
         res.status(500).json({ error: 'Failed to list templates' });
     }
 });
 
-// POST /api/templates - 上傳新模板
+// POST /api/templates - 上傳新模板 (支援 Employer Scoping)
 router.post('/', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-        const { name, category, description, nationalityId, language, version } = req.body;
+        const { name, category, description, nationalityId, language, version, employerId } = req.body;
         const result = await templateService.uploadTemplate(req.file, {
             name,
             category,
             description,
             nationalityId,
             language,
-            version
+            version,
+            employerId
         });
 
         res.status(201).json(result);
     } catch (error: any) {
         console.error(error);
         res.status(500).json({ error: error.message || 'Upload failed' });
+    }
+});
+
+// GET /api/templates/dictionary - 取得 Placeholder 對照表
+router.get('/dictionary', async (req, res) => {
+    try {
+        const dictionary = templateService.getPlaceholderDictionary();
+        res.json(dictionary);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch dictionary' });
     }
 });
 

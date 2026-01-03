@@ -55,6 +55,14 @@ interface SmartTableProps {
     onPageChange?: (page: number) => void;
     onRefresh?: () => void;
     loading?: boolean;
+    /** Display density: 'compact' for high-density legacy view, 'normal' for modern spacing */
+    density?: 'normal' | 'compact';
+    /** Enable row selection */
+    enableSelection?: boolean;
+    /** Set of selected row IDs */
+    selectedIds?: Set<string>;
+    /** Callback when selection changes */
+    onSelectionChange?: (newSet: Set<string>) => void;
 }
 
 export default function SmartTable({
@@ -65,11 +73,23 @@ export default function SmartTable({
     onPageChange,
     onRefresh,
     loading = false,
+    density = 'compact',
+    enableSelection = false,
+    selectedIds,
+    onSelectionChange,
 }: SmartTableProps) {
     const router = useRouter();
     const [deleting, setDeleting] = useState<string | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState<{ id: string; name?: string } | null>(null);
+
+    // Density-based styling
+    const isCompact = density === 'compact';
+    const headerClass = isCompact ? 'h-8 text-xs' : '';
+    const cellClass = isCompact ? 'py-1 px-2 text-sm' : '';
+    const rowClass = isCompact ? 'h-8' : '';
+    const actionBtnSize = isCompact ? 'h-6 w-6' : 'h-8 w-8';
+    const actionIconSize = isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4';
 
     // Generate visible columns - limit to reasonable count for display
     const visibleColumns = schema.slice(0, 6);
@@ -89,6 +109,29 @@ export default function SmartTable({
     const handleView = (e: React.MouseEvent, id: string) => {
         e.stopPropagation(); // Prevent row click
         router.push(`/sys/${entity}/${id}`);
+    };
+
+    // Selection Handlers
+    const handleSelectAll = () => {
+        if (!onSelectionChange) return;
+        if (selectedIds?.size === data.length && data.length > 0) {
+            onSelectionChange(new Set());
+        } else {
+            onSelectionChange(new Set(data.map(d => d.id)));
+        }
+    };
+
+    const handleSelectRow = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!onSelectionChange || !selectedIds) return;
+
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        onSelectionChange(newSet);
     };
 
     // Delete button -> Open confirmation dialog
@@ -162,67 +205,93 @@ export default function SmartTable({
     }
 
     return (
-        <div className="space-y-4">
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {visibleColumns.map((field) => (
-                                <TableHead key={field.name}>
-                                    {field.label}
-                                    {field.isCore && (
-                                        <span className="ml-1 text-xs text-blue-500" title="Core field">●</span>
-                                    )}
-                                </TableHead>
-                            ))}
-                            <TableHead className="w-[140px] text-right">操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {data.map((row, index) => (
-                            <TableRow
-                                key={row.id || index}
-                                onClick={() => handleRowClick(row.id)}
-                                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                            >
+        <div className="space-y-2">
+            <div className="rounded-md border overflow-hidden">
+                <div className={isCompact ? 'max-h-[calc(100vh-220px)] overflow-y-auto' : ''}>
+                    <Table>
+                        <TableHeader className={`${headerClass} sticky top-0 z-10 bg-white shadow-sm`}>
+                            <TableRow className={rowClass}>
+                                {enableSelection && (
+                                    <TableHead className={`${cellClass} w-10 text-center`}>
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            checked={data.length > 0 && selectedIds?.size === data.length}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </TableHead>
+                                )}
                                 {visibleColumns.map((field) => (
-                                    <TableCell key={field.name}>
-                                        {renderCellValue(row, field)}
-                                    </TableCell>
+                                    <TableHead key={field.name} className={cellClass}>
+                                        {field.label}
+                                        {field.isCore && (
+                                            <span className="ml-1 text-xs text-blue-500" title="Core field">●</span>
+                                        )}
+                                    </TableHead>
                                 ))}
-                                <TableCell>
-                                    <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={(e) => handleView(e, row.id)}
-                                            title="檢視 (View)"
-                                        >
-                                            <Eye className="h-4 w-4 text-muted-foreground" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={(e) => handleEdit(e, row.id)}
-                                            title="編輯 (Edit)"
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={(e) => handleDeleteClick(e, row)}
-                                            disabled={deleting === row.id}
-                                            title="刪除 (Delete)"
-                                        >
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </div>
-                                </TableCell>
+                                <TableHead className={`${cellClass} w-[100px] text-right`}>操作</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {data.map((row, index) => (
+                                <TableRow
+                                    key={row.id || index}
+                                    onClick={() => handleRowClick(row.id)}
+                                    className={`${rowClass} cursor-pointer hover:bg-muted/50 transition-colors ${selectedIds?.has(row.id) ? 'bg-blue-50/50' : ''}`}
+                                >
+                                    {enableSelection && (
+                                        <TableCell className={`${cellClass} text-center`}>
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                checked={selectedIds?.has(row.id) || false}
+                                                onClick={(e) => handleSelectRow(e, row.id)}
+                                                onChange={() => { }}
+                                            />
+                                        </TableCell>
+                                    )}
+                                    {visibleColumns.map((field) => (
+                                        <TableCell key={field.name} className={cellClass}>
+                                            {renderCellValue(row, field)}
+                                        </TableCell>
+                                    ))}
+                                    <TableCell className={cellClass}>
+                                        <div className="flex items-center justify-end gap-0.5">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className={actionBtnSize}
+                                                onClick={(e) => handleView(e, row.id)}
+                                                title="檢視 (View)"
+                                            >
+                                                <Eye className={`${actionIconSize} text-muted-foreground`} />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className={actionBtnSize}
+                                                onClick={(e) => handleEdit(e, row.id)}
+                                                title="編輯 (Edit)"
+                                            >
+                                                <Pencil className={actionIconSize} />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className={actionBtnSize}
+                                                onClick={(e) => handleDeleteClick(e, row)}
+                                                disabled={deleting === row.id}
+                                                title="刪除 (Delete)"
+                                            >
+                                                <Trash2 className={`${actionIconSize} text-destructive`} />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
 
             {/* Pagination */}

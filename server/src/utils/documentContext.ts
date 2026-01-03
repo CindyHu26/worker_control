@@ -159,19 +159,19 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
         worker_weight: worker.weight || '',
 
         // --- ID Documents ---
-        passport_no: passport?.passportNumber || '',
-        passport_issue_date: formatDate(passport?.issueDate),
-        passport_expiry_date: formatDate(passport?.expiryDate),
-        passport_issue_place: passport?.issuePlace || '',
+        worker_passport_no: passport?.passportNumber || '',
+        worker_passport_issue_date: formatDate(passport?.issueDate),
+        worker_passport_expiry_date: formatDate(passport?.expiryDate),
+        worker_passport_issue_place: passport?.issuePlace || '',
 
-        arc_no: arc?.arcNumber || '',
-        arc_issue_date: formatDate(arc?.issueDate),
-        arc_expiry_date: formatDate(arc?.expiryDate),
+        worker_arc_no: arc?.arcNumber || '',
+        worker_arc_issue_date: formatDate(arc?.issueDate),
+        worker_arc_expiry_date: formatDate(arc?.expiryDate),
 
         // --- Visa / Entry ---
-        visa_no: deployment?.visaNumber || '',
-        entry_date: formatDate(deployment?.entryDate),
-        flight_no: deployment?.flightNumber || '',
+        worker_visa_no: deployment?.visaNumber || '',
+        worker_entry_date: formatDate(deployment?.entryDate),
+        worker_flight_no: deployment?.flightNumber || '',
 
         // --- Employer ---
         employer_name: employer?.companyName || '',
@@ -203,22 +203,22 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
         foreign_agency_country: foreignAgency.country || '',
 
         // --- Deployment / Contract ---
-        contract_start_date: formatDate(deployment?.startDate),
-        contract_end_date: formatDate(deployment?.endDate),
-        job_description: deployment?.jobDescription || '',
-        basic_salary: formatCurrency(deployment?.basicSalary),
+        worker_contract_start_date: formatDate(deployment?.startDate),
+        worker_contract_end_date: formatDate(deployment?.endDate),
+        worker_job_description: deployment?.jobDescription || '',
+        worker_basic_salary: formatCurrency(deployment?.basicSalary),
         worker_job_type: deployment?.jobType || '', // Caretaker, Factory, etc
 
         // Application / Permit Info
         is_recruit_permit: isRecruitPermit,
         is_employ_permit: isEmployPermit,
-        chk_recruit_permit: isRecruitPermit ? '☑' : '☐',
-        chk_employ_permit: isEmployPermit ? '☑' : '☐',
+        chk_app_recruit_permit: isRecruitPermit ? '☑' : '☐',
+        chk_app_employ_permit: isEmployPermit ? '☑' : '☐',
 
         // Review Fee
-        receipt_no: isEmployPermit ? activeEmploymentPermit?.permitNumber : recruitmentLetter?.reviewFeeReceiptNo || '', // permitNumber as receipt? Or separate field?
-        pay_date: formatDate(isEmployPermit ? activeEmploymentPermit?.issueDate : recruitmentLetter?.reviewFeePayDate), // issueDate vs payDate
-        amount: isEmployPermit ? 0 : recruitmentLetter?.reviewFeeAmount || 0, // Fee amount for permit usually not stored in PermitDocument?
+        app_receipt_no: isEmployPermit ? activeEmploymentPermit?.permitNumber : recruitmentLetter?.reviewFeeReceiptNo || '',
+        app_pay_date: formatDate(isEmployPermit ? activeEmploymentPermit?.issueDate : recruitmentLetter?.reviewFeePayDate),
+        app_fee_amount: isEmployPermit ? 0 : recruitmentLetter?.reviewFeeAmount || 0,
 
         // --- Dormitory ---
         dorm_name: dormitory?.name || '',
@@ -234,11 +234,11 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
 
         // Dorm Compliance
         dorm_type: dormitory?.accommodationType || '',
-        total_area: dormitory?.totalArea ? Number(dormitory.totalArea) : 0,
+        dorm_total_area: dormitory?.totalArea ? Number(dormitory.totalArea) : 0,
         room_count: dormitory?.rooms?.length || 0, // Need to verify if rooms are fetched
         bathroom_count: dormitory?.bathroomCount || 0,
         heater_count: dormitory?.waterHeaterCount || 0,
-        avg_area_per_person: (dormitory?.totalArea && dormitory?.capacity) ? (Number(dormitory.totalArea) / dormitory.capacity).toFixed(2) : 0,
+        dorm_avg_area_per_person: (dormitory?.totalArea && dormitory?.capacity) ? (Number(dormitory.totalArea) / dormitory.capacity).toFixed(2) : 0,
 
         has_fire_ext: dormitory?.hasFireExtinguisher,
         has_fire_alarm: dormitory?.hasFireAlarm,
@@ -246,8 +246,8 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
         chk_fire_alarm: dormitory?.hasFireAlarm ? '☑' : '☐',
 
         // Food / Boarding
-        food_provider: deployment?.foodStatus || '',
-        food_cost: deployment?.foodAmount ? Number(deployment.foodAmount) : 0,
+        contract_food_provider: deployment?.foodStatus || '',
+        contract_food_cost: deployment?.foodAmount ? Number(deployment.foodAmount) : 0,
 
         // --- System / Meta ---
         today: formatDate(new Date()),
@@ -282,51 +282,14 @@ export const buildWorkerDocumentContext = async (workerId: string, overrides: Re
  * Returns a list of all available keys in the document context.
  * Used for template validation.
  */
+import { getPlaceholderKeys } from '../config/placeholders';
+
+/**
+ * Returns a list of all available keys in the document context.
+ * Used for template validation.
+ */
 export function getTemplateKeys(): string[] {
-    return [
-        // Worker
-        'worker_id', 'worker_name_en', 'worker_name_cn', 'worker_nationality', 'worker_gender',
-        'worker_dob', 'worker_mobile', 'worker_line_id', 'worker_email', 'worker_address_foreign',
-        'worker_education', 'worker_religion', 'worker_marital_status', 'worker_height', 'worker_weight',
-
-        // Documents
-        'passport_no', 'passport_issue_date', 'passport_expiry_date', 'passport_issue_place',
-        'arc_no', 'arc_issue_date', 'arc_expiry_date',
-        'visa_no', 'flight_no',
-
-        // Employer
-        'employer_name', 'employer_tax_id', 'employer_phone', 'employer_address', 'employer_rep', 'employer_factory_address',
-        'avg_labor_count', 'allocation_rate', 'qualified_count',
-
-        // App Info
-        'is_recruit_permit', 'is_employ_permit', 'chk_recruit_permit', 'chk_employ_permit',
-        'receipt_no', 'pay_date', 'amount',
-
-        // Agency
-        'agency_name', 'agency_license_no', 'agency_tax_id', 'agency_address', 'agency_phone', 'agency_fax', 'agency_email', 'agency_rep',
-
-        // Foreign Agency
-        'foreign_agency_name', 'foreign_agency_code', 'foreign_agency_address', 'foreign_agency_country',
-
-        // Deployment
-        'contract_start_date', 'contract_end_date', 'job_description', 'basic_salary', 'salary_formatted', 'worker_job_type', 'entry_date',
-        'food_provider', 'food_cost',
-
-        // Dormitory
-        'dorm_name', 'dorm_address', 'dorm_landlord', 'dorm_room_no', 'dorm_bed_code',
-        'is_dorm', 'is_self_arranged', 'chk_dorm', 'chk_self_arranged',
-        'dorm_type', 'total_area', 'room_count', 'bathroom_count', 'heater_count', 'avg_area_per_person',
-        'has_fire_ext', 'has_fire_alarm', 'chk_fire_ext', 'chk_fire_alarm',
-
-        // System
-        'today', 'current_year', 'current_month', 'current_day',
-
-        // Loops (Key names for loops are usually implied by Docxtemplater, but we list the array names)
-        'address_history_list', 'family_members_list', 'emergency_contact_list',
-
-        // Batch
-        'workers'
-    ];
+    return getPlaceholderKeys();
 }
 
 /**
@@ -360,7 +323,7 @@ export async function buildBatchDocumentContext(workerIds: string[]) {
         index: index + 1, // 1-based index
         // Aliases for shorter templates if desired, or just use full keys
         name: c.worker_name_en, // Alias
-        passport: c.passport_no
+        passport: c.worker_passport_no
     }));
 
     // Aggregate Stats
