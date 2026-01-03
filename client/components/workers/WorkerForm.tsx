@@ -10,19 +10,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FormSection from '@/components/layout/FormSection';
-import { Save, User, FileText, Briefcase, FolderOpen, HeartPulse, Upload, Camera } from 'lucide-react';
+import { Save, User, FileText, Briefcase, FolderOpen, HeartPulse, Upload, Camera, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import EmployerSelector from '@/components/employers/EmployerSelector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SmartField, FieldDefinition } from '@/components/ui/smart-form/SmartField';
+import { apiGet } from '@/lib/api';
 
-// Validation Schema (Dynamic Construction Later? For now we might need a loose schema or dynamic build)
-// We will use a flexible schema for now, or build it from API
+// Validation Schema
 const baseSchema = z.object({
-    // Fixed Core Fields that might not be in dynamic list yet or need special handling
-    employerId: z.string().optional(),
+    employerId: z.string().min(1, "請先選擇雇主"),
+    jobOrderId: z.string().min(1, "請選擇招募函 (Job Order)"),
     photoUrl: z.string().optional(),
-
     // We allow other fields to pass through for now
 }).passthrough();
 
@@ -45,6 +44,10 @@ export default function WorkerForm({
     const isEditMode = !!initialData;
     const [schemaFields, setSchemaFields] = useState<FieldDefinition[]>([]);
     const [loadingSchema, setLoadingSchema] = useState(true);
+
+    // Job Order Logic
+    const [jobOrders, setJobOrders] = useState<any[]>([]);
+    const [fetchingJobOrders, setFetchingJobOrders] = useState(false);
 
     // Fetch Schema
     useEffect(() => {
@@ -80,8 +83,39 @@ export default function WorkerForm({
         reset
     } = methods;
 
-    // Effect to reset form when schema or initialData changes if needed? 
-    // Actually we might need to merge initialData with schema defaults.
+    const watchedEmployerId = watch('employerId');
+    const watchedJobOrderId = watch('jobOrderId');
+
+    // Fetch Job Orders when Employer Changes
+    useEffect(() => {
+        if (!watchedEmployerId) {
+            setJobOrders([]);
+            return;
+        }
+
+        const fetchJobOrders = async () => {
+            setFetchingJobOrders(true);
+            try {
+                const data = await apiGet(`/api/recruitment/job-orders?employerId=${watchedEmployerId}`);
+                setJobOrders(data);
+
+                // If editing and we have an initial jobOrderId that is NOT in the list (because full), 
+                // we might need to handle it? For "Create", the list is pure available.
+                // For now, simpler is better.
+            } catch (error) {
+                console.error("Failed to fetch job orders", error);
+                toast.error("載入招募函失敗");
+            } finally {
+                setFetchingJobOrders(false);
+            }
+        };
+
+        fetchJobOrders();
+    }, [watchedEmployerId]);
+
+    // Derived State
+    const selectedJobOrder = jobOrders.find(j => j.id === watchedJobOrderId);
+    const noJobOrders = watchedEmployerId && !fetchingJobOrders && jobOrders.length === 0;
 
     // Photo Upload State
     const [isUploading, setIsUploading] = useState(false);
@@ -143,8 +177,23 @@ export default function WorkerForm({
     return (
         <FormProvider {...methods}>
             <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
+                {/* Global Error Banner */}
+                {noJobOrders && (
+                    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-3">
+                            <AlertCircle className="h-5 w-5 text-red-600" />
+                            <div>
+                                <h3 className="font-bold text-red-700">無法建立移工資料 (Validation Error)</h3>
+                                <p className="text-sm text-red-600 mt-1">
+                                    此雇主無可用招募函 (No valid recruitment letter found)。<br />
+                                    請先至 <b>招募管理 (Recruitment)</b> 建立招募函。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    {/* Tab Navigation */}
                     <TabsList className="grid w-full grid-cols-4 mb-6">
                         <TabsTrigger value="basic" className="flex items-center gap-2">
                             <User className="h-4 w-4" />
@@ -162,12 +211,6 @@ export default function WorkerForm({
                             <HeartPulse className="h-4 w-4" />
                             詳細個資
                         </TabsTrigger>
-                        {/* 
-                        <TabsTrigger value="documents" className="flex items-center gap-2">
-                            <FolderOpen className="h-4 w-4" />
-                            文件管理
-                        </TabsTrigger>
-                        */}
                     </TabsList>
 
                     {/* Tab 1: Basic Info */}
@@ -225,49 +268,76 @@ export default function WorkerForm({
                         </FormSection>
                     </TabsContent>
 
-                    {/* Tab 2: Passport Info */}
                     <TabsContent value="passport" className="space-y-6">
                         <FormSection
                             title="護照資訊"
-                            description="外勞的護照與相關證件"
                             columns={4}
                             divider={false}
                         >
-                            {/* Dynamic Fields for Passport Group */}
-                            {/* Note: In config, we didn't add passport fields yet, adding logic to filter if we had them or add them to config later. 
-                                For now, if config is empty for this group, it shows nothing? 
-                                Wait, I should probably double check my config. 
-                                Ah, I didn't add passport fields to my initial `workerSchema.ts`.
-                                So they will disappear! 
-                                I MUST add them to `workerSchema.ts` OR keep them static here.
-                                Given the plan was "Hybrid", let's keep them STATIC here if they are special (like having file upload button next to them).
-                                Or I can mix.
-                            */}
-                            {/* Dynamic Extensions for Passport (now handles passportNo etc from schema) */}
+                            {/* Dynamic Extensions for Passport */}
                             {getFieldsByGroup('passport').map(field => (
                                 <SmartField key={field.name} {...field} />
                             ))}
                         </FormSection>
                     </TabsContent>
 
-                    {/* Tab 3: Deployment Info */}
                     <TabsContent value="deployment" className="space-y-6">
                         <FormSection
-                            title="派遣資訊"
-                            description="外勞的雇主與派遣狀態"
-                            columns={3}
+                            title="派遣與招募 (Job Linkage)"
+                            description="連結招募函與派遣資訊"
+                            columns={2} // Changed from 3 to 2 for better fit
                             divider={false}
                         >
-                            {/* Static Employer Selector - Complex Component */}
-                            <div>
-                                <Label htmlFor="employerId">雇主</Label>
+                            {/* 1. Employer */}
+                            <div className="col-span-1">
+                                <Label htmlFor="employerId">雇主 (Employer)</Label>
                                 <EmployerSelector
                                     value={watch('employerId')}
-                                    onChange={(val) => setValue('employerId', val)}
+                                    onChange={(val) => {
+                                        setValue('employerId', val);
+                                        setValue('jobOrderId', ''); // Reset job order
+                                    }}
                                 />
+                                {errors.employerId && <p className="text-xs text-red-500 mt-1">{errors.employerId.message as string}</p>}
                             </div>
 
-                            {/* Dynamic Fields including contractStartDate, contractEndDate */}
+                            {/* 2. Job Order Select */}
+                            <div className="col-span-1 space-y-2">
+                                <Label className={noJobOrders ? "text-red-500" : ""}>
+                                    招募函 (Job Order)
+                                </Label>
+                                <Select
+                                    value={watch('jobOrderId')}
+                                    onValueChange={(val) => setValue('jobOrderId', val)}
+                                    disabled={!watchedEmployerId || fetchingJobOrders || jobOrders.length === 0}
+                                >
+                                    <SelectTrigger className={errors.jobOrderId ? "border-red-500" : ""}>
+                                        <SelectValue placeholder={
+                                            fetchingJobOrders ? "載入中..." :
+                                                (!watchedEmployerId ? "請先選擇雇主" :
+                                                    (jobOrders.length === 0 ? "無可用招募函" : "請選擇招募函"))
+                                        } />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {jobOrders.map((job) => (
+                                            <SelectItem key={job.id} value={job.id}>
+                                                {job.letterNumber} (餘額: {job.quota - job.usedQuota}) - {job.jobType || '一般'}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.jobOrderId && <p className="text-xs text-red-500">{errors.jobOrderId.message as string}</p>}
+
+                                {/* Visual Confirmation */}
+                                {selectedJobOrder && (
+                                    <div className="text-xs bg-green-50 text-green-700 p-2 rounded flex justify-between">
+                                        <span>Quota Remaining:</span>
+                                        <span className="font-bold">{selectedJobOrder.quota - selectedJobOrder.usedQuota} / {selectedJobOrder.quota}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Dynamic Fields */}
                             {getFieldsByGroup('deployment').map(field => (
                                 <SmartField key={field.name} {...field} />
                             ))}
@@ -305,7 +375,7 @@ export default function WorkerForm({
                             取消
                         </Button>
                     )}
-                    <Button type="submit" disabled={isLoading} className="shadow-lg">
+                    <Button type="submit" disabled={isLoading || (noJobOrders as boolean)} className="shadow-lg">
                         {isLoading && <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
                         <Save className="mr-2 h-4 w-4" />
                         {isEditMode ? '儲存修改' : '確認新增'}

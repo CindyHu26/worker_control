@@ -144,6 +144,13 @@ async function main() {
         { category: 'NATIONALITY', code: 'PH', label: '菲律賓', labelEn: 'Philippines', sortOrder: 2, isSystem: true },
         { category: 'NATIONALITY', code: 'VN', label: '越南', labelEn: 'Vietnam', sortOrder: 3, isSystem: true },
         { category: 'NATIONALITY', code: 'ID', label: '印尼', labelEn: 'Indonesia', sortOrder: 4, isSystem: true },
+        // Document Template Types (Phase 4 - Entry Workflow)
+        { category: 'DOCUMENT_TEMPLATE_TYPE', code: 'DOC_ENTRY_NOTIFICATION', label: '入國通報書', labelEn: 'Entry Notification', sortOrder: 1, isSystem: true },
+        { category: 'DOCUMENT_TEMPLATE_TYPE', code: 'DOC_RESIDENCE_PERMIT_APP', label: '居留證申請書', labelEn: 'Residence Permit Application', sortOrder: 2, isSystem: true },
+        { category: 'DOCUMENT_TEMPLATE_TYPE', code: 'DOC_EMPLOYMENT_PERMIT_APP', label: '聘僱許可申請書', labelEn: 'Employment Permit Application', sortOrder: 3, isSystem: true },
+        { category: 'DOCUMENT_TEMPLATE_TYPE', code: 'DOC_LABOR_INSURANCE_ADD', label: '勞保加保單', labelEn: 'Labor Insurance Enrollment', sortOrder: 4, isSystem: true },
+        { category: 'DOCUMENT_TEMPLATE_TYPE', code: 'DOC_HEALTH_INSURANCE_ADD', label: '健保加保單', labelEn: 'Health Insurance Enrollment', sortOrder: 5, isSystem: true },
+        { category: 'DOCUMENT_TEMPLATE_TYPE', code: 'DOC_AIRPORT_CARE', label: '機場關懷單', labelEn: 'Airport Care Form', sortOrder: 6, isSystem: true },
     ];
 
     for (const ref of referenceData) {
@@ -830,39 +837,55 @@ async function main() {
     }
 
 
-    // 22. Seed Work Titles (Job Types)
-    console.log('Seeding work titles...');
-    const manufacturingCat = await prisma.applicationCategory.findUnique({ where: { code: 'MANUFACTURING' } });
-    const homeCareCat = await prisma.applicationCategory.findUnique({ where: { code: 'HOME_CARE' } });
+    // 22. Seed Work Titles (官方工作類別 - 勞工處入國通報申請書標準)
+    console.log('Seeding work titles (Official MOL Categories)...');
+    const workTitles = [
+        { code: '1', titleZh: '製造工作', titleEn: 'Manufacturing Work', isIntermediate: false },
+        { code: '2', titleZh: '營造工作', titleEn: 'Construction Work', isIntermediate: false },
+        { code: '3', titleZh: '家庭看護工作', titleEn: 'Domestic Caretaker Work', isIntermediate: false },
+        { code: '4', titleZh: '家庭幫傭工作', titleEn: 'Domestic Helper Work', isIntermediate: false },
+        { code: '5', titleZh: '海洋漁撈工作', titleEn: 'Ocean Fishing Work', isIntermediate: false },
+        { code: '6', titleZh: '機構看護工作', titleEn: 'Institutional Caretaker Work', isIntermediate: false },
+        { code: '7', titleZh: '屠宰工作', titleEn: 'Slaughtering Work', isIntermediate: false },
+        { code: '8', titleZh: '外展農務工作', titleEn: 'Outreach Agricultural Work', isIntermediate: false },
+        { code: '9', titleZh: '外展製造工作', titleEn: 'Outreach Manufacturing Work', isIntermediate: false },
+        { code: '10', titleZh: '農、林、牧或養殖漁業工作', titleEn: 'Agriculture, Forestry, Livestock or Aquaculture Work', isIntermediate: false },
+        { code: '11', titleZh: '中階技術海洋漁撈工作', titleEn: 'Intermediate Skilled Ocean Fishing Work', isIntermediate: true },
+        { code: '12', titleZh: '中階技術機構看護工作', titleEn: 'Intermediate Skilled Institutional Caretaker Work', isIntermediate: true },
+        { code: '13', titleZh: '中階技術家庭看護工作', titleEn: 'Intermediate Skilled Domestic Caretaker Work', isIntermediate: true },
+        { code: '14', titleZh: '中階技術製造工作', titleEn: 'Intermediate Skilled Manufacturing Work', isIntermediate: true },
+        { code: '15', titleZh: '中階技術營造工作', titleEn: 'Intermediate Skilled Construction Work', isIntermediate: true },
+        { code: '16', titleZh: '中階技術外展農業工作', titleEn: 'Intermediate Skilled Outreach Agricultural Work', isIntermediate: true },
+        { code: '17', titleZh: '中階技術農業工作', titleEn: 'Intermediate Skilled Agricultural Work', isIntermediate: true },
+    ];
 
-    if (manufacturingCat) {
-        await prisma.workTitle.upsert({
-            where: { categoryId_code: { categoryId: manufacturingCat.id, code: 'FACTORY_WORKER' } },
-            update: {},
-            create: {
-                categoryId: manufacturingCat.id,
-                code: 'FACTORY_WORKER',
-                titleZh: '製造工',
-                titleEn: 'Factory Worker',
-                isIntermediate: false
-            }
+    for (const wt of workTitles) {
+        // 使用 code 作為唯一識別，因為官方標準不綁定 ApplicationCategory
+        const existing = await prisma.workTitle.findFirst({
+            where: { code: wt.code, categoryId: null }
         });
-        console.log('✅ Work Title: Factory Worker seeded');
-    }
 
-    if (homeCareCat) {
-        await prisma.workTitle.upsert({
-            where: { categoryId_code: { categoryId: homeCareCat.id, code: 'CARETAKER' } },
-            update: {},
-            create: {
-                categoryId: homeCareCat.id,
-                code: 'CARETAKER',
-                titleZh: '家庭看護工',
-                titleEn: 'Caretaker',
-                isIntermediate: false
-            }
-        });
-        console.log('✅ Work Title: Caretaker seeded');
+        if (existing) {
+            await prisma.workTitle.update({
+                where: { id: existing.id },
+                data: {
+                    titleZh: wt.titleZh,
+                    titleEn: wt.titleEn,
+                    isIntermediate: wt.isIntermediate
+                }
+            });
+        } else {
+            await prisma.workTitle.create({
+                data: {
+                    code: wt.code,
+                    titleZh: wt.titleZh,
+                    titleEn: wt.titleEn,
+                    isIntermediate: wt.isIntermediate,
+                    categoryId: null
+                }
+            });
+        }
+        console.log(`✅ Work Title: ${wt.titleZh} seeded`);
     }
 
     // 23. Seed Contract End Reasons (合約終止原因)

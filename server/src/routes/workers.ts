@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import prisma from '../prisma';
-import { getWorkerDashboardData } from '../services/workerService';
+import { createWorkerWithJobOrder, getWorkerDashboardData } from '../services/workerService';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -8,8 +8,6 @@ import fs from 'fs';
 // Configure Multer for Worker Photos
 // Configure Multer for Worker Photos
 import { storageService } from '../services/storageService';
-import { parseOptionalDate } from '../utils/dateUtils';
-import { parseNumber } from '../utils/numberUtils';
 import { searchWorkers, getWorkerById } from '../services/workerQueryService';
 import { renewDocument } from '../services/workerDocumentService';
 
@@ -129,111 +127,11 @@ router.post('/check-duplicate', async (req, res) => {
     }
 });
 
-import { workerFormSchema } from '../config/workerSchema';
-
-// Helper to separate Core from Dynamic attributes
-const separateAttributes = (body: any) => {
-    const coreFields = new Set(workerFormSchema.filter(f => f.core).map(f => f.name));
-    const dynamicData: any = {};
-
-    // Also include some known fixed non-schema fields that might be passed (e.g. relations)
-    // or we just take everything that IS NOT in coreFields into dynamicData.
-    // However, body might contain 'passportNumber' etc which are handled separately in transaction.
-    // Let's iterate body keys.
-
-    Object.keys(body).forEach(key => {
-        if (!coreFields.has(key) &&
-            !['passportNumber', 'passportIssueDate', 'passportExpiryDate', 'employerId', 'jobType', 'contractStartDate', 'contractEndDate', 'recruitmentSource', 'serviceStatus'].includes(key)
-        ) {
-            dynamicData[key] = body[key];
-        }
-    });
-
-    return dynamicData;
-};
-
 // POST /api/workers/full-entry (Atomic Creation)
 router.post('/full-entry', async (req, res) => {
     try {
         const body = req.body;
-        const dynamicAttributes = separateAttributes(body);
-
-        const result = await prisma.$transaction(async (tx: any) => {
-            // 1. Create Worker
-            const worker = await tx.worker.create({
-                data: {
-                    // Core Fields
-                    englishName: body.englishName,
-                    chineseName: body.chineseName,
-                    nationalityId: body.nationalityId, // Assuming ID is passed now
-                    // Fallback for legacy 'nationality' string if needed
-                    // nationality: body.nationality, // REMOVED from schema? No, relation is optional? 
-                    // Wait, schema now has `nationalityId` and `nationality` relation. 
-                    // If frontend sends 'nationality' string (e.g. 'Indonesia'), we might need to look it up or just ignore if we enforce ID.
-                    // For now let's assume body.nationalityId is sent.
-
-                    dob: parseOptionalDate(body.dob),
-                    category: body.category || 'general',
-                    gender: body.gender,
-                    maritalStatus: body.maritalStatus,
-                    height: parseNumber(body.height),
-                    weight: parseNumber(body.weight),
-                    bloodType: body.bloodType,
-                    religion: body.religion,
-                    educationLevel: body.educationLevel,
-                    birthPlace: body.birthPlace,
-                    spouseName: body.spouseName,
-                    overseasFamilyContact: body.overseasFamilyContact,
-                    overseasContactPhone: body.overseasContactPhone,
-                    emergencyContactPhone: body.emergencyContactPhone,
-                    mobilePhone: body.mobilePhone,
-                    lineId: body.lineId,
-                    bankAccountNo: body.bankAccountNo,
-                    bankCode: body.bankCode,
-
-                    // Address Fields (Standardized Foreign Address)
-                    foreignCity: body.foreignCity,
-                    foreignDistrict: body.foreignDistrict,
-                    foreignAddressDetail: body.foreignAddressDetail,
-                    foreignZipCode: body.foreignZipCode,
-                    foreignFullAddress: body.foreignFullAddress,
-
-                    // Dynamic Fields
-                    attributes: dynamicAttributes,
-                } as any
-            });
-
-            // 2. Create Passport (Current)
-            if (body.passportNumber) {
-                await tx.workerPassport.create({
-                    data: {
-                        workerId: worker.id,
-                        passportNumber: body.passportNumber,
-                        issueDate: parseOptionalDate(body.passportIssueDate) || new Date(),
-                        expiryDate: parseOptionalDate(body.passportExpiryDate) || new Date(new Date().setFullYear(new Date().getFullYear() + 5)),
-                        isCurrent: true
-                    }
-                });
-            }
-
-            // 3. Create Deployment if Employer Selected
-            if (body.employerId) {
-                await tx.deployment.create({
-                    data: {
-                        workerId: worker.id,
-                        employerId: body.employerId,
-                        jobType: body.jobType,
-                        status: 'pending',
-                        startDate: parseOptionalDate(body.contractStartDate) || new Date(),
-                        endDate: parseOptionalDate(body.contractEndDate),
-                        sourceType: body.recruitmentSource || 'direct_hiring',
-                        serviceStatus: body.serviceStatus || 'incoming',
-                    }
-                });
-            }
-
-            return worker;
-        });
+        const result = await createWorkerWithJobOrder(body);
 
         res.status(201).json(result);
     } catch (error: any) {
@@ -246,23 +144,7 @@ router.post('/full-entry', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const body = req.body;
-        // Simple creation... logic similar to above but less fields maybe?
-        // Let's just use the same logic but without deployment
-        const dynamicAttributes = separateAttributes(body);
-
-        const result = await prisma.$transaction(async (tx: any) => {
-            const worker = await tx.worker.create({
-                data: {
-                    englishName: body.englishName,
-                    chineseName: body.chineseName,
-                    nationalityId: body.nationalityId,
-                    mobilePhone: body.mobilePhone,
-                    dob: parseOptionalDate(body.dob),
-                    attributes: dynamicAttributes
-                } as any
-            });
-            return worker;
-        });
+        const result = await createWorkerWithJobOrder(body);
         res.status(201).json(result);
     } catch (error) {
         console.error('Create Worker Error:', error);
@@ -571,6 +453,75 @@ router.post('/:id/assign-team', async (req, res) => {
     } catch (error: any) {
         console.error('Assign Team Error:', error);
         res.status(500).json({ error: 'Failed to assign team' });
+    }
+});
+
+// POST /api/workers/:id/entry-filing (Create EntryFiling)
+router.post('/:id/entry-filing', async (req, res) => {
+    const { id } = req.params;
+    const body = req.body;
+
+    try {
+        // Check if already exists
+        const existing = await prisma.entryFiling.findUnique({
+            where: { workerId: id }
+        });
+
+        if (existing) {
+            return res.status(400).json({ error: 'Entry filing already exists. Use PUT to update.' });
+        }
+
+        const entryFiling = await prisma.entryFiling.create({
+            data: {
+                workerId: id,
+                entryDate: body.entryDate ? new Date(body.entryDate) : new Date(),
+                flightNo: body.flightNo,
+                visaNo: body.visaNo,
+                overseasMedicalDate: body.overseasMedicalDate ? new Date(body.overseasMedicalDate) : undefined,
+                overseasMedicalHospital: body.overseasMedicalHospital,
+                policeClearanceReceived: body.policeClearanceReceived || false,
+                policeClearanceDate: body.policeClearanceDate ? new Date(body.policeClearanceDate) : undefined,
+                laborInsuranceDate: body.laborInsuranceDate ? new Date(body.laborInsuranceDate) : undefined,
+                healthInsuranceDate: body.healthInsuranceDate ? new Date(body.healthInsuranceDate) : undefined,
+                airportCareRegistered: body.airportCareRegistered || false,
+                notes: body.notes,
+            }
+        });
+
+        res.status(201).json(entryFiling);
+    } catch (error: any) {
+        console.error('Create Entry Filing Error:', error);
+        res.status(500).json({ error: error.message || 'Failed to create entry filing' });
+    }
+});
+
+// PUT /api/workers/:id/entry-filing (Update EntryFiling)
+router.put('/:id/entry-filing', async (req, res) => {
+    const { id } = req.params;
+    const body = req.body;
+
+    try {
+        const entryFiling = await prisma.entryFiling.update({
+            where: { workerId: id },
+            data: {
+                entryDate: body.entryDate ? new Date(body.entryDate) : undefined,
+                flightNo: body.flightNo,
+                visaNo: body.visaNo,
+                overseasMedicalDate: body.overseasMedicalDate ? new Date(body.overseasMedicalDate) : undefined,
+                overseasMedicalHospital: body.overseasMedicalHospital,
+                policeClearanceReceived: body.policeClearanceReceived,
+                policeClearanceDate: body.policeClearanceDate ? new Date(body.policeClearanceDate) : undefined,
+                laborInsuranceDate: body.laborInsuranceDate ? new Date(body.laborInsuranceDate) : undefined,
+                healthInsuranceDate: body.healthInsuranceDate ? new Date(body.healthInsuranceDate) : undefined,
+                airportCareRegistered: body.airportCareRegistered,
+                notes: body.notes,
+            }
+        });
+
+        res.json(entryFiling);
+    } catch (error: any) {
+        console.error('Update Entry Filing Error:', error);
+        res.status(500).json({ error: error.message || 'Failed to update entry filing' });
     }
 });
 

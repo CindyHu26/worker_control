@@ -75,6 +75,30 @@ model EntryFiling {
 
   permitStatus String @default("PENDING") @map("permit_status") @db.VarChar(20)
 
+  // === Phase 4: Overseas Preparation ===
+  
+  overseasMedicalDate DateTime? @map("overseas_medical_date") @db.Date // 國外體檢日期
+  
+  overseasMedicalHospital String? @map("overseas_medical_hospital") @db.VarChar(100) // 國外體檢醫院
+  
+  policeClearanceReceived Boolean @default(false) @map("police_clearance_received") // 良民證已取得
+  
+  policeClearanceDate DateTime? @map("police_clearance_date") @db.Date // 良民證取得日期
+
+  // === Phase 4: Insurance Tracking ===
+  
+  laborInsuranceDate DateTime? @map("labor_insurance_date") @db.Date // 勞保加保日
+  
+  healthInsuranceDate DateTime? @map("health_insurance_date") @db.Date // 健保加保日
+
+  // === Phase 4: Airport Care ===
+  
+  airportCareRegistered Boolean @default(false) @map("airport_care_registered") // 機場關懷已登記
+
+  // === Notes ===
+  
+  notes String? @db.Text // 備註
+
   // Overall Compliance
 
   overallCompliance String @default("PENDING") @map("overall_compliance") @db.VarChar(20)

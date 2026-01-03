@@ -45,7 +45,13 @@ const createRecruitmentSchema = z.object({
     reviewFeePayDate: z.coerce.date().optional(),
     reviewFeeAmount: z.coerce.number().default(200),
 
-    workAddress: z.string().optional(),
+    // Work Address Fields (Granular)
+    workAddressCity: z.string().optional(),
+    workAddressDistrict: z.string().optional(),
+    workAddressDetail: z.string().optional(),
+    workAddressZipCode: z.string().optional(),
+    workAddressFull: z.string().optional(),
+
     remarks: z.string().optional(),
 
     // [New] Linked IDs
@@ -170,7 +176,13 @@ router.post('/', async (req, res) => {
                     reviewFeePayDate: body.reviewFeePayDate,
                     reviewFeeAmount: body.reviewFeeAmount,
 
-                    workAddress: body.workAddress,
+                    // Work Address Fields
+                    workAddressCity: body.workAddressCity,
+                    workAddressDistrict: body.workAddressDistrict,
+                    workAddressDetail: body.workAddressDetail,
+                    workAddressZipCode: body.workAddressZipCode,
+                    workAddressFull: body.workAddressFull,
+
                     remarks: body.remarks,
 
                     usedQuota: 0,
@@ -212,7 +224,13 @@ router.put('/:id', async (req, res) => {
             reviewFeeReceiptNo: body.reviewFeeReceiptNo,
             reviewFeePayDate: body.reviewFeePayDate,
             reviewFeeAmount: body.reviewFeeAmount,
-            workAddress: body.workAddress,
+            // Work Address Fields
+            workAddressCity: body.workAddressCity,
+            workAddressDistrict: body.workAddressDistrict,
+            workAddressDetail: body.workAddressDetail,
+            workAddressZipCode: body.workAddressZipCode,
+            workAddressFull: body.workAddressFull,
+
             remarks: body.remarks,
             // Allow updating links? Maybe dangerous if doing quota math. limiting for now.
             industryRecognitionId: body.industryRecognitionId,
@@ -239,6 +257,48 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
         console.error("Update Recruitment Error:", error);
         res.status(500).json({ message: "Update Failed" });
+    }
+});
+
+// GET /api/recruitment/job-orders
+router.get('/job-orders', async (req, res) => {
+    try {
+        const { employerId } = req.query;
+
+        if (!employerId) {
+            return res.status(400).json({ message: "Employer ID is required" });
+        }
+
+        const jobOrders = await prisma.jobOrder.findMany({
+            where: {
+                employerId: String(employerId),
+                validUntil: {
+                    gt: new Date()
+                },
+                // status: 'open' // Optional: if we want to enforce status
+            },
+            select: {
+                id: true,
+                letterNumber: true,
+                quota: true,
+                usedQuota: true,
+                validUntil: true,
+                jobType: true, // Useful for frontend to filter or display
+                workTitleCode: true
+            },
+            orderBy: {
+                validUntil: 'asc'
+            }
+        });
+
+        // Filter in memory for quota > usedQuota
+        const availableOrders = jobOrders.filter(order => order.quota > order.usedQuota);
+
+        res.json(availableOrders);
+
+    } catch (error) {
+        console.error("Fetch Job Orders Error:", error);
+        res.status(500).json({ message: "Failed to fetch job orders" });
     }
 });
 

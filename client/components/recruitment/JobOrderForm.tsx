@@ -136,7 +136,7 @@ export default function JobOrderForm({
     const onSubmitForm = async (data: JobOrderFormData) => {
         try {
             const res = await apiPost('/api/recruitment/job-orders', data);
-            toast.success('新增許可函成功');
+            toast.success('招募函已建立，現可新增移工 (Letter Created, ready to add workers)');
             if (onSuccess) onSuccess(res.id);
         } catch (e: any) {
             console.error(e);

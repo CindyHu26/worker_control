@@ -11,6 +11,7 @@ import { WorkflowTracker } from "@/components/deployments/WorkflowTracker";
 import FinanceTab from './FinanceTab';
 import DormTab from './DormTab';
 import DocumentsTab from './DocumentsTab';
+import EntryDocsTab from './EntryDocsTab';
 import WorkerSummaryBoard from './WorkerSummaryBoard';
 
 export default function WorkerDetailClient({ worker: initialWorker }: { worker: any }) {
@@ -310,6 +311,9 @@ export default function WorkerDetailClient({ worker: initialWorker }: { worker: 
                     <button onClick={() => setActiveTab('docs')} className={`shrink-0 px-6 py-4 font-bold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'docs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                         <FileText size={18} /> 行政文件 (Batch)
                     </button>
+                    <button onClick={() => setActiveTab('entry')} className={`shrink-0 px-6 py-4 font-bold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'entry' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                        <Calendar size={18} /> 入境/文件
+                    </button>
                     <button onClick={() => setActiveTab('workflow')} className={`shrink-0 px-6 py-4 font-bold flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'workflow' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                         <ListChecks size={18} /> 流程控管 (Workflow)
                     </button>
@@ -324,6 +328,7 @@ export default function WorkerDetailClient({ worker: initialWorker }: { worker: 
                 {activeTab === 'dorm' && <DormTab worker={worker} />}
 
                 {activeTab === 'docs' && <DocumentsTab worker={worker} />}
+                {activeTab === 'entry' && <EntryDocsTab worker={worker} onUpdate={handleUpdate} />}
                 {activeTab === 'workflow' && currentDeployment && (
                     <WorkflowTracker deployment={currentDeployment} onUpdate={updateDeployment} />
                 )}

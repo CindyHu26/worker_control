@@ -1,5 +1,151 @@
 import prisma from '../prisma';
 import { billingService } from './billingGeneratorService';
+import { parseOptionalDate } from '../utils/dateUtils';
+import { parseNumber } from '../utils/numberUtils';
+import { workerFormSchema } from '../config/workerSchema';
+
+const NO_QUOTA_ERROR = '無有效招募函名額 (No valid recruitment quota available)';
+
+const separateWorkerAttributes = (body: any) => {
+    const coreFields = new Set(workerFormSchema.filter(f => f.core).map(f => f.name));
+    const excludedKeys = new Set([
+        'passportNumber',
+        'passportIssueDate',
+        'passportExpiryDate',
+        'employerId',
+        'jobType',
+        'contractStartDate',
+        'contractEndDate',
+        'recruitmentSource',
+        'serviceStatus',
+        'jobOrderId'
+    ]);
+
+    const dynamicData: any = {};
+
+    Object.keys(body).forEach(key => {
+        if (!coreFields.has(key) && !excludedKeys.has(key)) {
+            dynamicData[key] = body[key];
+        }
+    });
+
+    return dynamicData;
+};
+
+const buildWorkerCreateData = (body: any, dynamicAttributes: any) => ({
+    englishName: body.englishName,
+    chineseName: body.chineseName,
+    nationalityId: body.nationalityId,
+    dob: parseOptionalDate(body.dob),
+    category: body.category || 'general',
+    gender: body.gender,
+    maritalStatus: body.maritalStatus,
+    height: parseNumber(body.height) as any,
+    weight: parseNumber(body.weight) as any,
+    bloodType: body.bloodType,
+    religion: body.religion,
+    educationLevel: body.educationLevel,
+    birthPlace: body.birthPlace,
+    spouseName: body.spouseName,
+    overseasFamilyContact: body.overseasFamilyContact,
+    overseasContactPhone: body.overseasContactPhone,
+    emergencyContactPhone: body.emergencyContactPhone,
+    mobilePhone: body.mobilePhone,
+    lineId: body.lineId,
+    bankAccountNo: body.bankAccountNo,
+    bankCode: body.bankCode,
+    foreignCity: body.foreignCity,
+    foreignDistrict: body.foreignDistrict,
+    foreignAddressDetail: body.foreignAddressDetail,
+    foreignZipCode: body.foreignZipCode,
+    foreignFullAddress: body.foreignFullAddress,
+    attributes: dynamicAttributes,
+} as any);
+
+export const createWorkerWithJobOrder = async (body: any) => {
+    if (!body.jobOrderId) {
+        throw new Error(NO_QUOTA_ERROR);
+    }
+
+    const jobOrder = await prisma.jobOrder.findUnique({
+        where: { id: body.jobOrderId },
+        select: { id: true, employerId: true, quota: true, usedQuota: true }
+    });
+
+    if (!jobOrder || jobOrder.usedQuota >= jobOrder.quota) {
+        throw new Error(NO_QUOTA_ERROR);
+    }
+
+    const dynamicAttributes = separateWorkerAttributes(body);
+
+    return prisma.$transaction(async (tx: any) => {
+        const letter = await tx.jobOrder.findUnique({
+            where: { id: body.jobOrderId },
+            select: { id: true, employerId: true, quota: true, usedQuota: true }
+        });
+
+        if (!letter || letter.usedQuota >= letter.quota) {
+            throw new Error(NO_QUOTA_ERROR);
+        }
+
+        const worker = await tx.worker.create({
+            data: buildWorkerCreateData(body, dynamicAttributes)
+        });
+
+        if (body.passportNumber) {
+            await tx.workerPassport.create({
+                data: {
+                    workerId: worker.id,
+                    passportNumber: body.passportNumber,
+                    issueDate: parseOptionalDate(body.passportIssueDate) || new Date(),
+                    expiryDate: parseOptionalDate(body.passportExpiryDate) || new Date(new Date().setFullYear(new Date().getFullYear() + 5)),
+                    isCurrent: true
+                }
+            });
+        }
+
+        await tx.workerApplication.create({
+            data: {
+                jobOrderId: letter.id,
+                workerId: worker.id,
+                status: 'ACTIVE'
+            }
+        });
+
+        const updated = await tx.jobOrder.updateMany({
+            where: {
+                id: letter.id,
+                usedQuota: { lt: letter.quota }
+            },
+            data: {
+                usedQuota: { increment: 1 }
+            }
+        });
+
+        if (updated.count === 0) {
+            throw new Error(NO_QUOTA_ERROR);
+        }
+
+        const employerId = body.employerId || letter.employerId;
+
+        if (employerId) {
+            await tx.deployment.create({
+                data: {
+                    workerId: worker.id,
+                    employerId,
+                    jobType: body.jobType,
+                    status: 'pending',
+                    startDate: parseOptionalDate(body.contractStartDate) || new Date(),
+                    endDate: parseOptionalDate(body.contractEndDate),
+                    sourceType: body.recruitmentSource || 'direct_hiring',
+                    serviceStatus: body.serviceStatus || 'active_service',
+                }
+            });
+        }
+
+        return worker;
+    });
+};
 
 export const renewPassport = async (workerId: string, newPassportData: {
     passportNumber: string,
